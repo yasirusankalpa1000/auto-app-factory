@@ -17,7 +17,8 @@ CRITICAL UI & CODE RULES:
 2. The UI and logic MUST strictly match the generated APP_NAME and DESCRIPTION.
 3. NO OVERFLOW ERRORS: Always use `Wrap`, `SingleChildScrollView`, or `FittedBox` for lists of badges/chips/buttons so they never clip or overflow screen boundaries horizontally.
 4. DOLLAR SIGN ESCAPING: Always escape raw dollar signs in text strings with a backslash (e.g., use \\$12.99 instead of $12.99).
-5. STRICT FLUTTER SYNTAX & COLOR RULES:
+5. STRICT FLUTTER & DART SYNTAX RULES:
+   - NEVER chain `.writeln()` on `StringBuffer()` initialization (e.g., DO NOT write `var sb = StringBuffer().writeln()`). Initialize `StringBuffer()` first, then call `.writeln()` on new lines.
    - Always use official Flutter color names (e.g., `Colors.green`, `Colors.teal`, `Colors.blue`). NEVER use non-existent color names like `Colors.emerald`.
    - For `decoration:` in input fields, ALWAYS wrap with `InputDecoration(border: OutlineInputBorder(...))`, NEVER pass `OutlineInputBorder` directly to `decoration`.
    - Use `TextAlign.center` (lowercase 'c'), NEVER `TextAlign.Center`.
@@ -50,7 +51,11 @@ response = requests.post(url, json=payload, headers=headers)
 data = response.json()
 
 if "error" in data:
+    print("API Error Response:", data)
     raise Exception(f"Gemini API Error: {data['error'].get('message', 'Unknown Error')}")
+
+if "candidates" not in data or not data["candidates"]:
+    raise Exception("No candidate response generated from Gemini API.")
 
 text_response = data['candidates'][0]['content']['parts'][0]['text']
 
@@ -72,20 +77,22 @@ if code.endswith("```"):
     code = code[:-3]
 code = code.strip()
 
-# Common Syntax Auto-fixes
+# Auto-fix common Gemini Syntax & Dart Method chaining errors
 code = re.sub(r'(?<!\\)\$(?=[0-9])', r'\\$', code)
 code = re.sub(r'TextAlign\.Center', 'TextAlign.center', code)
 code = re.sub(r'crossAlignment:', 'crossAxisAlignment:', code)
 code = re.sub(r'EdgeInsets\.vertical\((.*?)\)', r'EdgeInsets.symmetric(vertical: \1)', code)
 code = re.sub(r'Colors\.emerald', 'Colors.teal', code)
+code = re.sub(r'decoration:\s*(const\s*)?OutlineInputBorder\(', r'decoration: InputDecoration(border: OutlineInputBorder(', code)
+code = re.sub(r'(\w+)\s*=\s*StringBuffer\(\)\.writeln\(', r'final \1 = StringBuffer();\n\1.writeln(', code)
 
+# Default Counter App එක ආවොත් Fail කරවීම
 if not code or "You have pushed the button this many times" in code:
     raise Exception("Gemini generated default counter code! Retrying required.")
 
-# App ID එකක් සදාගැනීම (උදා: chroma_craft)
+# App ID එකක් සදාගැනීම
 app_id = re.sub(r'[^a-zA-Z0-9]', '_', app_name.lower()).strip('_')
 
-# Main build එක සඳහා සහ Apps history එක සඳහා Save කිරීම
 os.makedirs("lib", exist_ok=True)
 os.makedirs(f"apps/{app_id}", exist_ok=True)
 
@@ -94,6 +101,9 @@ with open("lib/main.dart", "w", encoding="utf-8") as f:
 
 with open(f"apps/{app_id}/main.dart", "w", encoding="utf-8") as f:
     f.write(code)
+
+print("--- GENERATED CODE PREVIEW ---")
+print(code[:200])
 
 with open("app_info.txt", "w", encoding="utf-8") as f:
     f.write(f"📱 *App Name:* {app_name}\n🆔 *App ID:* `{app_id}`\n\n📝 *Description:* {description}\n\n🧪 *Testing Checklist:*\n{checklist}")
