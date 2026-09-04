@@ -16,8 +16,12 @@ CRITICAL UI & CODE RULES:
 1. DO NOT generate the default Flutter counter app ("You have pushed the button this many times").
 2. The UI and logic MUST strictly match the generated APP_NAME and DESCRIPTION.
 3. NO OVERFLOW ERRORS: Always use `Wrap`, `SingleChildScrollView`, or `FittedBox` for lists of badges/chips/buttons so they never clip or overflow screen boundaries horizontally.
-4. DOLLAR SIGN ESCAPING: Always escape raw dollar signs in text strings with a backslash (e.g., use \\$12.99 instead of $12.99) so Dart compiler does not throw string interpolation errors.
-5. Ensure clean, modern Material 3 styling with proper padding, scrollable views, and responsive layouts.
+4. DOLLAR SIGN ESCAPING: Always escape raw dollar signs in text strings with a backslash (e.g., use \\$12.99 instead of $12.99).
+5. STRICT FLUTTER SYNTAX:
+   - Use `TextAlign.center` (lowercase 'c'), NEVER `TextAlign.Center`.
+   - In `Wrap` widget, use `crossAxisAlignment:`, NEVER `crossAlignment:`.
+   - Use `EdgeInsets.symmetric(vertical: X)` or `EdgeInsets.all(X)`, NEVER `EdgeInsets.vertical(X)`.
+6. Ensure clean, modern Material 3 styling with proper padding, scrollable views, and responsive layouts.
 
 Strictly follow this exact text output format:
 
@@ -70,8 +74,11 @@ if code.endswith("```"):
     code = code[:-3]
 code = code.strip()
 
-# Auto-escape unescaped dollar signs before numbers (e.g., $12.99 -> \$12.99)
+# Auto-fix common Gemini Syntax & Escalation errors
 code = re.sub(r'(?<!\\)\$(?=[0-9])', r'\\$', code)
+code = re.sub(r'TextAlign\.Center', 'TextAlign.center', code)
+code = re.sub(r'crossAlignment:', 'crossAxisAlignment:', code)
+code = re.sub(r'EdgeInsets\.vertical\((.*?)\)', r'EdgeInsets.symmetric(vertical: \1)', code)
 
 # Default Counter App එක ආවොත් Fail කරවීම
 if not code or "You have pushed the button this many times" in code:
