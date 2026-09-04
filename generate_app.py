@@ -10,15 +10,21 @@ if not GEMINI_API_KEY:
 url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={GEMINI_API_KEY}"
 
 prompt = """
-You are an expert Flutter developer. Generate a unique, fully working single-file Flutter app (main.dart) for a useful tool or utility.
+You are an expert Flutter developer. Generate a unique, fully functional, feature-rich single-file Flutter app (main.dart) for a useful utility or tool.
 
-Strictly follow this exact text output format using the section delimiters below:
+CRITICAL UI & CODE RULES:
+1. DO NOT generate the default Flutter counter app ("You have pushed the button this many times").
+2. The UI and logic MUST strictly match the generated APP_NAME and DESCRIPTION.
+3. NO OVERFLOW ERRORS: Always use `Wrap`, `SingleChildScrollView`, or `FittedBox` for lists of badges/chips/buttons so they never clip or overflow screen boundaries horizontally.
+4. Ensure clean, modern Material 3 styling with proper padding, scrollable views, and responsive layouts.
+
+Strictly follow this exact text output format:
 
 ===APP_NAME===
-[Insert short App Name here]
+[Unique App Name]
 
 ===DESCRIPTION===
-[Insert short description here]
+[Detailed description of what the app actually does]
 
 ===CHECKLIST===
 1. [Test item 1]
@@ -27,7 +33,7 @@ Strictly follow this exact text output format using the section delimiters below
 
 ===CODE===
 import 'package:flutter/material.dart';
-// [Insert complete, production-ready Flutter main.dart code here]
+// [Insert full custom Flutter main.dart code here]
 """
 
 payload = {"contents": [{"parts": [{"text": prompt}]}]}
@@ -52,7 +58,7 @@ def extract_section(text, header, next_header=None):
 
 app_name = extract_section(text_response, "===APP_NAME===", "===DESCRIPTION===") or "Auto Flutter App"
 description = extract_section(text_response, "===DESCRIPTION===", "===CHECKLIST===") or "Generated Flutter App"
-checklist = extract_section(text_response, "===CHECKLIST===", "===CODE===") or "1. Test all UI elements"
+checklist = extract_section(text_section, "===CHECKLIST===", "===CODE===") if 'text_section' in locals() else extract_section(text_response, "===CHECKLIST===", "===CODE===") or "1. Test all UI elements"
 code = extract_section(text_response, "===CODE===")
 
 if code.startswith("```dart"):
@@ -63,12 +69,16 @@ if code.endswith("```"):
     code = code[:-3]
 code = code.strip()
 
-if not code:
-    raise Exception("Failed to extract valid Flutter code from Gemini response.")
+# Default Counter App එක ආවොත් Fail කරවීම
+if not code or "You have pushed the button this many times" in code:
+    raise Exception("Gemini generated default counter code! Retrying required.")
 
 os.makedirs("lib", exist_ok=True)
 with open("lib/main.dart", "w", encoding="utf-8") as f:
     f.write(code)
+
+print("--- GENERATED CODE PREVIEW ---")
+print(code[:200])
 
 with open("app_info.txt", "w", encoding="utf-8") as f:
     f.write(f"📱 *App Name:* {app_name}\n\n📝 *Description:* {description}\n\n🧪 *Testing Checklist:*\n{checklist}")
