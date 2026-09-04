@@ -7,7 +7,8 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
     raise ValueError("GEMINI_API_KEY repository secret is missing!")
 
-url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+# Model එක gemini-2.5-flash වලට Update කර ඇත
+url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
 
 prompt = """
 You are an expert Flutter developer. Generate a unique, fully working single-file Flutter app (main.dart) for a useful tool or utility.
@@ -25,6 +26,12 @@ headers = {"Content-Type": "application/json"}
 
 response = requests.post(url, json=payload, headers=headers)
 data = response.json()
+
+# gemini-2.5-flash අසාර්ථක වුවහොත් gemini-2.0-flash පාවිච්චි කිරීම
+if "error" in data or "candidates" not in data:
+    fallback_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+    response = requests.post(fallback_url, json=payload, headers=headers)
+    data = response.json()
 
 if "error" in data or "candidates" not in data:
     print("API Error Response:", json.dumps(data, indent=2))
@@ -45,4 +52,4 @@ with open("lib/main.dart", "w") as f:
 
 with open("app_info.txt", "w") as f:
     f.write(f"📱 *App Name:* {app_data['app_name']}\n\n📝 *Description:* {app_data['description']}\n\n🧪 *Testing Checklist:*\n{app_data['checklist']}")
-  
+    
