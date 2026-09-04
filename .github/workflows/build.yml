@@ -20,21 +20,21 @@ jobs:
       - name: Install Python dependencies
         run: pip install requests
 
-      - name: Generate Flutter App Code via Gemini
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python generate_app.py
-
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
 
-      - name: Create pubspec.yaml if missing
+      - name: Create Flutter Project Structure if missing
         run: |
           if [ ! -f pubspec.yaml ]; then
-            flutter create . --project-name auto_app_factory --overwrite
+            flutter create . --project-name auto_app_factory
           fi
+
+      - name: Generate Flutter App Code via Gemini
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python generate_app.py
 
       - name: Build APK
         run: flutter build apk --release
