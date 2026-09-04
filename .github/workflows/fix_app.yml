@@ -3,6 +3,10 @@ name: Fix Current App
 on:
   workflow_dispatch:
     inputs:
+      app_id:
+        description: 'Telegram එකේ ආපු App ID එක (උදා: chroma_craft)'
+        required: false
+        default: ''
       bug_description:
         description: 'ඇප් එකේ මොකක්ද තියෙන Error එක/Bug එක?'
         required: true
@@ -34,6 +38,7 @@ jobs:
       - name: Fix App Code via Gemini
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          APP_ID: ${{ github.event.inputs.app_id }}
           BUG_DESCRIPTION: ${{ github.event.inputs.bug_description }}
         run: python fix_app.py
 
@@ -41,8 +46,8 @@ jobs:
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add lib/main.dart
-          git commit -m "Auto-fixed app code" || exit 0
+          git add lib/main.dart apps/
+          git commit -m "Auto-fixed app code for ${{ github.event.inputs.app_id }}" || exit 0
           git push
 
       - name: Build Lightweight APK
@@ -54,7 +59,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           CAPTION=$(cat app_info.txt)
-          curl -s -X POST "[https://api.telegram.org/bot$](https://api.telegram.org/bot$){TELEGRAM_BOT_TOKEN}/sendDocument" \
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
             -F chat_id="${TELEGRAM_CHAT_ID}" \
             -F document=@"build/app/outputs/flutter-apk/app-arm64-v8a-release.apk" \
             -F caption="${CAPTION}" \
