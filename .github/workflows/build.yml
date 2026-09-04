@@ -5,6 +5,9 @@ on:
   schedule:
     - cron: '0 0 * * *'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -39,6 +42,14 @@ jobs:
       - name: Fix Gemini Flutter Syntax Errors
         run: |
           sed -i 's/CardTheme(/CardThemeData(/g' lib/main.dart
+
+      - name: Save Generated Code to History
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add apps/ lib/main.dart
+          git commit -m "Save app code history" || exit 0
+          git push
 
       - name: Build Lightweight APK (Split ABI)
         run: flutter build apk --release --split-per-abi
