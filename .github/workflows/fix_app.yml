@@ -1,0 +1,62 @@
+name: Fix Current App
+
+on:
+  workflow_dispatch:
+    inputs:
+      bug_description:
+        description: 'ඇප් එකේ මොකක්ද තියෙන Error එක/Bug එක?'
+        required: true
+        default: 'Fix text overflow and UI bugs'
+
+permissions:
+  contents: write
+
+jobs:
+  fix_and_build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install Python dependencies
+        run: pip install requests
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Fix App Code via Gemini
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          BUG_DESCRIPTION: ${{ github.event.inputs.bug_description }}
+        run: python fix_app.py
+
+      - name: Save Fixed Code to Git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add lib/main.dart
+          git commit -m "Auto-fixed app code" || exit 0
+          git push
+
+      - name: Build Lightweight APK
+        run: flutter build apk --release --split-per-abi
+
+      - name: Send Fixed APK to Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          CAPTION=$(cat app_info.txt)
+          curl -s -X POST "[https://api.telegram.org/bot$](https://api.telegram.org/bot$){TELEGRAM_BOT_TOKEN}/sendDocument" \
+            -F chat_id="${TELEGRAM_CHAT_ID}" \
+            -F document=@"build/app/outputs/flutter-apk/app-arm64-v8a-release.apk" \
+            -F caption="${CAPTION}" \
+            -F parse_mode="Markdown"
+            
