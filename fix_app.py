@@ -3,15 +3,19 @@ import re
 import requests
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+APP_ID = os.environ.get("APP_ID", "").strip()
 BUG_DESCRIPTION = os.environ.get("BUG_DESCRIPTION", "Fix layout overflow and logic errors")
 
-if not os.path.exists("lib/main.dart"):
-    raise Exception("lib/main.dart file is missing!")
+# App ID එක දුන්නොත් ඒ Folder එකෙන් Code එක ගනියි, නැත්නම් lib/main.dart එකෙන් ගනියි
+file_path = f"apps/{APP_ID}/main.dart" if APP_ID and os.path.exists(f"apps/{APP_ID}/main.dart") else "lib/main.dart"
 
-with open("lib/main.dart", "r", encoding="utf-8") as f:
+if not os.path.exists(file_path):
+    raise Exception(f"Code file not found at {file_path}!")
+
+with open(file_path, "r", encoding="utf-8") as f:
     existing_code = f.read()
 
-url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={GEMINI_API_KEY}"
+url = f"[https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=](https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=){GEMINI_API_KEY}"
 
 prompt = f"""
 You are an expert Flutter developer. Fix the following existing Flutter main.dart code based on the reported user issue.
@@ -77,10 +81,14 @@ code = re.sub(r'(?<!\\)\$(?=[0-9])', r'\\$', code)
 code = re.sub(r'TextAlign\.Center', 'TextAlign.center', code)
 code = re.sub(r'crossAlignment:', 'crossAxisAlignment:', code)
 code = re.sub(r'EdgeInsets\.vertical\((.*?)\)', r'EdgeInsets.symmetric(vertical: \1)', code)
-code = re.sub(r'Colors\.emerald', 'Colors.teal', code)
 
 with open("lib/main.dart", "w", encoding="utf-8") as f:
     f.write(code)
 
+if APP_ID:
+    with open(f"apps/{APP_ID}/main.dart", "w", encoding="utf-8") as f:
+        f.write(code)
+
 with open("app_info.txt", "w", encoding="utf-8") as f:
-    f.write(f"🛠️ *FIXED APP:* {app_name}\n\n📝 *Fix Summary:* {description}\n\n🧪 *Checklist:*\n{checklist}")
+    f.write(f"🛠️ *FIXED APP:* {app_name}\n🆔 *App ID:* `{APP_ID}`\n\n📝 *Fix Summary:* {description}\n\n🧪 *Checklist:*\n{checklist}")
+        
