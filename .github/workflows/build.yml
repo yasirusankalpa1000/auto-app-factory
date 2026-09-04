@@ -33,7 +33,7 @@ jobs:
       - name: Create pubspec.yaml if missing
         run: |
           if [ ! -f pubspec.yaml ]; then
-            flutter create . --overwrite
+            flutter create . --project-name auto_app_factory --overwrite
           fi
 
       - name: Build APK
