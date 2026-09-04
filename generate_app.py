@@ -16,7 +16,8 @@ CRITICAL UI & CODE RULES:
 1. DO NOT generate the default Flutter counter app ("You have pushed the button this many times").
 2. The UI and logic MUST strictly match the generated APP_NAME and DESCRIPTION.
 3. NO OVERFLOW ERRORS: Always use `Wrap`, `SingleChildScrollView`, or `FittedBox` for lists of badges/chips/buttons so they never clip or overflow screen boundaries horizontally.
-4. Ensure clean, modern Material 3 styling with proper padding, scrollable views, and responsive layouts.
+4. DOLLAR SIGN ESCAPING: Always escape raw dollar signs in text strings with a backslash (e.g., use \\$12.99 instead of $12.99) so Dart compiler does not throw string interpolation errors.
+5. Ensure clean, modern Material 3 styling with proper padding, scrollable views, and responsive layouts.
 
 Strictly follow this exact text output format:
 
@@ -58,7 +59,7 @@ def extract_section(text, header, next_header=None):
 
 app_name = extract_section(text_response, "===APP_NAME===", "===DESCRIPTION===") or "Auto Flutter App"
 description = extract_section(text_response, "===DESCRIPTION===", "===CHECKLIST===") or "Generated Flutter App"
-checklist = extract_section(text_section, "===CHECKLIST===", "===CODE===") if 'text_section' in locals() else extract_section(text_response, "===CHECKLIST===", "===CODE===") or "1. Test all UI elements"
+checklist = extract_section(text_response, "===CHECKLIST===", "===CODE===") or "1. Test all UI elements"
 code = extract_section(text_response, "===CODE===")
 
 if code.startswith("```dart"):
@@ -68,6 +69,9 @@ elif code.startswith("```"):
 if code.endswith("```"):
     code = code[:-3]
 code = code.strip()
+
+# Auto-escape unescaped dollar signs before numbers (e.g., $12.99 -> \$12.99)
+code = re.sub(r'(?<!\\)\$(?=[0-9])', r'\\$', code)
 
 # Default Counter App එක ආවොත් Fail කරවීම
 if not code or "You have pushed the button this many times" in code:
