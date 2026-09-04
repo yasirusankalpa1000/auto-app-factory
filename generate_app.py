@@ -1,5 +1,6 @@
 import os
 import json
+import re
 import requests
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
@@ -7,7 +8,6 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
     raise ValueError("GEMINI_API_KEY repository secret is missing!")
 
-# API එකෙන්ම ඉල්ලන gemini-3.6-flash Model එක කෙළින්ම භාවිතය
 url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={GEMINI_API_KEY}"
 
 prompt = """
@@ -19,6 +19,7 @@ Return JSON strictly in this format without markdown code block wrappers:
   "checklist": "1. Test X\\n2. Test Y\\n3. Test Z",
   "code": "import 'package:flutter/material.dart'; ..."
 }
+Make sure code strings are properly formatted for valid JSON parsing.
 """
 
 payload = {"contents": [{"parts": [{"text": prompt}]}]}
@@ -37,14 +38,12 @@ if "candidates" not in data or not data["candidates"]:
 
 text_response = data['candidates'][0]['content']['parts'][0]['text'].strip()
 
-if text_response.startswith("```json"):
-    text_response = text_response[7:]
-if text_response.startswith("```"):
-    text_response = text_response[3:]
-if text_response.endswith("```"):
-    text_response = text_response[:-3]
+# JSON කොටස විතරක් තෝරාගැනීම
+match = re.search(r'\{.*\}', text_response, re.DOTALL)
+json_str = match.group(0) if match else text_response
 
-app_data = json.loads(text_response.strip())
+# strict=False මගින් control characters නිසා එන JSONDecodeError එක වලක්වයි
+app_data = json.loads(json_str, strict=False)
 
 os.makedirs("lib", exist_ok=True)
 with open("lib/main.dart", "w", encoding="utf-8") as f:
