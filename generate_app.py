@@ -1,6 +1,7 @@
 import os
 import re
 import requests
+import time
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
@@ -47,12 +48,25 @@ import 'package:flutter/material.dart';
 payload = {"contents": [{"parts": [{"text": prompt}]}]}
 headers = {"Content-Type": "application/json"}
 
-response = requests.post(url, json=payload, headers=headers)
-data = response.json()
+# API එක Busy වුණොත් පාරවල් 3ක් Retry කරන කොටස
+max_retries = 3
+data = {}
+
+for attempt in range(max_retries):
+    print(f"Sending Request to Gemini API (Attempt {attempt + 1}/{max_retries})...")
+    response = requests.post(url, json=payload, headers=headers)
+    data = response.json()
+    
+    if "error" not in data:
+        break
+    
+    print(f"Attempt {attempt + 1} Failed: {data['error'].get('message', 'Unknown Error')}")
+    if attempt < max_retries - 1:
+        print("Waiting 10 seconds before retrying...")
+        time.sleep(10)
 
 if "error" in data:
-    print("API Error Response:", data)
-    raise Exception(f"Gemini API Error: {data['error'].get('message', 'Unknown Error')}")
+    raise Exception(f"Gemini API Error after {max_retries} retries: {data['error'].get('message')}")
 
 if "candidates" not in data or not data["candidates"]:
     raise Exception("No candidate response generated from Gemini API.")
@@ -86,7 +100,6 @@ code = re.sub(r'Colors\.emerald', 'Colors.teal', code)
 code = re.sub(r'decoration:\s*(const\s*)?OutlineInputBorder\(', r'decoration: InputDecoration(border: OutlineInputBorder(', code)
 code = re.sub(r'(\w+)\s*=\s*StringBuffer\(\)\.writeln\(', r'final \1 = StringBuffer();\n\1.writeln(', code)
 
-# Default Counter App එක ආවොත් Fail කරවීම
 if not code or "You have pushed the button this many times" in code:
     raise Exception("Gemini generated default counter code! Retrying required.")
 
@@ -102,8 +115,6 @@ with open("lib/main.dart", "w", encoding="utf-8") as f:
 with open(f"apps/{app_id}/main.dart", "w", encoding="utf-8") as f:
     f.write(code)
 
-print("--- GENERATED CODE PREVIEW ---")
-print(code[:200])
-
 with open("app_info.txt", "w", encoding="utf-8") as f:
     f.write(f"📱 *App Name:* {app_name}\n🆔 *App ID:* `{app_id}`\n\n📝 *Description:* {description}\n\n🧪 *Testing Checklist:*\n{checklist}")
+    
