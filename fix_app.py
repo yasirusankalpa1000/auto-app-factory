@@ -6,7 +6,7 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip().strip("'").strip('
 APP_ID = os.environ.get("APP_ID", "").strip()
 BUG_DESCRIPTION = os.environ.get("BUG_DESCRIPTION", "Fix layout overflow and logic errors")
 
-# App ID එක දුන්නොත් ඒ Folder එකෙන් Code එක ගනියි, නැත්නම් lib/main.dart එකෙන් ගනියි
+# Code file එක හොයාගැනීම
 file_path = f"apps/{APP_ID}/main.dart" if APP_ID and os.path.exists(f"apps/{APP_ID}/main.dart") else "lib/main.dart"
 
 if not os.path.exists(file_path):
@@ -15,11 +15,13 @@ if not os.path.exists(file_path):
 with open(file_path, "r", encoding="utf-8") as f:
     existing_code = f.read()
 
-# URL එක කඩලා ලියන්නේ Markdown Links auto-generate වීම වැළැක්වීමටයි
-scheme = "https://"
+# URL එක එකතු කිරීමේදී Markdown Brackets වැටීම වැළැක්වීමට කොටස් ලෙස සැකසීම
 host = "generativelanguage.googleapis.com"
 path = "/v1beta/models/gemini-2.5-flash:generateContent"
-url = f"{scheme}{host}{path}?key={GEMINI_API_KEY}"
+url = f"https://{host}{path}?key={GEMINI_API_KEY}"
+
+# URL එකේ Brackets තියෙනවා නම් අයින් කිරීම
+url = re.sub(r'[\[\]\(\)]', '', url).strip()
 
 prompt = f"""
 You are an expert Flutter developer. Fix the following existing Flutter main.dart code based on the reported user issue.
@@ -90,9 +92,9 @@ with open("lib/main.dart", "w", encoding="utf-8") as f:
     f.write(code)
 
 if APP_ID:
+    os.makedirs(f"apps/{APP_ID}", exist_ok=True)
     with open(f"apps/{APP_ID}/main.dart", "w", encoding="utf-8") as f:
         f.write(code)
 
 with open("app_info.txt", "w", encoding="utf-8") as f:
     f.write(f"🛠️ *FIXED APP:* {app_name}\n🆔 *App ID:* `{APP_ID}`\n\n📝 *Fix Summary:* {description}\n\n🧪 *Checklist:*\n{checklist}")
-    
