@@ -6,7 +6,7 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip().strip("'").strip('
 APP_ID = os.environ.get("APP_ID", "").strip()
 BUG_DESCRIPTION = os.environ.get("BUG_DESCRIPTION", "Fix layout overflow and logic errors")
 
-# Code file එක හොයාගැනීම
+# Find the code file
 file_path = f"apps/{APP_ID}/main.dart" if APP_ID and os.path.exists(f"apps/{APP_ID}/main.dart") else "lib/main.dart"
 
 if not os.path.exists(file_path):
@@ -15,13 +15,12 @@ if not os.path.exists(file_path):
 with open(file_path, "r", encoding="utf-8") as f:
     existing_code = f.read()
 
-# URL එක එකතු කිරීමේදී Markdown Brackets වැටීම වැළැක්වීමට කොටස් ලෙස සැකසීම
-host = "generativelanguage.googleapis.com"
-path = "/v1beta/models/gemini-2.5-flash:generateContent"
-url = f"https://{host}{path}?key={GEMINI_API_KEY}"
+# Safe URL Construction
+base_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+url = f"{base_url}?key={GEMINI_API_KEY}"
 
-# URL එකේ Brackets තියෙනවා නම් අයින් කිරීම
-url = re.sub(r'[\[\]\(\)]', '', url).strip()
+# Clean any illegal brackets or spaces from URL
+url = re.sub(r'[\[\]\(\)\s]', '', url)
 
 prompt = f"""
 You are an expert Flutter developer. Fix the following existing Flutter main.dart code based on the reported user issue.
@@ -31,9 +30,9 @@ REPORTED ISSUE / BUG TO FIX:
 
 CRITICAL FIX RULES:
 1. Retain the overall app logic and utility, but fix all requested bugs and errors.
-2. NO OVERFLOW ERRORS: Use `Wrap`, `SingleChildScrollView`, or `FittedBox` for responsive layouts.
+2. NO OVERFLOW ERRORS: Use Wrap, SingleChildScrollView, or FittedBox for responsive layouts.
 3. DOLLAR SIGN ESCAPING: Always escape raw dollar signs in text strings with a backslash (e.g., \\$12.99).
-4. Use valid Flutter syntax (`TextAlign.center`, `crossAxisAlignment:`, correct `EdgeInsets`).
+4. Use valid Flutter syntax (TextAlign.center, crossAxisAlignment:, correct EdgeInsets).
 
 Strictly follow this exact text output format:
 
@@ -98,3 +97,4 @@ if APP_ID:
 
 with open("app_info.txt", "w", encoding="utf-8") as f:
     f.write(f"🛠️ *FIXED APP:* {app_name}\n🆔 *App ID:* `{APP_ID}`\n\n📝 *Fix Summary:* {description}\n\n🧪 *Checklist:*\n{checklist}")
+
