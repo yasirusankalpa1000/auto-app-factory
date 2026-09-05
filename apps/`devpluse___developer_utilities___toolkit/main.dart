@@ -2,37 +2,51 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+// Global ValueNotifier to dynamically change the app's theme color
+final ValueNotifier<Color> appPrimaryColorNotifier =
+    ValueNotifier<Color>(const Color(0xFF00BFA5));
+
 void main() {
   runApp(const DevPulseApp());
 }
 
-class DevPulseApp extends StatelessWidget {
+class DevPulseApp extends StatefulWidget {
   const DevPulseApp({super.key});
 
   @override
+  State<DevPulseApp> createState() => _DevPulseAppState();
+}
+
+class _DevPulseAppState extends State<DevPulseApp> {
+  @override
   Widget build(BuildContext meContext) {
-    return MaterialApp(
-      title: 'DevPulse Utilities',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.teal,
-          brightness: Brightness.dark,
-          primary: Colors.tealAccent,
-          surface: const Color(0xFF1E222A),
-        ),
-        scaffoldBackgroundColor: const Color(0xFF12151C),
-        cardTheme: CardThemeData(
-          color: const Color(0xFF1E222A),
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+    return ValueListenableBuilder<Color>(
+      valueListenable: appPrimaryColorNotifier,
+      builder: (context, primaryColor, child) {
+        return MaterialApp(
+          title: 'DevPulse Utilities',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            useMaterial3: true,
+            brightness: Brightness.dark,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: primaryColor,
+              brightness: Brightness.dark,
+              primary: primaryColor,
+              surface: const Color(0xFF1E222A),
+            ),
+            scaffoldBackgroundColor: const Color(0xFF12151C),
+            cardTheme: CardThemeData(
+              color: const Color(0xFF1E222A),
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
           ),
-        ),
-      ),
-      home: const MainNavigationScreen(),
+          home: const MainNavigationScreen(),
+        );
+      },
     );
   }
 }
@@ -56,6 +70,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
@@ -69,26 +85,26 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           });
         },
         backgroundColor: const Color(0xFF1E222A),
-        indicatorColor: Colors.teal.withAlpha(80),
-        destinations: const [
+        indicatorColor: primaryColor.withAlpha(80),
+        destinations: [
           NavigationDestination(
-            icon: Icon(Icons.code),
-            selectedIcon: Icon(Icons.code, color: Colors.tealAccent),
+            icon: const Icon(Icons.code),
+            selectedIcon: Icon(Icons.code, color: primaryColor),
             label: 'JSON',
           ),
           NavigationDestination(
-            icon: Icon(Icons.transform),
-            selectedIcon: Icon(Icons.transform, color: Colors.tealAccent),
+            icon: const Icon(Icons.transform),
+            selectedIcon: Icon(Icons.transform, color: primaryColor),
             label: 'Encoder',
           ),
           NavigationDestination(
-            icon: Icon(Icons.palette),
-            selectedIcon: Icon(Icons.palette, color: Colors.tealAccent),
+            icon: const Icon(Icons.palette),
+            selectedIcon: Icon(Icons.palette, color: primaryColor),
             label: 'Colors',
           ),
           NavigationDestination(
-            icon: Icon(Icons.auto_stories),
-            selectedIcon: Icon(Icons.auto_stories, color: Colors.tealAccent),
+            icon: const Icon(Icons.auto_stories),
+            selectedIcon: Icon(Icons.auto_stories, color: primaryColor),
             label: 'Vault',
           ),
         ],
@@ -153,7 +169,8 @@ class _JsonToolPageState extends State<JsonToolPage> {
   }
 
   void _loadSample() {
-    const sample = '{"name":"DevPulse","version":1.0,"features":["JSON","Encoder","Palette"],"active":true,"pricing":{"tier":"free","cost":"\\\$0.00"}}';
+    const sample =
+        '{"name":"DevPulse","version":1.0,"features":["JSON","Encoder","Palette"],"active":true,"pricing":{"tier":"free","cost":"\\\$0.00"}}';
     setState(() {
       _controller.text = sample;
       _errorMessage = '';
@@ -178,6 +195,8 @@ class _JsonToolPageState extends State<JsonToolPage> {
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
@@ -211,8 +230,8 @@ class _JsonToolPageState extends State<JsonToolPage> {
                     icon: const Icon(Icons.format_indent_increase, size: 18),
                     label: const Text('Pretty Print'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal.withAlpha(50),
-                      foregroundColor: Colors.tealAccent,
+                      backgroundColor: primaryColor.withAlpha(50),
+                      foregroundColor: primaryColor,
                     ),
                   ),
                   OutlinedButton.icon(
@@ -332,6 +351,8 @@ class _EncoderToolPageState extends State<EncoderToolPage> {
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
@@ -364,7 +385,7 @@ class _EncoderToolPageState extends State<EncoderToolPage> {
                         });
                       }
                     },
-                    selectedColor: Colors.teal,
+                    selectedColor: primaryColor,
                   );
                 }).toList(),
               ),
@@ -394,9 +415,9 @@ class _EncoderToolPageState extends State<EncoderToolPage> {
                           Flexible(
                             child: Text(
                               'Result ($_activeOperation)',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                color: Colors.tealAccent,
+                                color: primaryColor,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -435,7 +456,7 @@ class _EncoderToolPageState extends State<EncoderToolPage> {
 }
 
 // ==========================================
-// 3. COLOR & CONTRAST INSPECTOR (WITH PICKER)
+// 3. COLOR & CONTRAST INSPECTOR (WITH VISUAL PICKER)
 // ==========================================
 class ColorInspectorPage extends StatefulWidget {
   const ColorInspectorPage({super.key});
@@ -450,7 +471,7 @@ class _ColorInspectorPageState extends State<ColorInspectorPage> {
   bool _isValidHex = true;
 
   final List<Color> _presetColors = const [
-    Color(0xFF00BFA5), // Teal Accent
+    Color(0xFF00BFA5), // Teal
     Colors.redAccent,
     Colors.pinkAccent,
     Colors.purpleAccent,
@@ -459,6 +480,7 @@ class _ColorInspectorPageState extends State<ColorInspectorPage> {
     Colors.blueAccent,
     Colors.lightBlueAccent,
     Colors.cyanAccent,
+    Colors.tealAccent,
     Colors.greenAccent,
     Colors.lightGreenAccent,
     Colors.limeAccent,
@@ -466,8 +488,10 @@ class _ColorInspectorPageState extends State<ColorInspectorPage> {
     Colors.amberAccent,
     Colors.orangeAccent,
     Colors.deepOrangeAccent,
-    Colors.white,
+    Colors.brown,
     Colors.grey,
+    Colors.blueGrey,
+    Colors.white,
     Colors.black,
   ];
 
@@ -498,6 +522,112 @@ class _ColorInspectorPageState extends State<ColorInspectorPage> {
     setState(() => _isValidHex = false);
   }
 
+  // Interactive Visual Color Picker Modal Dialog
+  void _openInteractiveColorPicker() {
+    double hue = HSVColor.fromColor(_currentColor).hue;
+    double saturation = HSVColor.fromColor(_currentColor).saturation;
+    double value = HSVColor.fromColor(_currentColor).value;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulWidget(
+          builder: (ctx, setPickerState) {
+            final tempColor = HSVColor.fromAHSV(1.0, hue, saturation, value).toColor();
+            final hexVal = tempColor.value.toRadixString(16).padLeft(8, '0').substring(2).toUpperCase();
+
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1E222A),
+              title: const Text('Custom Visual Color Picker'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Container(
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: tempColor,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: tempColor.withAlpha(120),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          '#$hexVal',
+                          style: TextStyle(
+                            color: tempColor.computeLuminance() > 0.5 ? Colors.black : Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Hue (Color Wheel Spectrum)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    Slider(
+                      value: hue,
+                      min: 0.0,
+                      max: 360.0,
+                      activeColor: HSVColor.fromAHSV(1.0, hue, 1.0, 1.0).toColor(),
+                      onChanged: (val) {
+                        setPickerState(() {
+                          hue = val;
+                        });
+                      },
+                    ),
+                    const Text('Saturation (Color Intensity)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    Slider(
+                      value: saturation,
+                      min: 0.0,
+                      max: 1.0,
+                      activeColor: tempColor,
+                      onChanged: (val) {
+                        setPickerState(() {
+                          saturation = val;
+                        });
+                      },
+                    ),
+                    const Text('Brightness / Value', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    Slider(
+                      value: value,
+                      min: 0.0,
+                      max: 1.0,
+                      activeColor: tempColor,
+                      onChanged: (val) {
+                        setPickerState(() {
+                          value = val;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogCtx),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    _setColor(tempColor);
+                    Navigator.pop(dialogCtx);
+                  },
+                  child: const Text('Apply Color'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   double _calculateLuminance(Color color) {
     return color.computeLuminance();
   }
@@ -523,8 +653,15 @@ class _ColorInspectorPageState extends State<ColorInspectorPage> {
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Color Studio & Accessibility'),
+          title: const Text('Color Studio & Inspector'),
           backgroundColor: Colors.transparent,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.color_lens),
+              tooltip: 'Visual Color Picker',
+              onPressed: _openInteractiveColorPicker,
+            ),
+          ],
         ),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
@@ -540,13 +677,17 @@ class _ColorInspectorPageState extends State<ColorInspectorPage> {
                   hintText: 'e.g. #00BFA5 or 00BFA5',
                   errorText: _isValidHex ? null : 'Invalid HEX format',
                   border: const OutlineInputBorder(),
-                  suffixIcon: Icon(Icons.palette, color: _currentColor),
+                  suffixIcon: IconButton(
+                    icon: Icon(Icons.colorize, color: _currentColor),
+                    onPressed: _openInteractiveColorPicker,
+                    tooltip: 'Pick Visual Color',
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
               AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
-                height: 90,
+                height: 100,
                 decoration: BoxDecoration(
                   color: _currentColor,
                   borderRadius: BorderRadius.circular(16),
@@ -559,15 +700,56 @@ class _ColorInspectorPageState extends State<ColorInspectorPage> {
                   ],
                 ),
                 child: Center(
-                  child: Text(
-                    '#${hexString.substring(2)}',
-                    style: TextStyle(
-                      color: contrastWithWhite > contrastWithBlack ? Colors.white : Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 22,
-                    ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '#${hexString.substring(2)}',
+                        style: TextStyle(
+                          color: contrastWithWhite > contrastWithBlack ? Colors.white : Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 22,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Tap "Pick Color" to choose visually',
+                        style: TextStyle(
+                          color: (contrastWithWhite > contrastWithBlack ? Colors.white : Colors.black)
+                              .withAlpha(180),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 8.0,
+                runSpacing: 8.0,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _openInteractiveColorPicker,
+                    icon: const Icon(Icons.palette),
+                    label: const Text('Open Visual Color Picker'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary.withAlpha(50),
+                      foregroundColor: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      appPrimaryColorNotifier.value = _currentColor;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Updated global App Theme Color!')),
+                      );
+                    },
+                    icon: const Icon(Icons.format_paint),
+                    label: const Text('Set as App Theme'),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               Card(
@@ -577,7 +759,7 @@ class _ColorInspectorPageState extends State<ColorInspectorPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Select Color Swatch',
+                        'Select Preset Palette Swatch',
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 12),
@@ -698,7 +880,10 @@ class _ColorInspectorPageState extends State<ColorInspectorPage> {
                       const Divider(),
                       SelectableText(
                         'const Color(0x$hexString)',
-                        style: const TextStyle(fontFamily: 'monospace', color: Colors.tealAccent),
+                        style: TextStyle(
+                          fontFamily: 'monospace',
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                       ),
                     ],
                   ),
@@ -806,7 +991,8 @@ class _SnippetVaultPageState extends State<SnippetVaultPage> {
       id: '1',
       title: 'Flutter Responsive LayoutBuilder',
       language: 'Dart',
-      code: 'LayoutBuilder(\n  builder: (context, constraints) {\n    if (constraints.maxWidth > 600) {\n      return WideLayout();\n    }\n    return NarrowLayout();\n  },\n);',
+      code:
+          'LayoutBuilder(\n  builder: (context, constraints) {\n    if (constraints.maxWidth > 600) {\n      return WideLayout();\n    }\n    return NarrowLayout();\n  },\n);',
     ),
     SnippetItem(
       id: '2',
@@ -818,7 +1004,8 @@ class _SnippetVaultPageState extends State<SnippetVaultPage> {
       id: '3',
       title: 'JSON Decoding Safely',
       language: 'Dart',
-      code: 'try {\n  final data = jsonDecode(rawString);\n} catch (e) {\n  print(\'Decoding failed: \$e\');\n}',
+      code:
+          'try {\n  final data = jsonDecode(rawString);\n} catch (e) {\n  print(\'Decoding failed: \$e\');\n}',
     ),
   ];
 
@@ -905,6 +1092,7 @@ class _SnippetVaultPageState extends State<SnippetVaultPage> {
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
     final filtered = _snippets.where((s) {
       final q = _searchQuery.toLowerCase();
       return s.title.toLowerCase().contains(q) ||
@@ -976,9 +1164,9 @@ class _SnippetVaultPageState extends State<SnippetVaultPage> {
                                         label: Text(item.language),
                                         padding: EdgeInsets.zero,
                                         visualDensity: VisualDensity.compact,
-                                        backgroundColor: Colors.teal.withAlpha(40),
-                                        labelStyle: const TextStyle(
-                                          color: Colors.tealAccent,
+                                        backgroundColor: primaryColor.withAlpha(40),
+                                        labelStyle: TextStyle(
+                                          color: primaryColor,
                                           fontSize: 11,
                                         ),
                                       ),
@@ -1014,7 +1202,7 @@ class _SnippetVaultPageState extends State<SnippetVaultPage> {
                                         },
                                       ),
                                       IconButton(
-                                        icon: const Icon(Icons.copy, size: 18, color: Colors.tealAccent),
+                                        icon: Icon(Icons.copy, size: 18, color: primaryColor),
                                         onPressed: () {
                                           Clipboard.setData(ClipboardData(text: item.code));
                                           ScaffoldMessenger.of(context).showSnackBar(
