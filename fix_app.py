@@ -15,8 +15,11 @@ if not os.path.exists(file_path):
 with open(file_path, "r", encoding="utf-8") as f:
     existing_code = f.read()
 
-# URL එකේ තිබ්බ Markdown Brackets අයින් කරලා හරියටම Fix කළා
-url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
+# URL එක සාදාගැනීම
+raw_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
+
+# URL එකේ Markdown Brackets/Quotes තිබුණොත් Auto-Clean කරන කොටස
+url = re.sub(r'^[\[\(]+', '', raw_url) url = re.sub(r'[\]\)].*', '', url).strip()
 
 prompt = f"""
 You are an expert Flutter developer. Fix the following existing Flutter main.dart code based on the reported user issue.
@@ -92,3 +95,4 @@ if APP_ID:
 
 with open("app_info.txt", "w", encoding="utf-8") as f:
     f.write(f"🛠️ *FIXED APP:* {app_name}\n🆔 *App ID:* `{APP_ID}`\n\n📝 *Fix Summary:* {description}\n\n🧪 *Checklist:*\n{checklist}")
+    
