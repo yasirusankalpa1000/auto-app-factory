@@ -16,9 +16,14 @@ You are an expert Flutter developer. Generate a unique, fully functional, featur
 CRITICAL UI & CODE RULES:
 1. DO NOT generate the default Flutter counter app ("You have pushed the button this many times").
 2. The UI and logic MUST strictly match the generated APP_NAME and DESCRIPTION.
-3. NO OVERFLOW ERRORS: Always use `Wrap`, `SingleChildScrollView`, or `FittedBox` for lists of badges/chips/buttons so they never clip or overflow screen boundaries horizontally.
+3. PERFECT MOBILE SCREEN RESPONSIVENESS & ZERO OVERFLOW:
+   - Every screen body MUST be wrapped in `SafeArea` and `SingleChildScrollView` (or `ListView`) so vertical pixel overflow NEVER occurs on smaller mobile screens.
+   - All `Text` widgets MUST be constrained using `Flexible`, `Expanded`, or `FittedBox`, and use `softWrap: true` or `overflow: TextOverflow.ellipsis` so words NEVER bleed or extend past horizontal screen edges.
+   - Use `Wrap` widgets or scrollable horizontal rows for badges, chips, buttons, and tab bars to guarantee they stay within visible bounds.
 4. DOLLAR SIGN ESCAPING: Always escape raw dollar signs in text strings with a backslash (e.g., use \\$12.99 instead of $12.99).
 5. STRICT FLUTTER & DART SYNTAX RULES:
+   - ICONS RULE: ONLY use core standard Flutter icons (e.g., `Icons.add`, `Icons.star`, `Icons.home`, `Icons.settings`, `Icons.person`, `Icons.check`, `Icons.edit`, `Icons.delete`, `Icons.favorite`, `Icons.info`, `Icons.search`, `Icons.share`, `Icons.refresh`, `Icons.widgets`, `Icons.apps`). NEVER invent icon names like `Icons.sample_base` or custom non-existent icons!
+   - WIDGET PARAMETER RULE: `style:` parameter MUST ONLY be used inside `Text(...)` widgets. NEVER pass `style:` to `Padding`, `Container`, `SizedBox`, `Column`, `Row`, or `Center`.
    - NEVER chain `.writeln()` on `StringBuffer()` initialization (e.g., DO NOT write `var sb = StringBuffer().writeln()`). Initialize `StringBuffer()` first, then call `.writeln()` on new lines.
    - Always use official Flutter color names (e.g., `Colors.green`, `Colors.teal`, `Colors.blue`). NEVER use non-existent color names like `Colors.emerald`.
    - For `decoration:` in input fields, ALWAYS wrap with `InputDecoration(border: OutlineInputBorder(...))`, NEVER pass `OutlineInputBorder` directly to `decoration`.
@@ -91,7 +96,7 @@ if code.endswith("```"):
     code = code[:-3]
 code = code.strip()
 
-# Auto-fix common Gemini Syntax & Dart Method chaining errors
+# Auto-fix common Gemini Syntax, Invalid Icons & Dart Method chaining errors
 code = re.sub(r'(?<!\\)\$(?=[0-9])', r'\\$', code)
 code = re.sub(r'TextAlign\.Center', 'TextAlign.center', code)
 code = re.sub(r'crossAlignment:', 'crossAxisAlignment:', code)
@@ -99,6 +104,13 @@ code = re.sub(r'EdgeInsets\.vertical\((.*?)\)', r'EdgeInsets.symmetric(vertical:
 code = re.sub(r'Colors\.emerald', 'Colors.teal', code)
 code = re.sub(r'decoration:\s*(const\s*)?OutlineInputBorder\(', r'decoration: InputDecoration(border: OutlineInputBorder(', code)
 code = re.sub(r'(\w+)\s*=\s*StringBuffer\(\)\.writeln\(', r'final \1 = StringBuffer();\n\1.writeln(', code)
+
+# Fix non-existent Icons hallucinated by Gemini
+code = re.sub(r'Icons\.sample_\w+', 'Icons.widgets', code)
+code = re.sub(r'Icons\.custom_\w+', 'Icons.apps', code)
+
+# Remove invalid style: parameter from Padding/Container
+code = re.sub(r'Padding\(\s*style:[^,]+,', 'Padding(', code)
 
 if not code or "You have pushed the button this many times" in code:
     raise Exception("Gemini generated default counter code! Retrying required.")
