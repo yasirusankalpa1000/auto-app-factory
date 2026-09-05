@@ -24,7 +24,7 @@ class DevPulseApp extends StatelessWidget {
           surface: const Color(0xFF1E222A),
         ),
         scaffoldBackgroundColor: const Color(0xFF12151C),
-        cardTheme: CardThemeData(
+        cardTheme: CardTheme(
           color: const Color(0xFF1E222A),
           elevation: 2,
           shape: RoundedRectangleBorder(
