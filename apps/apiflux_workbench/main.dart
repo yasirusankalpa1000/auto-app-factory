@@ -23,7 +23,7 @@ class APIFluxApp extends StatelessWidget {
           brightness: Brightness.dark,
         ),
         scaffoldBackgroundColor: const Color(0xFF12121D),
-        cardTheme: const CardThemeData(
+        cardTheme: const CardTheme(
           color: Color(0xFF1E1E2E),
           elevation: 2,
         ),
