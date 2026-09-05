@@ -15,13 +15,11 @@ if not os.path.exists(file_path):
 with open(file_path, "r", encoding="utf-8") as f:
     existing_code = f.read()
 
-# URL එක තනි String එකක් ලෙස සාදා ගැනීම
-base_api_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="
-url = base_api_url + GEMINI_API_KEY
-
-# URL එකේ මුලට හෝ අගට වැටෙන Markdown brackets auto-strip කිරීම
-url = re.sub(r'^[^h]*', '', url)
-url = url.split(']')[0].split(')')[0].strip()
+# URL එක කඩලා ලියන්නේ Markdown Links auto-generate වීම වැළැක්වීමටයි
+scheme = "https://"
+host = "generativelanguage.googleapis.com"
+path = "/v1beta/models/gemini-2.5-flash:generateContent"
+url = f"{scheme}{host}{path}?key={GEMINI_API_KEY}"
 
 prompt = f"""
 You are an expert Flutter developer. Fix the following existing Flutter main.dart code based on the reported user issue.
