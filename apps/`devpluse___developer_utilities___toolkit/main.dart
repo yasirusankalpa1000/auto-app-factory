@@ -70,9 +70,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   void _openThemeColorPickerDialog(BuildContext context) {
     Color tempColor = appPrimaryColorNotifier.value;
-    double hue = HSVColor.fromColor(tempColor).hue;
-    double saturation = HSVColor.fromColor(tempColor).saturation;
-    double value = HSVColor.fromColor(tempColor).value;
 
     final List<Color> quickPresets = const [
       Color(0xFF00BFA5),
@@ -87,15 +84,33 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       Color(0xFF9C27B0),
       Color(0xFFF44336),
       Color(0xFFFFEB3B),
+      Color(0xFFFF5722),
+      Color(0xFF795548),
+      Color(0xFF607D8B),
+      Color(0xFFFFFFFF),
     ];
 
     showDialog(
       context: context,
       builder: (dialogCtx) {
+        final hexTextController = TextEditingController(
+          text: tempColor.value.toRadixString(16).padLeft(8, '0').substring(2).toUpperCase(),
+        );
+
         return StatefulWidget(
           builder: (ctx, setPickerState) {
-            final currentColor = HSVColor.fromAHSV(1.0, hue, saturation, value).toColor();
-            final hexVal = currentColor.value
+            void updateColor(Color newColor) {
+              setPickerState(() {
+                tempColor = newColor;
+                hexTextController.text = newColor.value
+                    .toRadixString(16)
+                    .padLeft(8, '0')
+                    .substring(2)
+                    .toUpperCase();
+              });
+            }
+
+            final hexVal = tempColor.value
                 .toRadixString(16)
                 .padLeft(8, '0')
                 .substring(2)
@@ -110,104 +125,172 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   Text('Choose App Theme Color'),
                 ],
               ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Container(
-                      height: 70,
-                      decoration: BoxDecoration(
-                        color: currentColor,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: currentColor.withAlpha(120),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Text(
-                          '#$hexVal',
-                          style: TextStyle(
-                            color: currentColor.computeLuminance() > 0.5
-                                ? Colors.black
-                                : Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 20,
+              content: SizedBox(
+                width: double.maxFinite,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Container(
+                        height: 70,
+                        decoration: BoxDecoration(
+                          color: tempColor,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: tempColor.withAlpha(120),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            '#$hexVal',
+                            style: TextStyle(
+                              color: tempColor.computeLuminance() > 0.5
+                                  ? Colors.black
+                                  : Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text('Color Presets',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: quickPresets.map((c) {
-                        final isSelected = currentColor.value == c.value;
-                        return GestureDetector(
-                          onTap: () {
-                            setPickerState(() {
-                              hue = HSVColor.fromColor(c).hue;
-                              saturation = HSVColor.fromColor(c).saturation;
-                              value = HSVColor.fromColor(c).value;
-                            });
-                          },
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: c,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isSelected ? Colors.white : Colors.transparent,
-                                width: 2.5,
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: hexTextController,
+                        maxLength: 8,
+                        style: const TextStyle(fontFamily: 'monospace', fontSize: 14),
+                        decoration: const InputDecoration(
+                          labelText: 'Type Custom HEX Code',
+                          hintText: 'e.g. FF0055 or 00BFA5',
+                          prefixText: '# ',
+                          border: OutlineInputBorder(),
+                          counterText: '',
+                        ),
+                        onChanged: (val) {
+                          String clean = val.replaceAll('#', '').trim();
+                          if (clean.length == 6) clean = 'FF$clean';
+                          if (clean.length == 8) {
+                            final parsed = int.tryParse(clean, radix: 16);
+                            if (parsed != null) {
+                              setPickerState(() {
+                                tempColor = Color(parsed);
+                              });
+                            }
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      const Text('Quick Color Presets',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: quickPresets.map((c) {
+                          final isSelected = tempColor.value == c.value;
+                          return GestureDetector(
+                            onTap: () => updateColor(c),
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: c,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isSelected ? Colors.white : Colors.transparent,
+                                  width: 2.5,
+                                ),
                               ),
+                              child: isSelected
+                                  ? Icon(
+                                      Icons.check,
+                                      size: 16,
+                                      color: c.computeLuminance() > 0.5 ? Colors.black : Colors.white,
+                                    )
+                                  : null,
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text('RGB Color Adjuster',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const SizedBox(
+                            width: 18,
+                            child: Text('R', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                          ),
+                          Expanded(
+                            child: Slider(
+                              value: tempColor.red.toDouble(),
+                              min: 0,
+                              max: 255,
+                              activeColor: Colors.redAccent,
+                              onChanged: (val) {
+                                updateColor(Color.fromRGBO(val.toInt(), tempColor.green, tempColor.blue, 1.0));
+                              },
                             ),
                           ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text('Hue Spectrum',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                    Slider(
-                      value: hue,
-                      min: 0.0,
-                      max: 360.0,
-                      activeColor: HSVColor.fromAHSV(1.0, hue, 1.0, 1.0).toColor(),
-                      onChanged: (val) {
-                        setPickerState(() => hue = val);
-                      },
-                    ),
-                    const Text('Saturation (Intensity)',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                    Slider(
-                      value: saturation,
-                      min: 0.0,
-                      max: 1.0,
-                      activeColor: currentColor,
-                      onChanged: (val) {
-                        setPickerState(() => saturation = val);
-                      },
-                    ),
-                    const Text('Brightness',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                    Slider(
-                      value: value,
-                      min: 0.0,
-                      max: 1.0,
-                      activeColor: currentColor,
-                      onChanged: (val) {
-                        setPickerState(() => value = val);
-                      },
-                    ),
-                  ],
+                          SizedBox(
+                            width: 30,
+                            child: Text('${tempColor.red}', style: const TextStyle(fontSize: 12)),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          const SizedBox(
+                            width: 18,
+                            child: Text('G', style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+                          ),
+                          Expanded(
+                            child: Slider(
+                              value: tempColor.green.toDouble(),
+                              min: 0,
+                              max: 255,
+                              activeColor: Colors.greenAccent,
+                              onChanged: (val) {
+                                updateColor(Color.fromRGBO(tempColor.red, val.toInt(), tempColor.blue, 1.0));
+                              },
+                            ),
+                          ),
+                          SizedBox(
+                            width: 30,
+                            child: Text('${tempColor.green}', style: const TextStyle(fontSize: 12)),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          const SizedBox(
+                            width: 18,
+                            child: Text('B', style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold)),
+                          ),
+                          Expanded(
+                            child: Slider(
+                              value: tempColor.blue.toDouble(),
+                              min: 0,
+                              max: 255,
+                              activeColor: Colors.blueAccent,
+                              onChanged: (val) {
+                                updateColor(Color.fromRGBO(tempColor.red, tempColor.green, val.toInt(), 1.0));
+                              },
+                            ),
+                          ),
+                          SizedBox(
+                            width: 30,
+                            child: Text('${tempColor.blue}', style: const TextStyle(fontSize: 12)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
               actions: [
@@ -217,7 +300,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    appPrimaryColorNotifier.value = currentColor;
+                    appPrimaryColorNotifier.value = tempColor;
                     Navigator.pop(dialogCtx);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('App Theme Color Updated!')),
@@ -346,7 +429,7 @@ class _JsonToolPageState extends State<JsonToolPage> {
 
   void _loadSample() {
     const sample =
-        '{"name":"DevPulse","version":1.0,"features":["JSON","Encoder","Palette"],"active":true,"pricing":{"tier":"free","cost":"\$0.00"}}';
+        '{"name":"DevPulse","version":1.0,"features":["JSON","Encoder","Palette"],"active":true,"pricing":{"tier":"free","cost":"\\$0.00"}}';
     setState(() {
       _controller.text = sample;
       _errorMessage = '';
@@ -647,10 +730,10 @@ class _ColorInspectorPageState extends State<ColorInspectorPage> {
   bool _isValidHex = true;
 
   final List<Color> _presetColors = const [
-    Color(0xFF00BFA5), // Teal
-    Color(0xFF6200EE), // Purple
-    Color(0xFF3700B3), // Dark Purple
-    Color(0xFF03DAC6), // Cyan Accent
+    Color(0xFF00BFA5),
+    Color(0xFF6200EE),
+    Color(0xFF3700B3),
+    Color(0xFF03DAC6),
     Colors.redAccent,
     Colors.pinkAccent,
     Colors.purpleAccent,
@@ -1187,7 +1270,7 @@ class _SnippetVaultPageState extends State<SnippetVaultPage> {
       title: 'JSON Decoding Safely',
       language: 'Dart',
       code:
-          'try {\n  final data = jsonDecode(rawString);\n} catch (e) {\n  print(\'Decoding failed: \$e\');\n}',
+          'try {\n  final data = jsonDecode(rawString);\n} catch (e) {\n  print(\'Decoding failed: \\$e\');\n}',
     ),
   ];
 
