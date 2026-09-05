@@ -52,7 +52,9 @@ jobs:
           git push
 
       - name: Build Lightweight APK
-        run: flutter build apk --release --split-per-abi
+        run: |
+          flutter create . --platforms=android --org com.example
+          flutter build apk --release --split-per-abi
 
       - name: Send Fixed APK to Telegram
         env:
