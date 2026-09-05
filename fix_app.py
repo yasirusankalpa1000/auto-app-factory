@@ -97,4 +97,3 @@ if APP_ID:
 
 with open("app_info.txt", "w", encoding="utf-8") as f:
     f.write(f"🛠️ *FIXED APP:* {app_name}\n🆔 *App ID:* `{APP_ID}`\n\n📝 *Fix Summary:* {description}\n\n🧪 *Checklist:*\n{checklist}")
-    
