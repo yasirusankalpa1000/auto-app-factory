@@ -1,7 +1,7 @@
 🛠️ *FIXED APP:* DevPulse Utilities
 🆔 *App ID:* ``devpluse___developer_utilities___toolkit`
 
-📝 *Fix Summary:* Fixed the color selection bug by adding an interactive visual Custom Color Picker dialog (with Hue, Saturation, and Brightness controls) along with dynamic app theme customizer options. Users can now visually pick any color they desire directly within the app and even apply it as the active global theme color.
+📝 *Fix Summary:* Added interactive visual color pickers and preset swatch selectors allowing users to easily choose and apply custom colors to the app's theme directly from the UI without modifying code. Theme color adjustments can now be performed across all screens via an accessible theme picker dialog or directly from the Color Studio page.
 
 🧪 *Checklist:*
 1. Test fixed feature: App eke apita ona colours thoranna bane code eken vitharaine venas karanna enne thoranna puluvan vennath ona!
