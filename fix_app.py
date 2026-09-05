@@ -16,7 +16,7 @@ with open(file_path, "r", encoding="utf-8") as f:
     existing_code = f.read()
 
 # Safe URL Construction with the CORRECT Model (gemini-2.5-flash)
-base_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+base_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
 url = f"{base_url}?key={GEMINI_API_KEY}"
 
 # Clean any illegal brackets or spaces from URL
