@@ -1,5 +1,6 @@
 import os
 import re
+import time
 import requests
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip().strip("'").strip('"')
@@ -55,11 +56,29 @@ import 'package:flutter/material.dart';
 payload = {"contents": [{"parts": [{"text": prompt + "\n\nEXISTING CODE TO FIX:\n" + existing_code}]}]}
 headers = {"Content-Type": "application/json"}
 
-response = requests.post(url, json=payload, headers=headers)
-data = response.json()
+# --- Gemini API Call with Auto Retry Logic ---
+max_retries = 3
+retry_delay = 3
+data = {}
 
-if "error" in data:
-    raise Exception(f"Gemini API Error: {data['error'].get('message', 'Unknown Error')}")
+for attempt in range(1, max_retries + 1):
+    try:
+        response = requests.post(url, json=payload, headers=headers)
+        data = response.json()
+        
+        if "error" not in data:
+            break
+            
+        error_msg = data['error'].get('message', 'Unknown Error')
+        print(f"⚠️ Gemini API Error (Attempt {attempt}/{max_retries}): {error_msg}")
+    except Exception as e:
+        print(f"⚠️ Network Error (Attempt {attempt}/{max_retries}): {e}")
+        
+    if attempt < max_retries:
+        print(f"⏳ Retrying in {retry_delay} seconds...")
+        time.sleep(retry_delay)
+else:
+    raise Exception(f"Gemini API Error after {max_retries} attempts: {data.get('error', {}).get('message', 'Unknown Error')}")
 
 text_response = data['candidates'][0]['content']['parts'][0]['text']
 
@@ -97,3 +116,4 @@ if APP_ID:
 
 with open("app_info.txt", "w", encoding="utf-8") as f:
     f.write(f"🛠️ *FIXED APP:* {app_name}\n🆔 *App ID:* `{APP_ID}`\n\n📝 *Fix Summary:* {description}\n\n🧪 *Checklist:*\n{checklist}")
+    
