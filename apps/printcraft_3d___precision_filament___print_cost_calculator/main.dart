@@ -20,7 +20,7 @@ class PrintCraftApp extends StatelessWidget {
           brightness: Brightness.dark,
         ),
         scaffoldBackgroundColor: const Color(0xFF121218),
-        cardTheme: CardThemeData(
+        cardTheme: CardTheme(
           color: const Color(0xFF1E1E2A),
           elevation: 3,
           shape: RoundedRectangleBorder(
