@@ -69,10 +69,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   ];
 
   void _openThemeColorPickerDialog(BuildContext context) {
-    Color tempColor = appPrimaryColorNotifier.value;
-    double hue = HSVColor.fromColor(tempColor).hue;
-    double saturation = HSVColor.fromColor(tempColor).saturation;
-    double value = HSVColor.fromColor(tempColor).value;
+    Color selectedColor = appPrimaryColorNotifier.value;
+    double hue = HSVColor.fromColor(selectedColor).hue;
+    double saturation = HSVColor.fromColor(selectedColor).saturation;
+    double value = HSVColor.fromColor(selectedColor).value;
 
     final List<Color> quickPresets = const [
       Color(0xFF00BFA5),
@@ -90,11 +90,19 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       Color(0xFFFF5722),
       Color(0xFF795548),
       Color(0xFF607D8B),
-      Color(0xFFFFFFFF),
+      Color(0xFF00E676),
+      Color(0xFFFF4081),
+      Color(0xFF7C4DFF),
+      Color(0xFF1DE9B6),
+      Color(0xFFFFC400),
     ];
 
-    final hexTextController = TextEditingController(
-      text: tempColor.value.toRadixString(16).padLeft(8, '0').substring(2).toUpperCase(),
+    final hexController = TextEditingController(
+      text: selectedColor.value
+          .toRadixString(16)
+          .padLeft(8, '0')
+          .substring(2)
+          .toUpperCase(),
     );
 
     showDialog(
@@ -102,22 +110,24 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       builder: (dialogCtx) {
         return StatefulBuilder(
           builder: (ctx, setPickerState) {
-            void updateColor(Color newColor) {
+            void updateColor(Color newColor, {bool updateText = true}) {
               setPickerState(() {
-                tempColor = newColor;
+                selectedColor = newColor;
                 final hsv = HSVColor.fromColor(newColor);
                 hue = hsv.hue;
                 saturation = hsv.saturation;
                 value = hsv.value;
-                hexTextController.text = newColor.value
-                    .toRadixString(16)
-                    .padLeft(8, '0')
-                    .substring(2)
-                    .toUpperCase();
+                if (updateText) {
+                  hexController.text = newColor.value
+                      .toRadixString(16)
+                      .padLeft(8, '0')
+                      .substring(2)
+                      .toUpperCase();
+                }
               });
             }
 
-            final hexVal = tempColor.value
+            final hexVal = selectedColor.value
                 .toRadixString(16)
                 .padLeft(8, '0')
                 .substring(2)
@@ -129,7 +139,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 children: [
                   Icon(Icons.palette_outlined),
                   SizedBox(width: 8),
-                  Text('Choose App Theme Color'),
+                  Expanded(
+                    child: Text(
+                      'Choose Theme Color',
+                      style: TextStyle(fontSize: 18),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
               content: SizedBox(
@@ -139,14 +155,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Container(
+                      // Preview Box
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
                         height: 70,
                         decoration: BoxDecoration(
-                          color: tempColor,
+                          color: selectedColor,
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
                             BoxShadow(
-                              color: tempColor.withAlpha(120),
+                              color: selectedColor.withAlpha(120),
                               blurRadius: 10,
                               offset: const Offset(0, 4),
                             ),
@@ -156,7 +174,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           child: Text(
                             '#$hexVal',
                             style: TextStyle(
-                              color: tempColor.computeLuminance() > 0.5
+                              color: selectedColor.computeLuminance() > 0.5
                                   ? Colors.black
                                   : Colors.white,
                               fontWeight: FontWeight.bold,
@@ -166,12 +184,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
+
+                      // Manual HEX Field
                       TextField(
-                        controller: hexTextController,
+                        controller: hexController,
                         maxLength: 8,
-                        style: const TextStyle(fontFamily: 'monospace', fontSize: 14),
+                        style: const TextStyle(
+                            fontFamily: 'monospace', fontSize: 14),
                         decoration: const InputDecoration(
-                          labelText: 'Type Custom HEX Code',
+                          labelText: 'Custom HEX Code',
                           hintText: 'e.g. FF0055 or 00BFA5',
                           prefixText: '# ',
                           border: OutlineInputBorder(),
@@ -183,85 +204,73 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           if (clean.length == 8) {
                             final parsed = int.tryParse(clean, radix: 16);
                             if (parsed != null) {
-                              final newColor = Color(parsed);
-                              setPickerState(() {
-                                tempColor = newColor;
-                                final hsv = HSVColor.fromColor(newColor);
-                                hue = hsv.hue;
-                                saturation = hsv.saturation;
-                                value = hsv.value;
-                              });
+                              updateColor(Color(parsed), updateText: false);
                             }
                           }
                         },
                       ),
                       const SizedBox(height: 16),
-                      const Text('Visual Spectrum Wheel (Hue)',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+
+                      // Interactive Sliders
+                      const Text('Hue (Color Spectrum)',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 13)),
                       Slider(
                         value: hue,
                         min: 0.0,
                         max: 360.0,
-                        activeColor: HSVColor.fromAHSV(1.0, hue, 1.0, 1.0).toColor(),
+                        activeColor:
+                            HSVColor.fromAHSV(1.0, hue, 1.0, 1.0).toColor(),
                         onChanged: (val) {
-                          setPickerState(() {
-                            hue = val;
-                            tempColor = HSVColor.fromAHSV(1.0, hue, saturation, value).toColor();
-                            hexTextController.text = tempColor.value
-                                .toRadixString(16)
-                                .padLeft(8, '0')
-                                .substring(2)
-                                .toUpperCase();
-                          });
+                          final newColor = HSVColor.fromAHSV(
+                                  1.0, val, saturation, value)
+                              .toColor();
+                          updateColor(newColor);
                         },
                       ),
+
                       const Text('Saturation (Intensity)',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 13)),
                       Slider(
                         value: saturation,
                         min: 0.0,
                         max: 1.0,
-                        activeColor: tempColor,
+                        activeColor: selectedColor,
                         onChanged: (val) {
-                          setPickerState(() {
-                            saturation = val;
-                            tempColor = HSVColor.fromAHSV(1.0, hue, saturation, value).toColor();
-                            hexTextController.text = tempColor.value
-                                .toRadixString(16)
-                                .padLeft(8, '0')
-                                .substring(2)
-                                .toUpperCase();
-                          });
+                          final newColor =
+                              HSVColor.fromAHSV(1.0, hue, val, value).toColor();
+                          updateColor(newColor);
                         },
                       ),
+
                       const Text('Brightness / Value',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 13)),
                       Slider(
                         value: value,
                         min: 0.0,
                         max: 1.0,
-                        activeColor: tempColor,
+                        activeColor: selectedColor,
                         onChanged: (val) {
-                          setPickerState(() {
-                            value = val;
-                            tempColor = HSVColor.fromAHSV(1.0, hue, saturation, value).toColor();
-                            hexTextController.text = tempColor.value
-                                .toRadixString(16)
-                                .padLeft(8, '0')
-                                .substring(2)
-                                .toUpperCase();
-                          });
+                          final newColor =
+                              HSVColor.fromAHSV(1.0, hue, saturation, val)
+                                  .toColor();
+                          updateColor(newColor);
                         },
                       ),
                       const SizedBox(height: 8),
-                      const Text('Quick Color Presets',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+
+                      // Quick Presets Grid
+                      const Text('Popular Theme Presets',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 13)),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
                         children: quickPresets.map((c) {
-                          final isSelected = tempColor.value == c.value;
+                          final isSelected = selectedColor.value == c.value;
                           return GestureDetector(
                             onTap: () => updateColor(c),
                             child: Container(
@@ -271,7 +280,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                                 color: c,
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: isSelected ? Colors.white : Colors.transparent,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : Colors.transparent,
                                   width: 2.5,
                                 ),
                               ),
@@ -279,7 +290,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                                   ? Icon(
                                       Icons.check,
                                       size: 16,
-                                      color: c.computeLuminance() > 0.5 ? Colors.black : Colors.white,
+                                      color: c.computeLuminance() > 0.5
+                                          ? Colors.black
+                                          : Colors.white,
                                     )
                                   : null,
                             ),
@@ -297,7 +310,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    appPrimaryColorNotifier.value = tempColor;
+                    appPrimaryColorNotifier.value = selectedColor;
                     Navigator.pop(dialogCtx);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('App Theme Color Updated!')),
@@ -510,7 +523,8 @@ class _JsonToolPageState extends State<JsonToolPage> {
               ),
               const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: const Color(0xFF1E222A),
                   borderRadius: BorderRadius.circular(8),
@@ -532,7 +546,8 @@ class _JsonToolPageState extends State<JsonToolPage> {
                   ),
                   child: Text(
                     _errorMessage,
-                    style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                    style:
+                        const TextStyle(color: Colors.redAccent, fontSize: 12),
                     softWrap: true,
                   ),
                 ),
@@ -682,9 +697,11 @@ class _EncoderToolPageState extends State<EncoderToolPage> {
                             icon: const Icon(Icons.copy, size: 20),
                             onPressed: () {
                               if (_outputText.isNotEmpty) {
-                                Clipboard.setData(ClipboardData(text: _outputText));
+                                Clipboard.setData(
+                                    ClipboardData(text: _outputText));
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Result copied!')),
+                                  const SnackBar(
+                                      content: Text('Result copied!')),
                                 );
                               }
                             },
@@ -693,10 +710,13 @@ class _EncoderToolPageState extends State<EncoderToolPage> {
                       ),
                       const Divider(),
                       SelectableText(
-                        _outputText.isEmpty ? 'Output will appear here...' : _outputText,
+                        _outputText.isEmpty
+                            ? 'Output will appear here...'
+                            : _outputText,
                         style: TextStyle(
                           fontFamily: 'monospace',
-                          color: _outputText.isEmpty ? Colors.grey : Colors.white,
+                          color:
+                              _outputText.isEmpty ? Colors.grey : Colors.white,
                         ),
                       ),
                     ],
@@ -712,7 +732,7 @@ class _EncoderToolPageState extends State<EncoderToolPage> {
 }
 
 // ==========================================
-// 3. COLOR & CONTRAST INSPECTOR (WITH VISUAL PICKER)
+// 3. COLOR & CONTRAST INSPECTOR
 // ==========================================
 class ColorInspectorPage extends StatefulWidget {
   const ColorInspectorPage({super.key});
@@ -722,7 +742,7 @@ class ColorInspectorPage extends StatefulWidget {
 }
 
 class _ColorInspectorPageState extends State<ColorInspectorPage> {
-  final TextEditingController _hexController = TextEditingController(text: '00BFA5');
+  late TextEditingController _hexController;
   Color _currentColor = const Color(0xFF00BFA5);
   bool _isValidHex = true;
 
@@ -754,11 +774,28 @@ class _ColorInspectorPageState extends State<ColorInspectorPage> {
     Colors.black,
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _currentColor = appPrimaryColorNotifier.value;
+    _hexController = TextEditingController(
+      text: _currentColor.value
+          .toRadixString(16)
+          .padLeft(8, '0')
+          .substring(2)
+          .toUpperCase(),
+    );
+  }
+
   void _setColor(Color color) {
     setState(() {
       _currentColor = color;
       _isValidHex = true;
-      final hex = color.value.toRadixString(16).padLeft(8, '0').substring(2).toUpperCase();
+      final hex = color.value
+          .toRadixString(16)
+          .padLeft(8, '0')
+          .substring(2)
+          .toUpperCase();
       _hexController.text = hex;
     });
   }
@@ -792,7 +829,8 @@ class _ColorInspectorPageState extends State<ColorInspectorPage> {
       builder: (dialogCtx) {
         return StatefulBuilder(
           builder: (ctx, setPickerState) {
-            final tempColor = HSVColor.fromAHSV(1.0, hue, saturation, value).toColor();
+            final tempColor =
+                HSVColor.fromAHSV(1.0, hue, saturation, value).toColor();
             final hexVal = tempColor.value
                 .toRadixString(16)
                 .padLeft(8, '0')
@@ -835,18 +873,21 @@ class _ColorInspectorPageState extends State<ColorInspectorPage> {
                     ),
                     const SizedBox(height: 16),
                     const Text('Hue (Spectrum Wheel)',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 13)),
                     Slider(
                       value: hue,
                       min: 0.0,
                       max: 360.0,
-                      activeColor: HSVColor.fromAHSV(1.0, hue, 1.0, 1.0).toColor(),
+                      activeColor:
+                          HSVColor.fromAHSV(1.0, hue, 1.0, 1.0).toColor(),
                       onChanged: (val) {
                         setPickerState(() => hue = val);
                       },
                     ),
                     const Text('Saturation (Intensity)',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 13)),
                     Slider(
                       value: saturation,
                       min: 0.0,
@@ -857,7 +898,8 @@ class _ColorInspectorPageState extends State<ColorInspectorPage> {
                       },
                     ),
                     const Text('Brightness / Value',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 13)),
                     Slider(
                       value: value,
                       min: 0.0,
@@ -910,7 +952,8 @@ class _ColorInspectorPageState extends State<ColorInspectorPage> {
   Widget build(BuildContext context) {
     final contrastWithWhite = _contrastRatio(_currentColor, Colors.white);
     final contrastWithBlack = _contrastRatio(_currentColor, Colors.black);
-    final hexString = _currentColor.value.toRadixString(16).padLeft(8, '0').toUpperCase();
+    final hexString =
+        _currentColor.value.toRadixString(16).padLeft(8, '0').toUpperCase();
 
     return SafeArea(
       child: Scaffold(
@@ -968,16 +1011,20 @@ class _ColorInspectorPageState extends State<ColorInspectorPage> {
                       Text(
                         '#${hexString.substring(2)}',
                         style: TextStyle(
-                          color: contrastWithWhite > contrastWithBlack ? Colors.white : Colors.black,
+                          color: contrastWithWhite > contrastWithBlack
+                              ? Colors.white
+                              : Colors.black,
                           fontWeight: FontWeight.bold,
                           fontSize: 22,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Tap "Pick Visual Color" to select interactively',
+                        'Tap "Pick Visual Color" or move sliders below',
                         style: TextStyle(
-                          color: (contrastWithWhite > contrastWithBlack ? Colors.white : Colors.black)
+                          color: (contrastWithWhite > contrastWithBlack
+                                  ? Colors.white
+                                  : Colors.black)
                               .withAlpha(180),
                           fontSize: 11,
                         ),
@@ -997,7 +1044,10 @@ class _ColorInspectorPageState extends State<ColorInspectorPage> {
                     icon: const Icon(Icons.color_lens),
                     label: const Text('Pick Visual Color'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary.withAlpha(50),
+                      backgroundColor: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withAlpha(50),
                       foregroundColor: Theme.of(context).colorScheme.primary,
                     ),
                   ),
@@ -1005,7 +1055,8 @@ class _ColorInspectorPageState extends State<ColorInspectorPage> {
                     onPressed: () {
                       appPrimaryColorNotifier.value = _currentColor;
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Updated global App Theme Color!')),
+                        const SnackBar(
+                            content: Text('Updated global App Theme Color!')),
                       );
                     },
                     icon: const Icon(Icons.format_paint),
@@ -1022,7 +1073,8 @@ class _ColorInspectorPageState extends State<ColorInspectorPage> {
                     children: [
                       const Text(
                         'Select Preset Palette Swatch',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 12),
                       Wrap(
@@ -1039,7 +1091,9 @@ class _ColorInspectorPageState extends State<ColorInspectorPage> {
                                 color: color,
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: isSelected ? Colors.white : Colors.transparent,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : Colors.transparent,
                                   width: 3,
                                 ),
                                 boxShadow: [
@@ -1055,7 +1109,9 @@ class _ColorInspectorPageState extends State<ColorInspectorPage> {
                                   ? Icon(
                                       Icons.check,
                                       size: 20,
-                                      color: color.computeLuminance() > 0.5 ? Colors.black : Colors.white,
+                                      color: color.computeLuminance() > 0.5
+                                          ? Colors.black
+                                          : Colors.white,
                                     )
                                   : null,
                             ),
@@ -1075,17 +1131,24 @@ class _ColorInspectorPageState extends State<ColorInspectorPage> {
                     children: [
                       const Text(
                         'RGB Interactive Sliders',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 8),
-                      _buildRgbSlider('Red', _currentColor.red, Colors.red, (val) {
-                        _setColor(Color.fromRGBO(val.toInt(), _currentColor.green, _currentColor.blue, 1.0));
+                      _buildRgbSlider('Red', _currentColor.red, Colors.red,
+                          (val) {
+                        _setColor(Color.fromRGBO(val.toInt(),
+                            _currentColor.green, _currentColor.blue, 1.0));
                       }),
-                      _buildRgbSlider('Green', _currentColor.green, Colors.green, (val) {
-                        _setColor(Color.fromRGBO(_currentColor.red, val.toInt(), _currentColor.blue, 1.0));
+                      _buildRgbSlider('Green', _currentColor.green,
+                          Colors.green, (val) {
+                        _setColor(Color.fromRGBO(_currentColor.red,
+                            val.toInt(), _currentColor.blue, 1.0));
                       }),
-                      _buildRgbSlider('Blue', _currentColor.blue, Colors.blue, (val) {
-                        _setColor(Color.fromRGBO(_currentColor.red, _currentColor.green, val.toInt(), 1.0));
+                      _buildRgbSlider('Blue', _currentColor.blue, Colors.blue,
+                          (val) {
+                        _setColor(Color.fromRGBO(_currentColor.red,
+                            _currentColor.green, val.toInt(), 1.0));
                       }),
                     ],
                   ),
@@ -1100,12 +1163,15 @@ class _ColorInspectorPageState extends State<ColorInspectorPage> {
                     children: [
                       const Text(
                         'WCAG Accessibility Contrast',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 12),
-                      _buildContrastRow('White Text Contrast', contrastWithWhite),
+                      _buildContrastRow(
+                          'White Text Contrast', contrastWithWhite),
                       const SizedBox(height: 8),
-                      _buildContrastRow('Black Text Contrast', contrastWithBlack),
+                      _buildContrastRow(
+                          'Black Text Contrast', contrastWithBlack),
                     ],
                   ),
                 ),
@@ -1131,7 +1197,8 @@ class _ColorInspectorPageState extends State<ColorInspectorPage> {
                             icon: const Icon(Icons.copy, size: 20),
                             onPressed: () {
                               final codeText = 'Color(0x$hexString)';
-                              Clipboard.setData(ClipboardData(text: codeText));
+                              Clipboard.setData(
+                                  ClipboardData(text: codeText));
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text('Copied "$codeText"')),
                               );
@@ -1158,7 +1225,8 @@ class _ColorInspectorPageState extends State<ColorInspectorPage> {
     );
   }
 
-  Widget _buildRgbSlider(String label, int value, Color activeColor, ValueChanged<double> onChanged) {
+  Widget _buildRgbSlider(String label, int value, Color activeColor,
+      ValueChanged<double> onChanged) {
     return Row(
       children: [
         SizedBox(
@@ -1209,7 +1277,8 @@ class _ColorInspectorPageState extends State<ColorInspectorPage> {
         const SizedBox(width: 8),
         Chip(
           label: Text(passesAAA ? 'AAA' : (passesAA ? 'AA' : 'Fail')),
-          backgroundColor: passesAA ? Colors.green.withAlpha(50) : Colors.red.withAlpha(50),
+          backgroundColor:
+              passesAA ? Colors.green.withAlpha(50) : Colors.red.withAlpha(50),
           side: BorderSide(color: passesAA ? Colors.green : Colors.red),
           labelStyle: TextStyle(
             color: passesAA ? Colors.greenAccent : Colors.redAccent,
@@ -1335,7 +1404,8 @@ class _SnippetVaultPageState extends State<SnippetVaultPage> {
             ),
             ElevatedButton(
               onPressed: () {
-                if (titleController.text.isNotEmpty && codeController.text.isNotEmpty) {
+                if (titleController.text.isNotEmpty &&
+                    codeController.text.isNotEmpty) {
                   _addSnippet(
                     titleController.text,
                     langController.text,
@@ -1409,7 +1479,8 @@ class _SnippetVaultPageState extends State<SnippetVaultPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Expanded(
                                         child: Text(
@@ -1426,7 +1497,8 @@ class _SnippetVaultPageState extends State<SnippetVaultPage> {
                                         label: Text(item.language),
                                         padding: EdgeInsets.zero,
                                         visualDensity: VisualDensity.compact,
-                                        backgroundColor: primaryColor.withAlpha(40),
+                                        backgroundColor:
+                                            primaryColor.withAlpha(40),
                                         labelStyle: TextStyle(
                                           color: primaryColor,
                                           fontSize: 11,
@@ -1456,19 +1528,26 @@ class _SnippetVaultPageState extends State<SnippetVaultPage> {
                                     mainAxisAlignment: MainAxisAlignment.end,
                                     children: [
                                       IconButton(
-                                        icon: const Icon(Icons.delete, size: 18, color: Colors.grey),
+                                        icon: const Icon(Icons.delete,
+                                            size: 18, color: Colors.grey),
                                         onPressed: () {
                                           setState(() {
-                                            _snippets.removeWhere((s) => s.id == item.id);
+                                            _snippets.removeWhere(
+                                                (s) => s.id == item.id);
                                           });
                                         },
                                       ),
                                       IconButton(
-                                        icon: Icon(Icons.copy, size: 18, color: primaryColor),
+                                        icon: Icon(Icons.copy,
+                                            size: 18, color: primaryColor),
                                         onPressed: () {
-                                          Clipboard.setData(ClipboardData(text: item.code));
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(content: Text('Copied "${item.title}"')),
+                                          Clipboard.setData(
+                                              ClipboardData(text: item.code));
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                                content: Text(
+                                                    'Copied "${item.title}"')),
                                           );
                                         },
                                       ),

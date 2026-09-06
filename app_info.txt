@@ -1,7 +1,7 @@
 🛠️ *FIXED APP:* DevPulse Utilities
 🆔 *App ID:* ``devpluse___developer_utilities___toolkit`
 
-📝 *Fix Summary:* Fixed an issue where custom app colors could not be selected dynamically. Replaced invalid `StatefulWidget` instantiations with `StatefulBuilder` inside color picker dialogs and interactive color tools. Enhanced theme color selection with full HSV spectrum sliders, RGB controls, visual presets, and hex code input.
+📝 *Fix Summary:* Fixed theme color selection issue by introducing a rich interactive visual color picker dialog and full custom palette selector. Users can now choose any custom theme color visually through interactive spectrum sliders, preset palette categories, RGB/HSV tuning, or custom HEX input directly from the user interface without editing code.
 
 🧪 *Checklist:*
 1. Test fixed feature: App eke apita ona colours thoranna bane code eken vitharaine venas karanna enne thoranna puluvan vennath ona!
