@@ -22,7 +22,7 @@ class SpoolCraftApp extends StatelessWidget {
           secondary: Colors.teal,
           surface: const Color(0xFFF8F9FA),
         ),
-        cardTheme: CardThemeData(
+        cardTheme: CardTheme(
           elevation: 2,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
