@@ -1,5 +1,6 @@
 import os
 import re
+import time
 import requests
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip().strip("'").strip('"')
@@ -15,11 +16,10 @@ if not os.path.exists(file_path):
 with open(file_path, "r", encoding="utf-8") as f:
     existing_code = f.read()
 
-# Corrected Model: gemini-2.5-flash
+# API Model: gemini-3.6-flash
 base_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
 url = f"{base_url}?key={GEMINI_API_KEY}"
 
-# Clean any illegal characters from URL
 url = re.sub(r'[\[\]\(\)\s]', '', url)
 
 prompt = f"""
@@ -56,8 +56,17 @@ import 'package:flutter/material.dart';
 payload = {"contents": [{"parts": [{"text": prompt + "\n\nEXISTING CODE TO FIX:\n" + existing_code}]}]}
 headers = {"Content-Type": "application/json"}
 
-response = requests.post(url, json=payload, headers=headers)
-data = response.json()
+# Auto Retry Mechanism for High Demand
+max_retries = 3
+data = None
+
+for attempt in range(max_retries):
+    response = requests.post(url, json=payload, headers=headers)
+    data = response.json()
+    if "error" not in data:
+        break
+    print(f"Attempt {attempt + 1} failed: {data['error'].get('message', 'Unknown Error')}. Retrying in 5 seconds...")
+    time.sleep(5)
 
 if "error" in data:
     raise Exception(f"Gemini API Error: {data['error'].get('message', 'Unknown Error')}")
@@ -82,7 +91,7 @@ if code.endswith("```"):
     code = code[:-3]
 code = code.strip()
 
-# Common Syntax Auto-fixes for LLM generated Flutter/Dart Code
+# Common Syntax Auto-fixes
 code = re.sub(r'return\s+StatefulWidget\s*\([^)]*\);?', 'return const SizedBox();', code)
 code = re.sub(r'return\s+StatelessWidget\s*\([^)]*\);?', 'return const SizedBox();', code)
 code = re.sub(r'\\\\\$\b', r'\\$', code)
