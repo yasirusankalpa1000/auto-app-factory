@@ -70,6 +70,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   void _openThemeColorPickerDialog(BuildContext context) {
     Color tempColor = appPrimaryColorNotifier.value;
+    double hue = HSVColor.fromColor(tempColor).hue;
+    double saturation = HSVColor.fromColor(tempColor).saturation;
+    double value = HSVColor.fromColor(tempColor).value;
 
     final List<Color> quickPresets = const [
       Color(0xFF00BFA5),
@@ -90,18 +93,22 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       Color(0xFFFFFFFF),
     ];
 
+    final hexTextController = TextEditingController(
+      text: tempColor.value.toRadixString(16).padLeft(8, '0').substring(2).toUpperCase(),
+    );
+
     showDialog(
       context: context,
       builder: (dialogCtx) {
-        final hexTextController = TextEditingController(
-          text: tempColor.value.toRadixString(16).padLeft(8, '0').substring(2).toUpperCase(),
-        );
-
-        return StatefulWidget(
+        return StatefulBuilder(
           builder: (ctx, setPickerState) {
             void updateColor(Color newColor) {
               setPickerState(() {
                 tempColor = newColor;
+                final hsv = HSVColor.fromColor(newColor);
+                hue = hsv.hue;
+                saturation = hsv.saturation;
+                value = hsv.value;
                 hexTextController.text = newColor.value
                     .toRadixString(16)
                     .padLeft(8, '0')
@@ -176,14 +183,77 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           if (clean.length == 8) {
                             final parsed = int.tryParse(clean, radix: 16);
                             if (parsed != null) {
+                              final newColor = Color(parsed);
                               setPickerState(() {
-                                tempColor = Color(parsed);
+                                tempColor = newColor;
+                                final hsv = HSVColor.fromColor(newColor);
+                                hue = hsv.hue;
+                                saturation = hsv.saturation;
+                                value = hsv.value;
                               });
                             }
                           }
                         },
                       ),
                       const SizedBox(height: 16),
+                      const Text('Visual Spectrum Wheel (Hue)',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      Slider(
+                        value: hue,
+                        min: 0.0,
+                        max: 360.0,
+                        activeColor: HSVColor.fromAHSV(1.0, hue, 1.0, 1.0).toColor(),
+                        onChanged: (val) {
+                          setPickerState(() {
+                            hue = val;
+                            tempColor = HSVColor.fromAHSV(1.0, hue, saturation, value).toColor();
+                            hexTextController.text = tempColor.value
+                                .toRadixString(16)
+                                .padLeft(8, '0')
+                                .substring(2)
+                                .toUpperCase();
+                          });
+                        },
+                      ),
+                      const Text('Saturation (Intensity)',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      Slider(
+                        value: saturation,
+                        min: 0.0,
+                        max: 1.0,
+                        activeColor: tempColor,
+                        onChanged: (val) {
+                          setPickerState(() {
+                            saturation = val;
+                            tempColor = HSVColor.fromAHSV(1.0, hue, saturation, value).toColor();
+                            hexTextController.text = tempColor.value
+                                .toRadixString(16)
+                                .padLeft(8, '0')
+                                .substring(2)
+                                .toUpperCase();
+                          });
+                        },
+                      ),
+                      const Text('Brightness / Value',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      Slider(
+                        value: value,
+                        min: 0.0,
+                        max: 1.0,
+                        activeColor: tempColor,
+                        onChanged: (val) {
+                          setPickerState(() {
+                            value = val;
+                            tempColor = HSVColor.fromAHSV(1.0, hue, saturation, value).toColor();
+                            hexTextController.text = tempColor.value
+                                .toRadixString(16)
+                                .padLeft(8, '0')
+                                .substring(2)
+                                .toUpperCase();
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 8),
                       const Text('Quick Color Presets',
                           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                       const SizedBox(height: 8),
@@ -215,79 +285,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                             ),
                           );
                         }).toList(),
-                      ),
-                      const SizedBox(height: 16),
-                      const Text('RGB Color Adjuster',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const SizedBox(
-                            width: 18,
-                            child: Text('R', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
-                          ),
-                          Expanded(
-                            child: Slider(
-                              value: tempColor.red.toDouble(),
-                              min: 0,
-                              max: 255,
-                              activeColor: Colors.redAccent,
-                              onChanged: (val) {
-                                updateColor(Color.fromRGBO(val.toInt(), tempColor.green, tempColor.blue, 1.0));
-                              },
-                            ),
-                          ),
-                          SizedBox(
-                            width: 30,
-                            child: Text('${tempColor.red}', style: const TextStyle(fontSize: 12)),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          const SizedBox(
-                            width: 18,
-                            child: Text('G', style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
-                          ),
-                          Expanded(
-                            child: Slider(
-                              value: tempColor.green.toDouble(),
-                              min: 0,
-                              max: 255,
-                              activeColor: Colors.greenAccent,
-                              onChanged: (val) {
-                                updateColor(Color.fromRGBO(tempColor.red, val.toInt(), tempColor.blue, 1.0));
-                              },
-                            ),
-                          ),
-                          SizedBox(
-                            width: 30,
-                            child: Text('${tempColor.green}', style: const TextStyle(fontSize: 12)),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          const SizedBox(
-                            width: 18,
-                            child: Text('B', style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold)),
-                          ),
-                          Expanded(
-                            child: Slider(
-                              value: tempColor.blue.toDouble(),
-                              min: 0,
-                              max: 255,
-                              activeColor: Colors.blueAccent,
-                              onChanged: (val) {
-                                updateColor(Color.fromRGBO(tempColor.red, tempColor.green, val.toInt(), 1.0));
-                              },
-                            ),
-                          ),
-                          SizedBox(
-                            width: 30,
-                            child: Text('${tempColor.blue}', style: const TextStyle(fontSize: 12)),
-                          ),
-                        ],
                       ),
                     ],
                   ),
@@ -429,7 +426,7 @@ class _JsonToolPageState extends State<JsonToolPage> {
 
   void _loadSample() {
     const sample =
-        '{"name":"DevPulse","version":1.0,"features":["JSON","Encoder","Palette"],"active":true,"pricing":{"tier":"free","cost":"\\$0.00"}}';
+        '{"name":"DevPulse","version":1.0,"features":["JSON","Encoder","Palette"],"active":true,"pricing":{"tier":"free","cost":"\$0.00"}}';
     setState(() {
       _controller.text = sample;
       _errorMessage = '';
@@ -793,7 +790,7 @@ class _ColorInspectorPageState extends State<ColorInspectorPage> {
     showDialog(
       context: context,
       builder: (dialogCtx) {
-        return StatefulWidget(
+        return StatefulBuilder(
           builder: (ctx, setPickerState) {
             final tempColor = HSVColor.fromAHSV(1.0, hue, saturation, value).toColor();
             final hexVal = tempColor.value
@@ -1270,7 +1267,7 @@ class _SnippetVaultPageState extends State<SnippetVaultPage> {
       title: 'JSON Decoding Safely',
       language: 'Dart',
       code:
-          'try {\n  final data = jsonDecode(rawString);\n} catch (e) {\n  print(\'Decoding failed: \\$e\');\n}',
+          'try {\n  final data = jsonDecode(rawString);\n} catch (e) {\n  print(\'Decoding failed: \$e\');\n}',
     ),
   ];
 
