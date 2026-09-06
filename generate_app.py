@@ -11,7 +11,12 @@ if not GEMINI_API_KEY:
 url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={GEMINI_API_KEY}"
 
 prompt = """
-You are an expert Flutter developer. Generate a unique, fully functional, feature-rich single-file Flutter app (main.dart) for a useful utility or tool.
+You are an expert Flutter developer and creative product designer.
+
+APP CONCEPT & NICHE TARGET:
+- Generate a highly UNIQUE, SPECIALIZED single-file Flutter utility app (main.dart) that solves a SPECIFIC, NICHE, or UNDERSERVED daily micro-problem.
+- TARGET UNCOMMON PRACTICAL TOOLS (Examples: 3D Printing Filament & Cost Estimator, DIY Electronics Battery Power Duration Calculator, Freelance Project Hourly Rate vs Expense Analyzer, Printing DPI & Paper Aspect Ratio Helper, Solar Panel Angle & Power Yield Estimator, Micro-Habit Penalty Tracker, Recipe Batch & Ingredient Ratio Scaler, Audio Bitrate & File Size Calculator).
+- STRICTLY AVOID generic oversaturated app ideas: NEVER generate Todo Lists, Notes Apps, Weather Apps, Standard Calculators, Stopwatches, Flashlight Apps, or Counter Apps.
 
 CRITICAL UI & CODE RULES:
 1. DO NOT generate the default Flutter counter app ("You have pushed the button this many times").
@@ -22,23 +27,23 @@ CRITICAL UI & CODE RULES:
    - Use `Wrap` widgets or scrollable horizontal rows for badges, chips, buttons, and tab bars to guarantee they stay within visible bounds.
 4. DOLLAR SIGN ESCAPING: Always escape raw dollar signs in text strings with a backslash (e.g., use \\$12.99 instead of $12.99).
 5. STRICT FLUTTER & DART SYNTAX RULES:
-   - ICONS RULE: ONLY use core standard Flutter icons (e.g., `Icons.add`, `Icons.star`, `Icons.home`, `Icons.settings`, `Icons.person`, `Icons.check`, `Icons.edit`, `Icons.delete`, `Icons.favorite`, `Icons.info`, `Icons.search`, `Icons.share`, `Icons.refresh`, `Icons.widgets`, `Icons.apps`). NEVER invent icon names like `Icons.sample_base` or custom non-existent icons!
+   - ICONS RULE: ONLY use core standard Flutter icons (e.g., `Icons.add`, `Icons.star`, `Icons.home`, `Icons.settings`, `Icons.person`, `Icons.check`, `Icons.edit`, `Icons.delete`, `Icons.favorite`, `Icons.info`, `Icons.search`, `Icons.share`, `Icons.refresh`, `Icons.widgets`, `Icons.apps`, `Icons.build`, `Icons.calculate`, `Icons.precision_manufacturing`). NEVER invent icon names!
    - WIDGET PARAMETER RULE: `style:` parameter MUST ONLY be used inside `Text(...)` widgets. NEVER pass `style:` to `Padding`, `Container`, `SizedBox`, `Column`, `Row`, or `Center`.
-   - NEVER chain `.writeln()` on `StringBuffer()` initialization (e.g., DO NOT write `var sb = StringBuffer().writeln()`). Initialize `StringBuffer()` first, then call `.writeln()` on new lines.
-   - Always use official Flutter color names (e.g., `Colors.green`, `Colors.teal`, `Colors.blue`). NEVER use non-existent color names like `Colors.emerald`.
-   - For `decoration:` in input fields, ALWAYS wrap with `InputDecoration(border: OutlineInputBorder(...))`, NEVER pass `OutlineInputBorder` directly to `decoration`.
+   - NEVER chain `.writeln()` on `StringBuffer()` initialization. Initialize `StringBuffer()` first, then call `.writeln()`.
+   - Always use official Flutter color names (e.g., `Colors.green`, `Colors.teal`, `Colors.blue`).
+   - For `decoration:` in input fields, ALWAYS wrap with `InputDecoration(border: OutlineInputBorder(...))`.
    - Use `TextAlign.center` (lowercase 'c'), NEVER `TextAlign.Center`.
    - In `Wrap` widget, use `crossAxisAlignment:`, NEVER `crossAlignment:`.
-   - Use `EdgeInsets.symmetric(vertical: X)` or `EdgeInsets.all(X)`, NEVER `EdgeInsets.vertical(X)`.
+   - Use `EdgeInsets.symmetric(vertical: X)` or `EdgeInsets.all(X)`.
 6. Ensure clean, modern Material 3 styling with proper padding, scrollable views, and responsive layouts.
 
 Strictly follow this exact text output format:
 
 ===APP_NAME===
-[Unique App Name]
+[Unique Niche App Name]
 
 ===DESCRIPTION===
-[Detailed description of what the app actually does]
+[Detailed description of what problem this app specifically solves]
 
 ===CHECKLIST===
 1. [Test item 1]
@@ -53,22 +58,24 @@ import 'package:flutter/material.dart';
 payload = {"contents": [{"parts": [{"text": prompt}]}]}
 headers = {"Content-Type": "application/json"}
 
-# API එක Busy වුණොත් පාරවල් 3ක් Retry කරන කොටස
+# API එක Busy වුණොත් තත්පර 25ක් ඉඳලා 3 පාරක් Auto Retry වෙන කොටස
 max_retries = 3
 data = {}
 
 for attempt in range(max_retries):
     print(f"Sending Request to Gemini API (Attempt {attempt + 1}/{max_retries})...")
-    response = requests.post(url, json=payload, headers=headers)
-    data = response.json()
-    
-    if "error" not in data:
-        break
-    
-    print(f"Attempt {attempt + 1} Failed: {data['error'].get('message', 'Unknown Error')}")
+    try:
+        response = requests.post(url, json=payload, headers=headers)
+        data = response.json()
+        if "error" not in data:
+            break
+        print(f"Attempt {attempt + 1} Failed: {data['error'].get('message', 'Unknown Error')}")
+    except Exception as e:
+        print(f"Attempt {attempt + 1} Connection Error: {e}")
+        
     if attempt < max_retries - 1:
-        print("Waiting 10 seconds before retrying...")
-        time.sleep(10)
+        print("Waiting 25 seconds before retrying...")
+        time.sleep(25)
 
 if "error" in data:
     raise Exception(f"Gemini API Error after {max_retries} retries: {data['error'].get('message')}")
@@ -115,7 +122,7 @@ code = re.sub(r'Padding\(\s*style:[^,]+,', 'Padding(', code)
 if not code or "You have pushed the button this many times" in code:
     raise Exception("Gemini generated default counter code! Retrying required.")
 
-# App ID එකක් සදාගැනීම
+# App ID එකක් සාදාගැනීම
 app_id = re.sub(r'[^a-zA-Z0-9]', '_', app_name.lower()).strip('_')
 
 os.makedirs("lib", exist_ok=True)
