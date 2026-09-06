@@ -1,5 +1,6 @@
 import os
 import re
+import time
 import requests
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip().strip("'").strip('"')
@@ -15,7 +16,7 @@ if not os.path.exists(file_path):
 with open(file_path, "r", encoding="utf-8") as f:
     existing_code = f.read()
 
-# Corrected Model: gemini-2.5-flash
+# Corrected Model: gemini-3.6-flash
 base_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
 url = f"{base_url}?key={GEMINI_API_KEY}"
 
@@ -56,11 +57,27 @@ import 'package:flutter/material.dart';
 payload = {"contents": [{"parts": [{"text": prompt + "\n\nEXISTING CODE TO FIX:\n" + existing_code}]}]}
 headers = {"Content-Type": "application/json"}
 
-response = requests.post(url, json=payload, headers=headers)
-data = response.json()
+# Auto Retry Mechanism (3 Retries with 25 Seconds delay)
+max_retries = 3
+data = None
 
-if "error" in data:
-    raise Exception(f"Gemini API Error: {data['error'].get('message', 'Unknown Error')}")
+for attempt in range(max_retries):
+    try:
+        response = requests.post(url, json=payload, headers=headers)
+        data = response.json()
+        if "error" not in data:
+            break
+        print(f"Attempt {attempt + 1} failed: {data['error'].get('message', 'Unknown Error')}")
+    except Exception as e:
+        print(f"Attempt {attempt + 1} request error: {e}")
+    
+    if attempt < max_retries - 1:
+        print("Waiting 25 seconds before retrying...")
+        time.sleep(25)
+
+if not data or "error" in data:
+    err_msg = data['error'].get('message', 'Unknown Error') if data and "error" in data else "API Request Failed"
+    raise Exception(f"Gemini API Error: {err_msg}")
 
 text_response = data['candidates'][0]['content']['parts'][0]['text']
 
