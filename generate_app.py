@@ -17,7 +17,7 @@ APP CONCEPT & NICHE TARGET:
 - Generate a highly UNIQUE, SPECIALIZED single-file Flutter utility app (main.dart) that solves a SPECIFIC, NICHE, or UNDERSERVED daily micro-problem.
 - TARGET UNCOMMON PRACTICAL TOOLS (Examples: 3D Printing Filament & Cost Estimator, DIY Electronics Battery Power Duration Calculator, Freelance Project Hourly Rate vs Expense Analyzer, Printing DPI & Paper Aspect Ratio Helper, Solar Panel Angle & Power Yield Estimator, Micro-Habit Penalty Tracker, Recipe Batch & Ingredient Ratio Scaler, Audio Bitrate & File Size Calculator).
 - STRICTLY AVOID generic oversaturated app ideas: NEVER generate Todo Lists, Notes Apps, Weather Apps, Standard Calculators, Stopwatches, Flashlight Apps, or Counter Apps.
-
+- meka hadaddi mathaka athuva vadagath play store/onama app dana thanakata dammama minissu porakaka download karana vidiyata vadagath app ekak hadanna!
 CRITICAL UI & CODE RULES:
 1. DO NOT generate the default Flutter counter app ("You have pushed the button this many times").
 2. The UI and logic MUST strictly match the generated APP_NAME and DESCRIPTION.
