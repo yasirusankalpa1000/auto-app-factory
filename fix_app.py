@@ -1,6 +1,5 @@
 import os
 import re
-import time
 import requests
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip().strip("'").strip('"')
@@ -16,11 +15,11 @@ if not os.path.exists(file_path):
 with open(file_path, "r", encoding="utf-8") as f:
     existing_code = f.read()
 
-# Safe URL Construction with the CORRECT Model (gemini-2.5-flash)
-base_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
+# Corrected Model: gemini-2.5-flash
+base_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 url = f"{base_url}?key={GEMINI_API_KEY}"
 
-# Clean any illegal brackets or spaces from URL
+# Clean any illegal characters from URL
 url = re.sub(r'[\[\]\(\)\s]', '', url)
 
 prompt = f"""
@@ -30,10 +29,11 @@ REPORTED ISSUE / BUG TO FIX:
 {BUG_DESCRIPTION}
 
 CRITICAL FIX RULES:
-1. Retain the overall app logic and utility, but fix all requested bugs and errors.
-2. NO OVERFLOW ERRORS: Use Wrap, SingleChildScrollView, or FittedBox for responsive layouts.
-3. DOLLAR SIGN ESCAPING: Always escape raw dollar signs in text strings with a backslash (e.g., \\$12.99).
-4. Use valid Flutter syntax (TextAlign.center, crossAxisAlignment:, correct EdgeInsets).
+1. Retain overall app logic, but fix all syntax errors and bugs.
+2. NEVER instantiate abstract classes like StatelessWidget() or StatefulWidget(). Use SizedBox() or Container() instead.
+3. NO OVERFLOW ERRORS: Use Wrap, SingleChildScrollView, or FittedBox for responsive layouts.
+4. STRING ESCAPING: In Dart strings, escape dollar signs with a SINGLE backslash (e.g. \\$12.99), never double backslashes (\\\\$).
+5. Valid Flutter syntax only.
 
 Strictly follow this exact text output format:
 
@@ -56,29 +56,11 @@ import 'package:flutter/material.dart';
 payload = {"contents": [{"parts": [{"text": prompt + "\n\nEXISTING CODE TO FIX:\n" + existing_code}]}]}
 headers = {"Content-Type": "application/json"}
 
-# --- Gemini API Call with Auto Retry Logic ---
-max_retries = 3
-retry_delay = 3
-data = {}
+response = requests.post(url, json=payload, headers=headers)
+data = response.json()
 
-for attempt in range(1, max_retries + 1):
-    try:
-        response = requests.post(url, json=payload, headers=headers)
-        data = response.json()
-        
-        if "error" not in data:
-            break
-            
-        error_msg = data['error'].get('message', 'Unknown Error')
-        print(f"⚠️ Gemini API Error (Attempt {attempt}/{max_retries}): {error_msg}")
-    except Exception as e:
-        print(f"⚠️ Network Error (Attempt {attempt}/{max_retries}): {e}")
-        
-    if attempt < max_retries:
-        print(f"⏳ Retrying in {retry_delay} seconds...")
-        time.sleep(retry_delay)
-else:
-    raise Exception(f"Gemini API Error after {max_retries} attempts: {data.get('error', {}).get('message', 'Unknown Error')}")
+if "error" in data:
+    raise Exception(f"Gemini API Error: {data['error'].get('message', 'Unknown Error')}")
 
 text_response = data['candidates'][0]['content']['parts'][0]['text']
 
@@ -100,11 +82,12 @@ if code.endswith("```"):
     code = code[:-3]
 code = code.strip()
 
-# Common Syntax Auto-fixes
-code = re.sub(r'(?<!\\)\$(?=[0-9])', r'\\$', code)
+# Common Syntax Auto-fixes for LLM generated Flutter/Dart Code
+code = re.sub(r'return\s+StatefulWidget\s*\([^)]*\);?', 'return const SizedBox();', code)
+code = re.sub(r'return\s+StatelessWidget\s*\([^)]*\);?', 'return const SizedBox();', code)
+code = re.sub(r'\\\\\$\b', r'\\$', code)
 code = re.sub(r'TextAlign\.Center', 'TextAlign.center', code)
 code = re.sub(r'crossAlignment:', 'crossAxisAlignment:', code)
-code = re.sub(r'EdgeInsets\.vertical\((.*?)\)', r'EdgeInsets.symmetric(vertical: \1)', code)
 
 with open("lib/main.dart", "w", encoding="utf-8") as f:
     f.write(code)
