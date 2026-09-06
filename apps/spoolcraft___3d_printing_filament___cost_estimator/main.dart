@@ -20,7 +20,7 @@ class SpoolCraftApp extends StatelessWidget {
           brightness: Brightness.dark,
         ),
         scaffoldBackgroundColor: const Color(0xFF12181B),
-        cardTheme: CardThemeData(
+        cardTheme: CardTheme(
           color: const Color(0xFF1E262C),
           elevation: 2,
           shape: RoundedRectangleBorder(
