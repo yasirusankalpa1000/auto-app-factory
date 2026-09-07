@@ -13,11 +13,14 @@ url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash
 prompt = """
 You are an expert Flutter developer and creative product designer.
 
-APP CONCEPT & NICHE TARGET:
-- Generate a highly UNIQUE, SPECIALIZED single-file Flutter utility app (main.dart) that solves a SPECIFIC, NICHE, or UNDERSERVED daily micro-problem.
-- TARGET UNCOMMON PRACTICAL TOOLS (Examples: 3D Printing Filament & Cost Estimator, DIY Electronics Battery Power Duration Calculator, Freelance Project Hourly Rate vs Expense Analyzer, Printing DPI & Paper Aspect Ratio Helper, Solar Panel Angle & Power Yield Estimator, Micro-Habit Penalty Tracker, Recipe Batch & Ingredient Ratio Scaler, Audio Bitrate & File Size Calculator).
-- STRICTLY AVOID generic oversaturated app ideas: NEVER generate Todo Lists, Notes Apps, Weather Apps, Standard Calculators, Stopwatches, Flashlight Apps, or Counter Apps.
-- meka hadaddi mathaka athuva vadagath play store/onama app dana thanakata dammama minissu porakaka download karana vidiyata vadagath app ekak hadanna!anika me hadana app eka godak denekta prayojavavath ekak venna ona!meka market ekata avama misissu porakaka app eka ganna ona!
+APP CONCEPT & CREATIVE DIRECTION:
+- me apps market eke hoyaganna amaru venna ona ,ekiyanne durlaba eva vennath ona!
+- Invent a highly PRACTICAL, VIRAL-READY, and USEFUL single-file Flutter utility app (main.dart) that solves an everyday micro-problem faced by ordinary people in daily life.
+- Focus on clever, high-demand tools that make general users say "I needed an app for this!" and eagerly download it.
+- The app must solve a real-life pain point with high practical value, ensuring wide appeal and trending potential on app stores.
+- DO NOT limit yourself to any specific industry or technical niche. Think freely about daily human routines, micro-decisions, efficiency helpers, and practical calculations.
+- STRICTLY AVOID generic oversaturated app ideas: NEVER generate simple Todo Lists, basic Notes Apps, standard Weather Apps, basic Calculators, Stopwatches, Flashlight Apps, or Counter Apps.
+
 CRITICAL UI & CODE RULES:
 1. DO NOT generate the default Flutter counter app ("You have pushed the button this many times").
 2. The UI and logic MUST strictly match the generated APP_NAME and DESCRIPTION.
@@ -27,7 +30,8 @@ CRITICAL UI & CODE RULES:
    - Use `Wrap` widgets or scrollable horizontal rows for badges, chips, buttons, and tab bars to guarantee they stay within visible bounds.
 4. DOLLAR SIGN ESCAPING: Always escape raw dollar signs in text strings with a backslash (e.g., use \\$12.99 instead of $12.99).
 5. STRICT FLUTTER & DART SYNTAX RULES:
-   - ICONS RULE: ONLY use core standard Flutter icons (e.g., `Icons.add`, `Icons.star`, `Icons.home`, `Icons.settings`, `Icons.person`, `Icons.check`, `Icons.edit`, `Icons.delete`, `Icons.favorite`, `Icons.info`, `Icons.search`, `Icons.share`, `Icons.refresh`, `Icons.widgets`, `Icons.apps`, `Icons.build`, `Icons.calculate`, `Icons.precision_manufacturing`). NEVER invent icon names!
+   - FONT WEIGHT RULE: ONLY use standard Flutter FontWeights (`FontWeight.bold`, `FontWeight.normal`, `FontWeight.w600`, `FontWeight.w700`, `FontWeight.w800`, `FontWeight.w500`). NEVER use invalid properties like `FontWeight.extrabold` or `FontWeight.semibold`!
+   - ICONS RULE: ONLY use core standard Flutter icons (e.g., `Icons.add`, `Icons.star`, `Icons.home`, `Icons.settings`, `Icons.person`, `Icons.check`, `Icons.edit`, `Icons.delete`, `Icons.favorite`, `Icons.info`, `Icons.search`, `Icons.share`, `Icons.refresh`, `Icons.widgets`, `Icons.apps`, `Icons.build`, `Icons.calculate`, `Icons.monetization_on`, `Icons.schedule`, `Icons.stars`). NEVER invent icon names!
    - WIDGET PARAMETER RULE: `style:` parameter MUST ONLY be used inside `Text(...)` widgets. NEVER pass `style:` to `Padding`, `Container`, `SizedBox`, `Column`, `Row`, or `Center`.
    - NEVER chain `.writeln()` on `StringBuffer()` initialization. Initialize `StringBuffer()` first, then call `.writeln()`.
    - Always use official Flutter color names (e.g., `Colors.green`, `Colors.teal`, `Colors.blue`).
@@ -40,10 +44,10 @@ CRITICAL UI & CODE RULES:
 Strictly follow this exact text output format:
 
 ===APP_NAME===
-[Unique Niche App Name]
+[Unique High-Demand App Name]
 
 ===DESCRIPTION===
-[Detailed description of what problem this app specifically solves]
+[Detailed description of the everyday problem this app solves]
 
 ===CHECKLIST===
 1. [Test item 1]
@@ -103,7 +107,7 @@ if code.endswith("```"):
     code = code[:-3]
 code = code.strip()
 
-# Auto-fix common Gemini Syntax, Invalid Icons & Dart Method chaining errors
+# Auto-fix common Gemini Syntax, FontWeights, Invalid Icons & Dart Method chaining errors
 code = re.sub(r'(?<!\\)\$(?=[0-9])', r'\\$', code)
 code = re.sub(r'TextAlign\.Center', 'TextAlign.center', code)
 code = re.sub(r'crossAlignment:', 'crossAxisAlignment:', code)
@@ -111,6 +115,10 @@ code = re.sub(r'EdgeInsets\.vertical\((.*?)\)', r'EdgeInsets.symmetric(vertical:
 code = re.sub(r'Colors\.emerald', 'Colors.teal', code)
 code = re.sub(r'decoration:\s*(const\s*)?OutlineInputBorder\(', r'decoration: InputDecoration(border: OutlineInputBorder(', code)
 code = re.sub(r'(\w+)\s*=\s*StringBuffer\(\)\.writeln\(', r'final \1 = StringBuffer();\n\1.writeln(', code)
+
+# Fix non-existent FontWeights hallucinated by Gemini
+code = re.sub(r'FontWeight\.\w*extra\w*', 'FontWeight.bold', code, flags=re.IGNORECASE)
+code = re.sub(r'FontWeight\.\w*semi\w*', 'FontWeight.w600', code, flags=re.IGNORECASE)
 
 # Fix non-existent Icons hallucinated by Gemini
 code = re.sub(r'Icons\.sample_\w+', 'Icons.widgets', code)
@@ -136,4 +144,4 @@ with open(f"apps/{app_id}/main.dart", "w", encoding="utf-8") as f:
 
 with open("app_info.txt", "w", encoding="utf-8") as f:
     f.write(f"📱 *App Name:* {app_name}\n🆔 *App ID:* `{app_id}`\n\n📝 *Description:* {description}\n\n🧪 *Testing Checklist:*\n{checklist}")
-    
+                                 
