@@ -109,9 +109,10 @@ code = code.strip()
 
 # Auto-fix common Gemini Syntax, FontWeights, Invalid Colors, Invalid Icons & Dart Method chaining errors
 code = re.sub(r'(?<!\\)\$(?=[0-9])', r'\\$', code)
-code = re.sub(r'\\\$([a-zA-Z_{])', r'$\1', code)
+code = re.sub(r'\\\$([a-zA-Z_{])', r'$\1', code) 
 code = re.sub(r'TextAlign\.Center', 'TextAlign.center', code)
 code = re.sub(r'crossAlignment:', 'crossAxisAlignment:', code)
+code = re.sub(r'CrossAlignment\.', 'CrossAxisAlignment.', code) # CrossAlignment error එක විසඳන අලුත් fix එක
 code = re.sub(r'EdgeInsets\.vertical\((.*?)\)', r'EdgeInsets.symmetric(vertical: \1)', code)
 code = re.sub(r'Colors\.emerald', 'Colors.teal', code)
 code = re.sub(r'Colors\.white[0-9]+', 'Colors.white70', code)
@@ -150,3 +151,4 @@ short_description = description[:500] + "..." if len(description) > 500 else des
 
 with open("app_info.txt", "w", encoding="utf-8") as f:
     f.write(f"📱 *App Name:* {app_name}\n🆔 *App ID:* `{app_id}`\n\n📝 *Description:* {short_description}\n\n🧪 *Testing Checklist:*\n{checklist}")
+    
