@@ -14,7 +14,7 @@ prompt = """
 You are an expert Flutter developer and creative product designer.
 
 APP CONCEPT & CREATIVE DIRECTION:
-- me apps market eke hoyaganna amaru venna ona ,ekiyanne durlaba eva vennath ona!
+- me oya hadana app eka vadiya market eke nathi vennath ona anika user davase godak velavak app eke radila inna ona ethakotane passe kaleka add mob dammama davasata ad mob valin salli hoyanna puluvan!
 - Invent a highly PRACTICAL, VIRAL-READY, and USEFUL single-file Flutter utility app (main.dart) that solves an everyday micro-problem faced by ordinary people in daily life.
 - Focus on clever, high-demand tools that make general users say "I needed an app for this!" and eagerly download it.
 - The app must solve a real-life pain point with high practical value, ensuring wide appeal and trending potential on app stores.
@@ -30,11 +30,11 @@ CRITICAL UI & CODE RULES:
    - Use `Wrap` widgets or scrollable horizontal rows for badges, chips, buttons, and tab bars to guarantee they stay within visible bounds.
 4. DOLLAR SIGN ESCAPING: Always escape raw dollar signs in text strings with a backslash (e.g., use \\$12.99 instead of $12.99).
 5. STRICT FLUTTER & DART SYNTAX RULES:
+   - COLOR RULE: ONLY use official standard Flutter colors (e.g., `Colors.white`, `Colors.black`, `Colors.blue`, `Colors.green`, `Colors.teal`, `Colors.grey`, `Colors.white70`). NEVER invent non-existent color shades like `Colors.white90` or `Colors.emerald`!
    - FONT WEIGHT RULE: ONLY use standard Flutter FontWeights (`FontWeight.bold`, `FontWeight.normal`, `FontWeight.w600`, `FontWeight.w700`, `FontWeight.w800`, `FontWeight.w500`). NEVER use invalid properties like `FontWeight.extrabold` or `FontWeight.semibold`!
    - ICONS RULE: ONLY use core standard Flutter icons (e.g., `Icons.add`, `Icons.star`, `Icons.home`, `Icons.settings`, `Icons.person`, `Icons.check`, `Icons.edit`, `Icons.delete`, `Icons.favorite`, `Icons.info`, `Icons.search`, `Icons.share`, `Icons.refresh`, `Icons.widgets`, `Icons.apps`, `Icons.build`, `Icons.calculate`, `Icons.monetization_on`, `Icons.schedule`, `Icons.stars`). NEVER invent icon names!
    - WIDGET PARAMETER RULE: `style:` parameter MUST ONLY be used inside `Text(...)` widgets. NEVER pass `style:` to `Padding`, `Container`, `SizedBox`, `Column`, `Row`, or `Center`.
    - NEVER chain `.writeln()` on `StringBuffer()` initialization. Initialize `StringBuffer()` first, then call `.writeln()`.
-   - Always use official Flutter color names (e.g., `Colors.green`, `Colors.teal`, `Colors.blue`).
    - For `decoration:` in input fields, ALWAYS wrap with `InputDecoration(border: OutlineInputBorder(...))`.
    - Use `TextAlign.center` (lowercase 'c'), NEVER `TextAlign.Center`.
    - In `Wrap` widget, use `crossAxisAlignment:`, NEVER `crossAlignment:`.
@@ -107,12 +107,14 @@ if code.endswith("```"):
     code = code[:-3]
 code = code.strip()
 
-# Auto-fix common Gemini Syntax, FontWeights, Invalid Icons & Dart Method chaining errors
+# Auto-fix common Gemini Syntax, FontWeights, Invalid Colors, Invalid Icons & Dart Method chaining errors
 code = re.sub(r'(?<!\\)\$(?=[0-9])', r'\\$', code)
 code = re.sub(r'TextAlign\.Center', 'TextAlign.center', code)
 code = re.sub(r'crossAlignment:', 'crossAxisAlignment:', code)
 code = re.sub(r'EdgeInsets\.vertical\((.*?)\)', r'EdgeInsets.symmetric(vertical: \1)', code)
 code = re.sub(r'Colors\.emerald', 'Colors.teal', code)
+code = re.sub(r'Colors\.white[0-9]+', 'Colors.white70', code)
+code = re.sub(r'Colors\.black[0-9]+', 'Colors.black87', code)
 code = re.sub(r'decoration:\s*(const\s*)?OutlineInputBorder\(', r'decoration: InputDecoration(border: OutlineInputBorder(', code)
 code = re.sub(r'(\w+)\s*=\s*StringBuffer\(\)\.writeln\(', r'final \1 = StringBuffer();\n\1.writeln(', code)
 
@@ -144,4 +146,4 @@ with open(f"apps/{app_id}/main.dart", "w", encoding="utf-8") as f:
 
 with open("app_info.txt", "w", encoding="utf-8") as f:
     f.write(f"📱 *App Name:* {app_name}\n🆔 *App ID:* `{app_id}`\n\n📝 *Description:* {description}\n\n🧪 *Testing Checklist:*\n{checklist}")
-                                 
+    
