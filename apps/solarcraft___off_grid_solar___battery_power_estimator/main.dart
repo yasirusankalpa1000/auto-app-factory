@@ -25,7 +25,7 @@ class SolarCraftApp extends StatelessWidget {
           primary: Colors.amber,
           secondary: Colors.tealAccent,
         ),
-        cardTheme: CardThemeData(
+        cardTheme: CardTheme(
           color: const Color(0xFF1E2630),
           elevation: 2,
           shape: RoundedRectangleBorder(
