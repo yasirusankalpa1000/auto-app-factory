@@ -109,14 +109,15 @@ code = code.strip()
 
 # Auto-fix common Gemini Syntax, FontWeights, Invalid Colors, Invalid Icons & Dart Method chaining errors
 code = re.sub(r'(?<!\\)\$(?=[0-9])', r'\\$', code)
-code = re.sub(r'\\\$([a-zA-Z_{])', r'$\1', code) # මෙන්න මේකයි අලුතින් එකතු කරපු Variable fix එක
+code = re.sub(r'\\\$([a-zA-Z_{])', r'$\1', code)
 code = re.sub(r'TextAlign\.Center', 'TextAlign.center', code)
 code = re.sub(r'crossAlignment:', 'crossAxisAlignment:', code)
 code = re.sub(r'EdgeInsets\.vertical\((.*?)\)', r'EdgeInsets.symmetric(vertical: \1)', code)
 code = re.sub(r'Colors\.emerald', 'Colors.teal', code)
 code = re.sub(r'Colors\.white[0-9]+', 'Colors.white70', code)
 code = re.sub(r'Colors\.black[0-9]+', 'Colors.black87', code)
-code = re.sub(r'decoration:\s*(const\s*)?OutlineInputBorder\(', r'decoration: InputDecoration(border: OutlineInputBorder(', code) code = re.sub(r'(\w+)\s*=\s*StringBuffer\(\)\.writeln\(', r'final \1 = StringBuffer();\n\1.writeln(', code)
+code = re.sub(r'decoration:\s*(const\s*)?OutlineInputBorder\(', r'decoration: InputDecoration(border: OutlineInputBorder(', code)
+code = re.sub(r'(\w+)\s*=\s*StringBuffer\(\)\.writeln\(', r'final \1 = StringBuffer();\n\1.writeln(', code)
 
 # Fix non-existent FontWeights hallucinated by Gemini
 code = re.sub(r'FontWeight\.\w*extra\w*', 'FontWeight.bold', code, flags=re.IGNORECASE)
@@ -148,5 +149,4 @@ with open(f"apps/{app_id}/main.dart", "w", encoding="utf-8") as f:
 short_description = description[:500] + "..." if len(description) > 500 else description
 
 with open("app_info.txt", "w", encoding="utf-8") as f:
-    f.write(f"📱 *App Name:* {app_name}\n🆔 *App ID:* `{app_id}`\n\
-    
+    f.write(f"📱 *App Name:* {app_name}\n🆔 *App ID:* `{app_id}`\n\n📝 *Description:* {short_description}\n\n🧪 *Testing Checklist:*\n{checklist}")
