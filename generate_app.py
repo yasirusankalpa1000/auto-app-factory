@@ -143,7 +143,9 @@ with open("lib/main.dart", "w", encoding="utf-8") as f:
 
 with open(f"apps/{app_id}/main.dart", "w", encoding="utf-8") as f:
     f.write(code)
+# app_info.txt එක ලිමිට් කර ලියාදැක්වීම (Telegram limit එක නොවදින්න)
+short_description = description[:500] + "..." if len(description) > 500 else description
 
 with open("app_info.txt", "w", encoding="utf-8") as f:
-    f.write(f"📱 *App Name:* {app_name}\n🆔 *App ID:* `{app_id}`\n\n📝 *Description:* {description}\n\n🧪 *Testing Checklist:*\n{checklist}")
+    f.write(f"📱 *App Name:* {app_name}\n🆔 *App ID:* `{app_id}`\n\n📝 *Description:* {short_description}\n\n🧪 *Testing Checklist:*\n{checklist}")
     
