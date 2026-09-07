@@ -19,7 +19,7 @@ class MakerCostApp extends StatelessWidget {
           seedColor: Colors.indigo,
           brightness: Brightness.light,
         ),
-        cardTheme: CardThemeData(
+        cardTheme: CardTheme(
           elevation: 2,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -32,7 +32,7 @@ class MakerCostApp extends StatelessWidget {
           seedColor: Colors.indigo,
           brightness: Brightness.dark,
         ),
-        cardTheme: CardThemeData(
+        cardTheme: CardTheme(
           elevation: 2,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
