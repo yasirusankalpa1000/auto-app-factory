@@ -39,6 +39,8 @@ CRITICAL UI & CODE RULES:
    - Use `TextAlign.center` (lowercase 'c'), NEVER `TextAlign.Center`.
    - In `Wrap` widget, use `crossAxisAlignment:`, NEVER `crossAlignment:`.
    - Use `EdgeInsets.symmetric(vertical: X)` or `EdgeInsets.all(X)`.
+   - NEVER use LaTeX math syntax like `$\\le$` or `$\\ge$` in strings. Use standard symbols like `<=` or `>=`.
+   - NEVER instantiate abstract classes like `StatefulWidget()`. If a placeholder is needed, return `SizedBox()`.
 6. Ensure clean, modern Material 3 styling with proper padding, scrollable views, and responsive layouts.
 
 Strictly follow this exact text output format:
@@ -62,7 +64,6 @@ import 'package:flutter/material.dart';
 payload = {"contents": [{"parts": [{"text": prompt}]}]}
 headers = {"Content-Type": "application/json"}
 
-# API එක Busy වුණොත් තත්පර 25ක් ඉඳලා 3 පාරක් Auto Retry වෙන කොටස
 max_retries = 3
 data = {}
 
@@ -112,13 +113,18 @@ code = re.sub(r'(?<!\\)\$(?=[0-9])', r'\\$', code)
 code = re.sub(r'\\\$([a-zA-Z_{])', r'$\1', code) 
 code = re.sub(r'TextAlign\.Center', 'TextAlign.center', code)
 code = re.sub(r'crossAlignment:', 'crossAxisAlignment:', code)
-code = re.sub(r'CrossAlignment\.', 'CrossAxisAlignment.', code) # CrossAlignment error එක විසඳන අලුත් fix එක
+code = re.sub(r'CrossAlignment\.', 'CrossAxisAlignment.', code)
 code = re.sub(r'EdgeInsets\.vertical\((.*?)\)', r'EdgeInsets.symmetric(vertical: \1)', code)
 code = re.sub(r'Colors\.emerald', 'Colors.teal', code)
 code = re.sub(r'Colors\.white[0-9]+', 'Colors.white70', code)
 code = re.sub(r'Colors\.black[0-9]+', 'Colors.black87', code)
 code = re.sub(r'decoration:\s*(const\s*)?OutlineInputBorder\(', r'decoration: InputDecoration(border: OutlineInputBorder(', code)
 code = re.sub(r'(\w+)\s*=\s*StringBuffer\(\)\.writeln\(', r'final \1 = StringBuffer();\n\1.writeln(', code)
+
+# New Auto-fixes for LaTeX math and StatefulWidget abstraction errors
+code = re.sub(r'\$\\\\?le\$', '<=', code)
+code = re.sub(r'\$\\\\?ge\$', '>=', code)
+code = re.sub(r'StatefulWidget\(', 'SizedBox(', code)
 
 # Fix non-existent FontWeights hallucinated by Gemini
 code = re.sub(r'FontWeight\.\w*extra\w*', 'FontWeight.bold', code, flags=re.IGNORECASE)
