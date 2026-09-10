@@ -23,7 +23,7 @@ class FlowPacerApp extends StatelessWidget {
           secondary: Colors.amber,
           surface: Color(0xFF1E2230),
         ),
-        cardTheme: const CardThemeData(
+        cardTheme: const CardTheme(
           color: Color(0xFF1E2230),
           elevation: 2,
         ),
