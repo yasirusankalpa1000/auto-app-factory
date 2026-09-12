@@ -19,7 +19,7 @@ class ValuePulseApp extends StatelessWidget {
           brightness: Brightness.light,
         ),
         scaffoldBackgroundColor: const Color(0xFFF4F7F6),
-        cardTheme: const CardThemeData(
+        cardTheme: const CardTheme(
           elevation: 2,
           margin: EdgeInsets.symmetric(vertical: 6, horizontal: 0),
         ),
