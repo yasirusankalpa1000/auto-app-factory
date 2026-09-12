@@ -23,7 +23,7 @@ class DowntimeApp extends StatelessWidget {
           surface: Colors.white,
         ),
         scaffoldBackgroundColor: const Color(0xFFF8F9FA),
-        cardTheme: CardThemeData(
+        cardTheme: CardTheme(
           elevation: 1,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
