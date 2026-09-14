@@ -19,7 +19,7 @@ class ShiftWiseApp extends StatelessWidget {
         colorSchemeSeed: Colors.indigo,
         brightness: Brightness.dark,
         scaffoldBackgroundColor: const Color(0xFF121420),
-        cardTheme: CardThemeData(
+        cardTheme: CardTheme(
           color: const Color(0xFF1E2235),
           elevation: 3,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
