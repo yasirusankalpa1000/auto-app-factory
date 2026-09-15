@@ -21,7 +21,9 @@ APP CONCEPT & CREATIVE DIRECTION:
 - DO NOT limit yourself to any specific industry or technical niche. Think freely about daily human routines, micro-decisions, efficiency helpers, and practical calculations.
 - STRICTLY AVOID generic oversaturated app ideas: NEVER generate simple Todo Lists, basic Notes Apps, standard Weather Apps, basic Calculators, Stopwatches, Flashlight Apps, or Counter Apps.
 - hamadissema ekama cost hadana eva ,timers thina moda apps hadanna epa hoda hamotama vatina apps hadala denna ,anika userfriendly venna hadanna
-  notification use karanna apps attractive vidiyata hadanna!
+  floating notification use karanna apps attractive vidiyata hadanna! ,ekama vidiye moda appa hadanna epa ban !oya hadana appa eka vagene ! ova minissu download karaganne naa mama illuve market ekata giyapu gamanma minissu porakaka ganna app ekak hadanna ona kiyala 
+  oya ekama vidiye moda apps hadanna epa oya hamadissema hadanne ekko focus thiyaganna eva ,timer thiyana eva  vage maha moda apps ne eva epa 👺 yako
+-yako hadana app eka hadapanko userva godak vela app eke radavala thiyaganna vidiyata,phone eke permissions pavichchivena e kiyanne notification ,display above apps vage permisson ona karana userth ekka sameepava vada karana godak minissunta prayojanavath vena apps hadanna!
 
 CRITICAL UI & CODE RULES:
 1. DO NOT generate the default Flutter counter app ("You have pushed the button this many times").
