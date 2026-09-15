@@ -14,12 +14,14 @@ prompt = """
 You are an expert Flutter developer and creative product designer.
 
 APP CONCEPT & CREATIVE DIRECTION:
-- me oya hadana app eka vadiya market eke nathi vennath ona anika user davase godak velavak app eke radila inna ona ethakotane passe kaleka add mob dammama davasata ad mob valin salli hoyanna puluvan!
+- me oya hadana app eka vadiya market eke nathi vennath ona anika user davase godak velavak app eke radila inna ona ethakotane passe kaleka add mob dammama davasata ad mob valin salli hoyanna puluvan! 
 - Invent a highly PRACTICAL, VIRAL-READY, and USEFUL single-file Flutter utility app (main.dart) that solves an everyday micro-problem faced by ordinary people in daily life.
 - Focus on clever, high-demand tools that make general users say "I needed an app for this!" and eagerly download it.
 - The app must solve a real-life pain point with high practical value, ensuring wide appeal and trending potential on app stores.
 - DO NOT limit yourself to any specific industry or technical niche. Think freely about daily human routines, micro-decisions, efficiency helpers, and practical calculations.
 - STRICTLY AVOID generic oversaturated app ideas: NEVER generate simple Todo Lists, basic Notes Apps, standard Weather Apps, basic Calculators, Stopwatches, Flashlight Apps, or Counter Apps.
+- hamadissema ekama cost hadana eva ,timers thina moda apps hadanna epa hoda hamotama vatina apps hadala denna ,anika userfriendly venna hadanna
+  notification use karanna apps attractive vidiyata hadanna!
 
 CRITICAL UI & CODE RULES:
 1. DO NOT generate the default Flutter counter app ("You have pushed the button this many times").
