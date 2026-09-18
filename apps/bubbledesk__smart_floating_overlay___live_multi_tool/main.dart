@@ -23,7 +23,7 @@ class BubbleDeskApp extends StatelessWidget {
           surface: const Color(0xFF181824),
         ),
         scaffoldBackgroundColor: const Color(0xFF0F0F17),
-        cardTheme: CardThemeData(
+        cardTheme: CardTheme(
           color: const Color(0xFF222232),
           elevation: 4,
           shape: RoundedRectangleBorder(
