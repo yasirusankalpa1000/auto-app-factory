@@ -21,7 +21,7 @@ class ClipFlyApp extends StatelessWidget {
           surface: const Color(0xFF12181F),
         ),
         scaffoldBackgroundColor: const Color(0xFF0D1117),
-        cardTheme: CardThemeData(
+        cardTheme: CardTheme(
           color: const Color(0xFF161B22),
           elevation: 2,
           shape: RoundedRectangleBorder(
