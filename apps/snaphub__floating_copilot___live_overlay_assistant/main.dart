@@ -19,7 +19,7 @@ class SnapHubApp extends StatelessWidget {
           brightness: Brightness.dark,
         ),
         scaffoldBackgroundColor: const Color(0xFF0F0E17),
-        cardTheme: const CardThemeData(
+        cardTheme: const CardTheme(
           color: Color(0xFF1D1B2A),
           elevation: 4,
         ),
