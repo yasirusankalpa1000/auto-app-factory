@@ -22,7 +22,7 @@ class ShieldPeekApp extends StatelessWidget {
           surface: Color(0xFF1E2430),
           background: Color(0xFF10141D),
         ),
-        cardTheme: CardThemeData(
+        cardTheme: CardTheme(
           color: const Color(0xFF1E2430),
           elevation: 4,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
