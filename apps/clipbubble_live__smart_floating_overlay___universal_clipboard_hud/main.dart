@@ -17,7 +17,7 @@ class ClipBubbleApp extends StatelessWidget {
         brightness: Brightness.dark,
         colorSchemeSeed: Colors.indigo,
         scaffoldBackgroundColor: const Color(0xFF0F172A),
-        cardTheme: CardThemeData(
+        cardTheme: CardTheme(
           color: const Color(0xFF1E293B),
           elevation: 2,
           shape: RoundedRectangleBorder(
