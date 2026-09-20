@@ -20,7 +20,7 @@ class ClipDockApp extends StatelessWidget {
           brightness: Brightness.dark,
         ),
         scaffoldBackgroundColor: const Color(0xFF0F111A),
-        cardTheme: const CardThemeData(
+        cardTheme: const CardTheme(
           color: Color(0xFF1E2230),
           elevation: 2,
         ),
