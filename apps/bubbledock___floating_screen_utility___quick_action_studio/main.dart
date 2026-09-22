@@ -17,7 +17,7 @@ class BubbleDockApp extends StatelessWidget {
         brightness: Brightness.dark,
         colorSchemeSeed: Colors.teal,
         scaffoldBackgroundColor: const Color(0xFF0F172A),
-        cardTheme: CardThemeData(
+        cardTheme: CardTheme(
           color: const Color(0xFF1E293B),
           elevation: 3,
           shape: RoundedRectangleBorder(
