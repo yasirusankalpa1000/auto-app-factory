@@ -17,7 +17,7 @@ class GlanceDockApp extends StatelessWidget {
         brightness: Brightness.dark,
         colorSchemeSeed: Colors.teal,
         scaffoldBackgroundColor: const Color(0xFF12181F),
-        cardTheme: CardThemeData(
+        cardTheme: CardTheme(
           color: const Color(0xFF1E2631),
           elevation: 2,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
