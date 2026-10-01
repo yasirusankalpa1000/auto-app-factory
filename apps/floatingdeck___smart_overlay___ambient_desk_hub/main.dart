@@ -22,7 +22,7 @@ class FloatingDeckApp extends StatelessWidget {
           secondary: Colors.amberAccent,
           surface: Color(0xFF1B1E29),
         ),
-        cardTheme: CardThemeData(
+        cardTheme: CardTheme(
           color: const Color(0xFF1B1E29),
           elevation: 2,
           shape: RoundedRectangleBorder(
