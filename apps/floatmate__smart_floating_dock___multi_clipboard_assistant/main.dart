@@ -21,7 +21,7 @@ class FloatMateApp extends StatelessWidget {
           secondary: Colors.teal,
           surface: const Color(0xFPF6F8FC),
         ),
-        cardTheme: CardThemeData(
+        cardTheme: CardTheme(
           elevation: 2,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
