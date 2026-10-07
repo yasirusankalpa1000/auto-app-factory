@@ -24,7 +24,7 @@ class OverlayBuddyApp extends StatelessWidget {
           brightness: Brightness.dark,
           surface: const Color(0xFF181828),
         ),
-        cardTheme: const CardThemeData(
+        cardTheme: const CardTheme(
           color: Color(0xFF1E1E32),
           elevation: 2,
         ),
