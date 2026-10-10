@@ -21,7 +21,7 @@ class OverDeckApp extends StatelessWidget {
           brightness: Brightness.dark,
           surface: const Color(0xFF1E293B),
         ),
-        cardTheme: const CardThemeData(
+        cardTheme: const CardTheme(
           color: Color(0xFF1E293B),
           elevation: 4,
         ),
