@@ -1,25 +1,26 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-  runApp(const OmniPopApp());
+  runApp(const BubbleDeckApp());
 }
 
-class OmniPopApp extends StatelessWidget {
-  const OmniPopApp({Key? key}) : super(key: key);
+class BubbleDeckApp extends StatelessWidget {
+  const BubbleDeckApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'OmniPop',
+      title: 'BubbleDeck',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        colorSchemeSeed: Colors.indigo,
-        brightness: Brightness.light,
-        scaffoldBackgroundColor: const Color(0xFFAFAFA),
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF0F172A),
+        colorScheme: const ColorScheme.dark(
+          primary: Colors.teal,
+          secondary: Colors.amber,
+          surface: Color(0xFF1E293B),
+        ),
       ),
       home: const MainHomeScreen(),
     );
@@ -27,7 +28,7 @@ class OmniPopApp extends StatelessWidget {
 }
 
 class MainHomeScreen extends StatefulWidget {
-  const MainHomeScreen({Key? key}) : super(key: key);
+  const MainHomeScreen({super.key});
 
   @override
   State<MainHomeScreen> createState() => _MainHomeScreenState();
@@ -35,1405 +36,1101 @@ class MainHomeScreen extends StatefulWidget {
 
 class _MainHomeScreenState extends State<MainHomeScreen> {
   int _selectedTabIndex = 0;
-  bool _isFloatingBubbleEnabled = true;
-  Offset _bubblePosition = const Offset(20, 180);
+  bool _isOverlayActive = true;
 
-  // Stats for user engagement tracking
-  int _decisionsMade = 14;
-  double _moneySaved = 42.50;
-  int _scriptsCopied = 9;
+  // App Global State
+  Offset _bubbleOffset = const Offset(20, 180);
+  bool _isBubbleExpanded = false;
+  Color _bubbleColor = Colors.teal;
+  double _bubbleOpacity = 0.9;
+  double _bubbleSize = 56.0;
+
+  // Permission states
+  bool _permDisplayOverApps = true;
+  bool _permClipboardRead = true;
+  bool _permAccessibility = true;
+  bool _permNotificationListener = false;
+
+  // Multi-Clipboard items
+  final List<Map<String, dynamic>> _clipboardItems = [
+    {
+      'id': '1',
+      'text': 'ACCT: 8940-1294-5501 (Commercial Bank Sri Lanka)',
+      'category': 'Banking',
+      'isPinned': true,
+      'time': '2 mins ago',
+    },
+    {
+      'id': '2',
+      'text': 'https://maps.google.com/?q=6.9271,79.8612',
+      'category': 'Links',
+      'isPinned': true,
+      'time': '15 mins ago',
+    },
+    {
+      'id': '3',
+      'text': 'Package tracking code: LK-99201-X9',
+      'category': 'Codes',
+      'isPinned': false,
+      'time': '1 hour ago',
+    },
+    {
+      'id': '4',
+      'text': 'Payment total: \$145.50 for monthly cloud utility bill',
+      'category': 'Finance',
+      'isPinned': false,
+      'time': '3 hours ago',
+    },
+  ];
+
+  // Text Expander Shortcuts
+  final List<Map<String, String>> _textExpanders = [
+    {
+      'trigger': '!acc',
+      'replacement': 'Bank Account: 8940-1294-5501 | Name: A. B. Perera',
+      'uses': '34',
+    },
+    {
+      'trigger': '!mail',
+      'replacement': 'dev.user@example.com',
+      'uses': '89',
+    },
+    {
+      'trigger': '!loc',
+      'replacement': 'No. 45, Main Street, Colombo 03, Sri Lanka',
+      'uses': '12',
+    },
+    {
+      'trigger': '!thanks',
+      'replacement': 'Thank you for your response! Let me know if you need anything else.',
+      'uses': '56',
+    },
+  ];
+
+  // Active floating tools
+  bool _toolMultiClip = true;
+  bool _toolExpander = true;
+  bool _toolQuickCalc = true;
+  bool _toolStickyNotes = true;
+
+  // Quick Sticky Note state
+  String _floatingStickyText = 'Call delivery driver regarding order #8812';
+
+  void _addClipboardItem(String text, String category) {
+    setState(() {
+      _clipboardItems.insert(0, {
+        'id': DateTime.now().millisecondsSinceEpoch.toString(),
+        'text': text,
+        'category': category,
+        'isPinned': false,
+        'time': 'Just now',
+      });
+    });
+  }
+
+  void _addTextExpander(String trigger, String replacement) {
+    setState(() {
+      _textExpanders.add({
+        'trigger': trigger.startsWith('!') ? trigger : '!$trigger',
+        'replacement': replacement,
+        'uses': '0',
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final Size screenSize = MediaQuery.of(context).size;
+    final pages = [
+      _buildSandboxTab(),
+      _buildClipboardTab(),
+      _buildExpanderTab(),
+      _buildToolsStudioTab(),
+      _buildPermissionsTab(),
+    ];
 
     return Scaffold(
-      body: Stack(
-        children: [
-          SafeArea(
-            child: Column(
-              children: [
-                _buildTopAppBar(),
-                _buildEngagementHeader(),
-                Expanded(
-                  child: IndexedStack(
-                    index: _selectedTabIndex,
-                    children: [
-                      FridgeMealScreen(onMealLogged: () {
-                        setState(() => _decisionsMade++);
-                      }),
-                      SocialScriptScreen(onScriptCopied: () {
-                        setState(() => _scriptsCopied++);
-                      }),
-                      PriceCompareScreen(onDealSaved: (amount) {
-                        setState(() => _moneySaved += amount);
-                      }),
-                      DecisionSpinnerScreen(onDecisionMade: () {
-                        setState(() => _decisionsMade++);
-                      }),
-                      BillSplitterScreen(onSplitDone: () {
-                        setState(() => _decisionsMade++);
-                      }),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Interactive Draggable Floating Assist Overlay Button
-          if (_isFloatingBubbleEnabled)
-            Positioned(
-              left: _bubblePosition.dx,
-              top: _bubblePosition.dy,
-              child: GestureDetector(
-                onPanUpdate: (details) {
-                  setState(() {
-                    double newX = _bubblePosition.dx + details.delta.dx;
-                    double newY = _bubblePosition.dy + details.delta.dy;
-                    // Keep floating bubble within bounds
-                    newX = newX.clamp(10.0, screenSize.width - 70.0);
-                    newY = newY.clamp(40.0, screenSize.height - 120.0);
-                    _bubblePosition = Offset(newX, newY);
-                  });
-                },
-                onTap: () => _openFloatingQuickSheet(context),
-                child: Container(
-                  width: 58,
-                  height: 58,
-                  decoration: BoxDecoration(
-                    color: Colors.indigo,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.indigo.withOpacity(0.4),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                  child: const Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Icon(Icons.widgets, color: Colors.white, size: 28),
-                      Positioned(
-                        right: 4,
-                        top: 4,
-                        child: CircleAvatar(
-                          radius: 5,
-                          backgroundColor: Colors.amber,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedTabIndex,
-        onTap: (index) => setState(() => _selectedTabIndex = index),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.indigo,
-        unselectedItemColor: Colors.grey,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
-        unselectedLabelStyle: const TextStyle(fontSize: 11),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.restaurant),
-            label: 'Meals',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat),
-            label: 'Scripts',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart),
-            label: 'Compare',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.casino),
-            label: 'Decision',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.receipt),
-            label: 'Bill Split',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTopAppBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE))),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.indigo.shade50,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.stars, color: Colors.indigo, size: 24),
-          ),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'OmniPop',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.indigo),
-                ),
-                Text(
-                  'Daily Micro-Assistant Active',
-                  style: TextStyle(fontSize: 11, color: Colors.grey),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          Row(
-            children: [
-              const Text('Floating Pop', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
-              Switch(
-                value: _isFloatingBubbleEnabled,
-                activeColor: Colors.indigo,
-                onChanged: (val) => setState(() => _isFloatingBubbleEnabled = val),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEngagementHeader() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.indigo.shade800,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildStatItem('Decisions', '$_decisionsMade', Icons.check_circle_outline),
-          Container(height: 20, width: 1, color: Colors.white70),
-          _buildStatItem('Saved', '\$${_moneySaved.toStringAsFixed(2)}', Icons.monetization_on),
-          Container(height: 20, width: 1, color: Colors.white70),
-          _buildStatItem('Scripts', '$_scriptsCopied', Icons.content_copy),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatItem(String label, String value, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, color: Colors.amber, size: 16),
-        const SizedBox(width: 4),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      appBar: AppBar(
+        title: Row(
           children: [
-            Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-            Text(label, style: const TextStyle(color: Colors.white70, fontSize: 10)),
-          ],
-        ),
-      ],
-    );
-  }
-
-  void _openFloatingQuickSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(20),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Row(
-              children: [
-                Icon(Icons.widgets, color: Colors.indigo),
-                SizedBox(width: 8),
-                Text('OmniPop Quick Tools Overlay', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              ],
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Instant access micro-helpers for real-time daily decisions',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                _buildQuickActionTile(
-                  context,
-                  title: 'Quick 50/50 Coin',
-                  subtitle: 'Heads or Tails',
-                  icon: Icons.monetization_on,
-                  color: Colors.amber.shade700,
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _showCoinFlipDialog(context);
-                  },
-                ),
-                _buildQuickActionTile(
-                  context,
-                  title: 'Awkward Text Solver',
-                  subtitle: 'Instant Polite Replies',
-                  icon: Icons.chat,
-                  color: Colors.teal,
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    setState(() => _selectedTabIndex = 1);
-                  },
-                ),
-                _buildQuickActionTile(
-                  context,
-                  title: 'Store Deal Checker',
-                  subtitle: 'Unit Price Check',
-                  icon: Icons.shopping_bag,
-                  color: Colors.purple,
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    setState(() => _selectedTabIndex = 2);
-                  },
-                ),
-                _buildQuickActionTile(
-                  context,
-                  title: 'Fridge Meal Idea',
-                  subtitle: 'Leftover Matcher',
-                  icon: Icons.restaurant_menu,
-                  color: Colors.orange,
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    setState(() => _selectedTabIndex = 0);
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickActionTile(
-    BuildContext context, {
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return SizedBox(
-      width: (MediaQuery.of(context).size.width - 50) / 2,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withOpacity(0.3)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(icon, color: color, size: 24),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            const Icon(Icons.widgets, color: Colors.teal),
+            const SizedBox(width: 8),
+            const Flexible(
+              child: Text(
+                'BubbleDeck',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                 overflow: TextOverflow.ellipsis,
               ),
-              Text(
-                subtitle,
-                style: TextStyle(fontSize: 10, color: Colors.grey.shade700),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showCoinFlipDialog(BuildContext context) {
-    bool isHeads = Random().nextBool();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Quick Decision Coin', textAlign: TextAlign.center),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(
-              radius: 40,
-              backgroundColor: isHeads ? Colors.amber : Colors.blueGrey,
-              child: Icon(
-                isHeads ? Icons.star : Icons.shield,
-                size: 40,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              isHeads ? 'HEADS - GO FOR IT!' : 'TAILS - WAIT / PASS',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
             ),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('OK'),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            margin: const EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              color: _isOverlayActive
+                  ? Colors.green.withOpacity(0.2)
+                  : Colors.grey.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: _isOverlayActive ? Colors.green : Colors.grey,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.circle,
+                  size: 10,
+                  color: _isOverlayActive ? Colors.green : Colors.grey,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  _isOverlayActive ? 'OVERLAY ON' : 'PAUSED',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: _isOverlayActive ? Colors.green : Colors.grey,
+                  ),
+                ),
+                Switch(
+                  value: _isOverlayActive,
+                  activeColor: Colors.teal,
+                  onChanged: (val) {
+                    setState(() {
+                      _isOverlayActive = val;
+                    });
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      body: pages[_selectedTabIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedTabIndex,
+        selectedItemColor: Colors.teal,
+        unselectedItemColor: Colors.grey,
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: const Color(0xFF1E293B),
+        onTap: (idx) {
+          setState(() {
+            _selectedTabIndex = idx;
+          });
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.touch_app),
+            label: 'Sandbox',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.content_copy),
+            label: 'Multi-Clip',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.bolt),
+            label: 'Expander',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.tune),
+            label: 'Studio',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.security),
+            label: 'System',
           ),
         ],
       ),
     );
   }
-}
 
-// ============================================================================
-// TAB 1: FRIDGE LEFTOVER MEAL MATCHER
-// ============================================================================
-class FridgeMealScreen extends StatefulWidget {
-  final VoidCallback onMealLogged;
-  const FridgeMealScreen({Key? key, required onMealLogged})
-      : onMealLogged = onMealLogged,
-        super(key: key);
-
-  @override
-  State<FridgeMealScreen> createState() => _FridgeMealScreenState();
-}
-
-class _FridgeMealScreenState extends State<FridgeMealScreen> {
-  final List<String> _availableIngredients = [
-    'Eggs', 'Rice', 'Bread', 'Cheese', 'Tomato', 'Milk', 'Chicken', 
-    'Pasta', 'Potato', 'Onion', 'Garlic', 'Butter', 'Canned Beans'
-  ];
-
-  final Set<String> _selectedIngredients = {'Eggs', 'Bread', 'Cheese'};
-
-  final List<Map<String, dynamic>> _allRecipes = [
-    {
-      'title': 'Cheesy Omelette Toast',
-      'time': '5 mins',
-      'difficulty': 'Easy',
-      'ingredients': ['Eggs', 'Bread', 'Cheese', 'Butter'],
-      'instructions': '1. Beat eggs with salt.\n2. Melt butter on pan and cook omelette.\n3. Add cheese and serve between toasted bread.',
-    },
-    {
-      'title': 'Quick Fried Rice',
-      'time': '8 mins',
-      'difficulty': 'Easy',
-      'ingredients': ['Rice', 'Eggs', 'Onion', 'Garlic'],
-      'instructions': '1. Sauté garlic and onion in hot pan.\n2. Scramble egg on side, mix with leftover rice.\n3. Season with soy sauce or salt.',
-    },
-    {
-      'title': 'Creamy Tomato Garlic Pasta',
-      'time': '12 mins',
-      'difficulty': 'Medium',
-      'ingredients': ['Pasta', 'Tomato', 'Garlic', 'Cheese', 'Milk'],
-      'instructions': '1. Boil pasta.\n2. Sauté minced garlic & tomato puree.\n3. Add splash of milk and stir in cheese.',
-    },
-    {
-      'title': 'Loaded Stuffed Baked Potato',
-      'time': '15 mins',
-      'difficulty': 'Easy',
-      'ingredients': ['Potato', 'Cheese', 'Butter', 'Onion'],
-      'instructions': '1. Microwave potato for 6 mins until soft.\n2. Slice open, top with butter, chopped onion, and melted cheese.',
-    },
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    List<Map<String, dynamic>> matchingRecipes = _getMatchingRecipes();
-
+  // TAB 1: Live Interactive Overlay Sandbox
+  Widget _buildSandboxTab() {
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Fridge Leftover Meal Matcher',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Select ingredients you currently have to discover fast recipes.',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const SizedBox(height: 12),
-
-            // Ingredient Selector Chips
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              crossAxisAlignment: WrapCrossAxisAlignment.center,
-              children: _availableIngredients.map((item) {
-                final isSelected = _selectedIngredients.contains(item);
-                return FilterChip(
-                  label: Text(item, style: TextStyle(fontSize: 12, color: isSelected ? Colors.white : Colors.black87)),
-                  selected: isSelected,
-                  selectedColor: Colors.indigo,
-                  backgroundColor: Colors.grey.shade200,
-                  onSelected: (bool selected) {
-                    setState(() {
-                      if (selected) {
-                        _selectedIngredients.add(item);
-                      } else {
-                        _selectedIngredients.remove(item);
-                      }
-                    });
-                  },
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 20),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Suggested Recipes (${matchingRecipes.length})',
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                ),
-                if (_selectedIngredients.isNotEmpty)
-                  TextButton(
-                    onPressed: () => setState(() => _selectedIngredients.clear()),
-                    child: const Text('Clear All', style: TextStyle(fontSize: 12)),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-
-            if (matchingRecipes.isEmpty)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Column(
-                  children: [
-                    Icon(Icons.search_off, color: Colors.orange, size: 36),
-                    SizedBox(height: 8),
-                    Text(
-                      'No matching recipes found',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+            // Informational header
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.teal.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.teal.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info, color: Colors.teal),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Drag the floating bubble around the phone sandbox below! Tap it to test live dynamic floating actions.',
+                      style: const TextStyle(fontSize: 13, color: Colors.white70),
+                      softWrap: true,
                     ),
-                    Text(
-                      'Try selecting more basic ingredients like Rice, Eggs, or Bread.',
-                      style: TextStyle(fontSize: 11, color: Colors.grey),
-                      textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Phone Simulator Sandbox Frame
+            Center(
+              child: Container(
+                width: 320,
+                height: 480,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF020617),
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: Colors.grey.shade700, width: 4),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black87,
+                      blurRadius: 16,
+                      offset: Offset(0, 8),
                     ),
                   ],
                 ),
-              )
-            else
-              Column(
-                children: matchingRecipes.map((recipe) => _buildRecipeCard(recipe)).toList(),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  List<Map<String, dynamic>> _getMatchingRecipes() {
-    return _allRecipes.where((recipe) {
-      List<String> reqs = recipe['ingredients'] as List<String>;
-      // Check if at least 2 ingredients match
-      int matchCount = reqs.where((i) => _selectedIngredients.contains(i)).length;
-      return matchCount >= 2;
-    }).toList();
-  }
-
-  Widget _buildRecipeCard(Map<String, dynamic> recipe) {
-    List<String> ingredients = recipe['ingredients'] as List<String>;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 2,
-      child: ExpansionTile(
-        leading: CircleAvatar(
-          backgroundColor: Colors.indigo.shade50,
-          child: const Icon(Icons.restaurant, color: Colors.indigo),
-        ),
-        title: Text(recipe['title'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-        subtitle: Row(
-          children: [
-            const Icon(Icons.schedule, size: 12, color: Colors.grey),
-            const SizedBox(width: 4),
-            Text('${recipe['time']} • ${recipe['difficulty']}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
-          ],
-        ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Required Ingredients:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 6,
-                  children: ingredients.map((ing) {
-                    bool hasIt = _selectedIngredients.contains(ing);
-                    return Chip(
-                      labelStyle: TextStyle(fontSize: 10, color: hasIt ? Colors.green.shade900 : Colors.red.shade900),
-                      backgroundColor: hasIt ? Colors.green.shade50 : Colors.red.shade50,
-                      avatar: Icon(
-                        hasIt ? Icons.check_circle : Icons.cancel,
-                        size: 12,
-                        color: hasIt ? Colors.green : Colors.red,
-                      ),
-                      label: Text(ing),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 12),
-                const Text('Quick Instructions:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                const SizedBox(height: 4),
-                Text(
-                  recipe['instructions'],
-                  style: const TextStyle(fontSize: 12, height: 1.4),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.indigo,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    onPressed: () {
-                      widget.onMealLogged();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Cooked ${recipe['title']}! Added to history.'),
-                          backgroundColor: Colors.green,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: Stack(
+                    children: [
+                      // Simulated background phone wallpaper & mock app interface
+                      Positioned.fill(
+                        child: Column(
+                          children: [
+                            // Mock Phone Status Bar
+                            Container(
+                              height: 28,
+                              color: Colors.black87,
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '09:41',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.wifi, size: 12, color: Colors.white),
+                                      SizedBox(width: 4),
+                                      Icon(Icons.battery_full, size: 12, color: Colors.white),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Simulated Chat App Screen Background
+                            Expanded(
+                              child: Container(
+                                color: const Color(0xFF0F172A),
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF1E293B),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Row(
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 12,
+                                            backgroundColor: Colors.teal,
+                                            child: Text('W', style: TextStyle(fontSize: 10, color: Colors.white)),
+                                          ),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'WhatsApp Chat Simulation',
+                                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildMockChatMessage('Hey! Can you send me your bank details & tracking ID?'),
+                                    const SizedBox(height: 8),
+                                    _buildMockChatMessage('Tap the floating bubble to paste instantly without switching apps!', isUser: true),
+                                    const Spacer(),
+                                    // Mock text input bar
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF1E293B),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: const Row(
+                                        children: [
+                                          Icon(Icons.emoji_emotions, size: 16, color: Colors.grey),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'Type a message...',
+                                            style: TextStyle(fontSize: 11, color: Colors.grey),
+                                          ),
+                                          Spacer(),
+                                          Icon(Icons.send, size: 16, color: Colors.teal),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      );
-                    },
-                    icon: const Icon(Icons.check, size: 16),
-                    label: const Text('Mark as Cooked Today', style: TextStyle(fontSize: 12)),
+                      ),
+
+                      // Interactive Draggable Floating Bubble Overlay
+                      if (_isOverlayActive)
+                        Positioned(
+                          left: _bubbleOffset.dx,
+                          top: _bubbleOffset.dy,
+                          child: GestureDetector(
+                            onPanUpdate: (details) {
+                              setState(() {
+                                double newX = _bubbleOffset.dx + details.delta.dx;
+                                double newY = _bubbleOffset.dy + details.delta.dy;
+                                // Clamp within simulated screen boundaries
+                                newX = newX.clamp(0.0, 260.0);
+                                newY = newY.clamp(30.0, 410.0);
+                                _bubbleOffset = Offset(newX, newY);
+                              });
+                            },
+                            onTap: () {
+                              setState(() {
+                                _isBubbleExpanded = !_isBubbleExpanded;
+                              });
+                            },
+                            child: Material(
+                              elevation: 8,
+                              shape: const CircleBorder(),
+                              color: _bubbleColor.withOpacity(_bubbleOpacity),
+                              child: Container(
+                                width: _bubbleSize,
+                                height: _bubbleSize,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  _isBubbleExpanded ? Icons.close : Icons.layers,
+                                  color: Colors.white,
+                                  size: 26,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                      // Expanded Dynamic Floating Action Drawer Overlay
+                      if (_isOverlayActive && _isBubbleExpanded)
+                        Positioned(
+                          left: (_bubbleOffset.dx > 130) ? _bubbleOffset.dx - 180 : _bubbleOffset.dx + 10,
+                          top: (_bubbleOffset.dy > 250) ? _bubbleOffset.dy - 180 : _bubbleOffset.dy + 10,
+                          child: Container(
+                            width: 200,
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1E293B).withOpacity(0.95),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.teal.withOpacity(0.6), width: 1.5),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black87,
+                                  blurRadius: 12,
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Row(
+                                      children: [
+                                        Icon(Icons.bolt, size: 14, color: Colors.amber),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'Quick Actions',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _isBubbleExpanded = false;
+                                        });
+                                      },
+                                      child: const Icon(Icons.close, size: 14, color: Colors.grey),
+                                    ),
+                                  ],
+                                ),
+                                const Divider(height: 12, color: Colors.white70),
+
+                                // Action Item 1: Multi Clipboard Stack
+                                if (_toolMultiClip) ...[
+                                  _buildFloatingActionItem(
+                                    icon: Icons.content_paste,
+                                    label: 'Paste Recent Bank',
+                                    color: Colors.teal,
+                                    onTap: () {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Pasted bank details to current app!'),
+                                          duration: Duration(seconds: 1),
+                                        ),
+                                      );
+                                      setState(() {
+                                        _isBubbleExpanded = false;
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(height: 6),
+                                ],
+
+                                // Action Item 2: Dynamic Expander Trigger
+                                if (_toolExpander) ...[
+                                  _buildFloatingActionItem(
+                                    icon: Icons.text_fields,
+                                    label: 'Insert !mail Macro',
+                                    color: Colors.amber,
+                                    onTap: () {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Expanded !mail -> dev.user@example.com'),
+                                          duration: Duration(seconds: 1),
+                                        ),
+                                      );
+                                      setState(() {
+                                        _isBubbleExpanded = false;
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(height: 6),
+                                ],
+
+                                // Action Item 3: Quick Sticky Note Peek
+                                if (_toolStickyNotes) ...[
+                                  _buildFloatingActionItem(
+                                    icon: Icons.sticky_note_2,
+                                    label: 'Read Floating Note',
+                                    color: Colors.orange,
+                                    onTap: () {
+                                      _showStickyNoteModal(context);
+                                    },
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 20),
+
+            // Live Diagnostics card
+            Card(
+              color: const Color(0xFF1E293B),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Floating Overlay Performance',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildStatChip(Icons.memory, 'Memory', '14 MB'),
+                        _buildStatChip(Icons.speed, 'Latency', '2 ms'),
+                        _buildStatChip(Icons.touch_app, 'Triggers Today', '128'),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
-}
 
-// ============================================================================
-// TAB 2: SOCIAL SCRIPT & AWKWARD RESPONSE GENERATOR
-// ============================================================================
-class SocialScriptScreen extends StatefulWidget {
-  final VoidCallback onScriptCopied;
-  const SocialScriptScreen({Key? key, required onScriptCopied})
-      : onScriptCopied = onScriptCopied,
-        super(key: key);
+  Widget _buildMockChatMessage(String text, {bool isUser = false}) {
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        constraints: const BoxConstraints(maxWidth: 200),
+        decoration: BoxDecoration(
+          color: isUser ? Colors.teal.shade800 : const Color(0xFF334155),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(fontSize: 10, color: Colors.white),
+          softWrap: true,
+        ),
+      ),
+    );
+  }
 
-  @override
-  State<SocialScriptScreen> createState() => _SocialScriptScreenState();
-}
+  Widget _buildFloatingActionItem({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(fontSize: 11, color: Colors.white),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-class _SocialScriptScreenState extends State<SocialScriptScreen> {
-  String _selectedCategory = 'Declining Invitations';
-  String _selectedTone = 'Polite & Kind';
+  Widget _buildStatChip(IconData icon, String label, String value) {
+    return Column(
+      children: [
+        Icon(icon, size: 18, color: Colors.teal),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+        Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
 
-  final List<String> _categories = [
-    'Declining Invitations',
-    'Asking for Overdue Money',
-    'Late Reply Apology',
-    'Work Boundary / Overtime',
-    'Rescheduling Plans',
-  ];
-
-  final List<String> _tones = ['Polite & Kind', 'Firm & Direct', 'Witty & Lighthearted', 'Professional'];
-
-  final Map<String, Map<String, String>> _scriptDatabase = {
-    'Declining Invitations': {
-      'Polite & Kind': "Hey! Thanks so much for inviting me. I won't be able to make it this time due to prior commitments, but I really appreciate you thinking of me! Hope you all have an amazing time!",
-      'Firm & Direct': "Thanks for the invite, but I won't be able to come. My schedule is full for that day.",
-      'Witty & Lighthearted': "I'd love to say yes, but my social battery and schedule are begging for mercy today! Catch you next time for sure!",
-      'Professional': "Thank you for the invitation. Regrettably, I have a prior commitment and will be unable to attend. I appreciate your thoughtful invitation.",
-    },
-    'Asking for Overdue Money': {
-      'Polite & Kind': "Hey! Hope you're having a good week. Just following up on the \$[AMOUNT] from [EVENT/MEAL]. Whenever you have a quick moment, could you send that over? Thanks a lot!",
-      'Firm & Direct': "Hi, just dropping a quick reminder for the \$[AMOUNT] owed for [EVENT]. Please send it through Venmo/Zelle today.",
-      'Witty & Lighthearted': "Hey! My wallet is sending out a polite SOS call regarding that \$[AMOUNT] from the other day! Let me know when you send it over!",
-      'Professional': "Hello, I am following up regarding the outstanding amount of \$[AMOUNT] for [EVENT]. Please transfer the balance when convenient.",
-    },
-    'Late Reply Apology': {
-      'Polite & Kind': "Hi! So sorry for the delayed reply—it's been a super hectic couple of days. Regarding your message...",
-      'Firm & Direct': "Apologies for the delay in responding. Here are the details you requested...",
-      'Witty & Lighthearted': "My phone has been holding my messages hostage! Sorry for the delay!",
-      'Professional': "Thank you for your patience. I am writing to respond to your inquiry...",
-    },
-    'Work Boundary / Overtime': {
-      'Polite & Kind': "Thanks for reaching out! I've wrapped up for today, but I will make this my top priority first thing tomorrow morning.",
-      'Firm & Direct': "I am currently offline for the day. I will address this during business hours tomorrow.",
-      'Witty & Lighthearted': "My brain has officially entered weekend mode! I'll dive straight into this tomorrow morning.",
-      'Professional': "I have received your request. I am currently away from my desk and will review this thoroughly during standard working hours tomorrow.",
-    },
-    'Rescheduling Plans': {
-      'Polite & Kind': "Hey! I'm so sorry, but something urgent came up and I won't be able to make today work. Can we reschedule for later this week?",
-      'Firm & Direct': "I need to move our meeting scheduled for today. Are you free same time next Tuesday?",
-      'Witty & Lighthearted': "Life threw a plot twist my way today! Can we take a raincheck and reschedule?",
-      'Professional': "Due to an unexpected scheduling conflict, I need to request a postponement of our scheduled meeting. Please let me know your availability for next week.",
-    },
-  };
-
-  final TextEditingController _amountController = TextEditingController(text: "25.00");
-
-  @override
-  Widget build(BuildContext context) {
-    String script = _scriptDatabase[_selectedCategory]?[_selectedTone] ?? "Select options above.";
-    if (script.contains("\$[AMOUNT]")) {
-      script = script.replaceAll("\$[AMOUNT]", "\$${_amountController.text.isEmpty ? "0.00" : _amountController.text}");
-    }
-
+  // TAB 2: Multi-Clipboard History Stack Vault
+  Widget _buildClipboardTab() {
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Social Script Generator',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Multi-Clipboard Vault',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => _showAddClipDialog(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('New Clip'),
+                ),
+              ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             const Text(
-              'Solve awkward social texts with pre-formatted, polite, or direct scripts.',
+              'Items copied anywhere on your phone are stacked floatingly in real-time.',
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 16),
 
-            const Text('Scenario Category:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.grey.shade300),
+            // Search Bar
+            TextField(
+              decoration: const InputDecoration(
+                hintText: 'Search stored clips & numbers...',
+                prefixIcon: Icon(Icons.search, color: Colors.teal),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(12)),
+                ),
+                contentPadding: EdgeInsets.symmetric(vertical: 10),
               ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: _selectedCategory,
-                  isExpanded: true,
-                  items: _categories
-                      .map((cat) => DropdownMenuItem(value: cat, child: Text(cat, style: const TextStyle(fontSize: 13))))
-                      .toList(),
-                  onChanged: (val) {
-                    if (val != null) setState(() => _selectedCategory = val);
-                  },
+            ),
+            const SizedBox(height: 16),
+
+            // Stored Clipboard Cards
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _clipboardItems.length,
+              itemBuilder: (context, index) {
+                final item = _clipboardItems[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  color: const Color(0xFF1E293B),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.teal.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                item['category'],
+                                style: const TextStyle(fontSize: 10, color: Colors.teal, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              item['time'],
+                              style: const TextStyle(fontSize: 10, color: Colors.grey),
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                item['isPinned'] ? Icons.star : Icons.star_border,
+                                size: 18,
+                                color: item['isPinned'] ? Colors.amber : Colors.grey,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  item['isPinned'] = !item['isPinned'];
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          item['text'],
+                          style: const TextStyle(fontSize: 13, color: Colors.white),
+                          softWrap: true,
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton.icon(
+                              onPressed: () {
+                                setState(() {
+                                  _clipboardItems.removeAt(index);
+                                });
+                              },
+                              icon: const Icon(Icons.delete, size: 14, color: Colors.grey),
+                              label: const Text('Remove', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Copied clip to active system clipboard!')),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.teal.shade700,
+                                foregroundColor: Colors.white,
+                              ),
+                              icon: const Icon(Icons.copy, size: 14),
+                              label: const Text('Copy Quick', style: TextStyle(fontSize: 11)),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // TAB 3: Text Expander Macros
+  Widget _buildExpanderTab() {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Text Expander Engine',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => _showAddExpanderDialog(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.amber,
+                    foregroundColor: Colors.black,
+                  ),
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('New Macro'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Type short triggers anywhere on screen to replace them instantly with full snippets.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+
+            // Active Expanders List
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _textExpanders.length,
+              itemBuilder: (context, index) {
+                final macro = _textExpanders[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  color: const Color(0xFF1E293B),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.amber.withOpacity(0.2),
+                      child: const Icon(Icons.bolt, color: Colors.amber, size: 20),
+                    ),
+                    title: Text(
+                      macro['trigger']!,
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.amber),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 4),
+                        Text(
+                          macro['replacement']!,
+                          style: const TextStyle(fontSize: 12, color: Colors.white70),
+                          softWrap: true,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Used ${macro['uses']} times',
+                          style: const TextStyle(fontSize: 10, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.grey, size: 18),
+                      onPressed: () {
+                        setState(() {
+                          _textExpanders.removeAt(index);
+                        });
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // TAB 4: Floating Tools & Customization Studio
+  Widget _buildToolsStudioTab() {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Floating Overlay Studio',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Customize bubble appearance, active overlay widgets, and opacity.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+
+            // Active Modules Toggle
+            Card(
+              color: const Color(0xFF1E293B),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Enabled Overlay Utilities',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    const SizedBox(height: 8),
+                    SwitchListTile(
+                      title: const Text('Multi-Clipboard Stack', style: TextStyle(fontSize: 13)),
+                      subtitle: const Text('Captures copied text items', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                      value: _toolMultiClip,
+                      activeColor: Colors.teal,
+                      onChanged: (val) => setState(() => _toolMultiClip = val),
+                    ),
+                    SwitchListTile(
+                      title: const Text('Dynamic Text Expander', style: TextStyle(fontSize: 13)),
+                      subtitle: const Text('Replaces !shortcuts auto-magically', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                      value: _toolExpander,
+                      activeColor: Colors.teal,
+                      onChanged: (val) => setState(() => _toolExpander = val),
+                    ),
+                    SwitchListTile(
+                      title: const Text('Quick Floating Calculator', style: TextStyle(fontSize: 13)),
+                      subtitle: const Text('Mini calculation pad over active apps', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                      value: _toolQuickCalc,
+                      activeColor: Colors.teal,
+                      onChanged: (val) => setState(() => _toolQuickCalc = val),
+                    ),
+                    SwitchListTile(
+                      title: const Text('Sticky Floating Reminders', style: TextStyle(fontSize: 13)),
+                      subtitle: const Text('Pins micro notes over screen', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                      value: _toolStickyNotes,
+                      activeColor: Colors.teal,
+                      onChanged: (val) => setState(() => _toolStickyNotes = val),
+                    ),
+                  ],
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
 
-            if (_selectedCategory == 'Asking for Overdue Money') ...[
-              const Text('Amount Owed (\$):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _amountController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  hintText: 'e.g. 25.00',
+            // Bubble Styling Customizer
+            Card(
+              color: const Color(0xFF1E293B),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Bubble Aesthetics',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('Bubble Primary Theme Color', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 12,
+                      crossAxisAlignment: WrapCrossAxisAlignment.center,
+                      children: [
+                        _buildColorOption(Colors.teal),
+                        _buildColorOption(Colors.amber),
+                        _buildColorOption(Colors.indigo),
+                        _buildColorOption(Colors.purple),
+                        _buildColorOption(Colors.orange),
+                        _buildColorOption(Colors.blue),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Text('Bubble Opacity: ${(_bubbleOpacity * 100).round()}%', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    Slider(
+                      value: _bubbleOpacity,
+                      min: 0.3,
+                      max: 1.0,
+                      activeColor: Colors.teal,
+                      onChanged: (val) => setState(() => _bubbleOpacity = val),
+                    ),
+                    Text('Bubble Diameter: ${_bubbleSize.round()} px', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    Slider(
+                      value: _bubbleSize,
+                      min: 40.0,
+                      max: 72.0,
+                      activeColor: Colors.teal,
+                      onChanged: (val) => setState(() => _bubbleSize = val),
+                    ),
+                  ],
                 ),
-                onChanged: (v) => setState(() {}),
               ),
-              const SizedBox(height: 12),
-            ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-            const Text('Desired Tone:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: _tones.map((tone) {
-                bool isSel = _selectedTone == tone;
-                return ChoiceChip(
-                  label: Text(tone, style: TextStyle(fontSize: 11, color: isSel ? Colors.white : Colors.black87)),
-                  selected: isSel,
-                  selectedColor: Colors.teal,
-                  onSelected: (selected) {
-                    if (selected) setState(() => _selectedTone = tone);
-                  },
-                );
-              }).toList(),
+  Widget _buildColorOption(Color color) {
+    bool isSelected = _bubbleColor == color;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _bubbleColor = color;
+        });
+      },
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: isSelected ? Colors.white : Colors.transparent,
+            width: 3,
+          ),
+        ),
+        child: isSelected ? const Icon(Icons.check, size: 18, color: Colors.white) : null,
+      ),
+    );
+  }
+
+  // TAB 5: Permissions & Diagnostic Center
+  Widget _buildPermissionsTab() {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'System Integration & Permissions',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'BubbleDeck requires specific Android/iOS system permissions to display overlays above apps.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+
+            _buildPermissionTile(
+              title: 'Display Over Other Apps',
+              description: 'Allows the floating bubble action pad to stay visible over WhatsApp, Chrome, etc.',
+              isGranted: _permDisplayOverApps,
+              onChanged: (val) => setState(() => _permDisplayOverApps = val),
+            ),
+            const SizedBox(height: 10),
+            _buildPermissionTile(
+              title: 'Clipboard Auto-Sync',
+              description: 'Automatically intercepts copied text into your multi-clipboard stack.',
+              isGranted: _permClipboardRead,
+              onChanged: (val) => setState(() => _permClipboardRead = val),
+            ),
+            const SizedBox(height: 10),
+            _buildPermissionTile(
+              title: 'Accessibility Service (Text Expander)',
+              description: 'Detects dynamic text macro triggers like !acc and expands them automatically.',
+              isGranted: _permAccessibility,
+              onChanged: (val) => setState(() => _permAccessibility = val),
+            ),
+            const SizedBox(height: 10),
+            _buildPermissionTile(
+              title: 'Notification Reader',
+              description: 'Captures OTPs and tracking codes directly into floating actions.',
+              isGranted: _permNotificationListener,
+              onChanged: (val) => setState(() => _permNotificationListener = val),
             ),
             const SizedBox(height: 20),
 
-            // Script Box Result
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.teal.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.teal.shade200),
+            Card(
+              color: const Color(0xFF1E293B),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.security, color: Colors.teal),
+                        SizedBox(width: 8),
+                        Text(
+                          'Privacy & Security Guarantee',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'All clipboard items, text macros, and notes stay strictly on your local device. No data is ever sent to external cloud servers.',
+                      style: TextStyle(fontSize: 12, color: Colors.white70),
+                      softWrap: true,
+                    ),
+                  ],
+                ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPermissionTile({
+    required String title,
+    required String description,
+    required bool isGranted,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Card(
+      color: const Color(0xFF1E293B),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Icon(
+              isGranted ? Icons.check_circle : Icons.warning,
+              color: isGranted ? Colors.green : Colors.amber,
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.chat_bubble_outline, color: Colors.teal.shade800, size: 18),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Ready Script',
-                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.teal.shade900, fontSize: 13),
-                          ),
-                        ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.teal,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(_selectedTone, style: const TextStyle(color: Colors.white, fontSize: 10)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  SelectableText(
-                    script,
-                    style: const TextStyle(fontSize: 13, height: 1.4, color: Colors.black87),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.teal,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          ),
-                          onPressed: () {
-                            Clipboard.setData(ClipboardData(text: script));
-                            widget.onScriptCopied();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Copied script to clipboard!'),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.copy, size: 16),
-                          label: const Text('Copy to Clipboard', style: TextStyle(fontSize: 12)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================================
-// TAB 3: SMART GROCERY UNIT PRICE COMPARISON
-// ============================================================================
-class PriceCompareScreen extends StatefulWidget {
-  final Function(double) onDealSaved;
-  const PriceCompareScreen({Key? key, required this.onDealSaved}) : super(key: key);
-
-  @override
-  State<PriceCompareScreen> createState() => _PriceCompareScreenState();
-}
-
-class _PriceCompareScreenState extends State<PriceCompareScreen> {
-  final TextEditingController _priceAController = TextEditingController(text: "8.99");
-  final TextEditingController _unitAController = TextEditingController(text: "500");
-
-  final TextEditingController _priceBController = TextEditingController(text: "14.50");
-  final TextEditingController _unitBController = TextEditingController(text: "900");
-
-  String _unitType = 'Grams (g)';
-  final List<String> _unitTypes = ['Grams (g)', 'Ounces (oz)', 'Milliliters (ml)', 'Count / Items'];
-
-  @override
-  Widget build(BuildContext context) {
-    double priceA = double.tryParse(_priceAController.text) ?? 0;
-    double unitA = double.tryParse(_unitAController.text) ?? 1;
-
-    double priceB = double.tryParse(_priceBController.text) ?? 0;
-    double unitB = double.tryParse(_unitBController.text) ?? 1;
-
-    double unitPriceA = priceA / (unitA > 0 ? unitA : 1);
-    double unitPriceB = priceB / (unitB > 0 ? unitB : 1);
-
-    bool isABetter = unitPriceA < unitPriceB;
-    double diffPercent = 0.0;
-    if (unitPriceA > 0 && unitPriceB > 0) {
-      double higher = isABetter ? unitPriceB : unitPriceA;
-      double lower = isABetter ? unitPriceA : unitPriceB;
-      diffPercent = ((higher - lower) / higher) * 100;
-    }
-
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Grocery Deal & Unit Price Saver',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Find out which box or deal is actually cheaper per unit before buying.',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const SizedBox(height: 12),
-
-            Row(
-              children: [
-                const Text('Measurement Unit: ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: _unitType,
-                        isDense: true,
-                        items: _unitTypes
-                            .map((u) => DropdownMenuItem(value: u, child: Text(u, style: const TextStyle(fontSize: 12))))
-                            .toList(),
-                        onChanged: (val) {
-                          if (val != null) setState(() => _unitType = val);
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            Row(
-              children: [
-                Expanded(child: _buildItemInputBox('Option A', _priceAController, _unitAController, isABetter)),
-                const SizedBox(width: 12),
-                Expanded(child: _buildItemInputBox('Option B', _priceBController, _unitBController, !isABetter)),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Summary Results Box
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: isABetter ? Colors.green.shade50 : Colors.purple.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: isABetter ? Colors.green.shade300 : Colors.purple.shade300),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.stars, color: isABetter ? Colors.green.shade800 : Colors.purple.shade800),
-                      const SizedBox(width: 6),
-                      Text(
-                        isABetter ? 'OPTION A IS CHEAPER!' : 'OPTION B IS CHEAPER!',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: isABetter ? Colors.green.shade900 : Colors.purple.shade900,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
                   Text(
-                    'Saves ~${diffPercent.toStringAsFixed(1)}% per unit compared to the other package.',
-                    style: const TextStyle(fontSize: 12, color: Colors.black87),
-                    textAlign: TextAlign.center,
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildUnitPriceText('A Unit Cost', '\$${unitPriceA.toStringAsFixed(4)}'),
-                      _buildUnitPriceText('B Unit Cost', '\$${unitPriceB.toStringAsFixed(4)}'),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isABetter ? Colors.green.shade800 : Colors.purple.shade800,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    onPressed: () {
-                      double savedApprox = (priceA - priceB).abs() * 0.25;
-                      if (savedApprox <= 0) savedApprox = 1.20;
-                      widget.onDealSaved(savedApprox);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Logged \$${savedApprox.toStringAsFixed(2)} savings!'),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.bookmark, size: 16),
-                    label: const Text('Log Deal & Add Savings', style: TextStyle(fontSize: 12)),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildItemInputBox(
-    String title,
-    TextEditingController priceCtrl,
-    TextEditingController unitCtrl,
-    bool isWinner,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isWinner ? Colors.green : Colors.grey.shade300, width: isWinner ? 2 : 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              if (isWinner)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(8)),
-                  child: const Text('BEST VALUE', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-                ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          const Text('Price (\$)', style: TextStyle(fontSize: 11, color: Colors.grey)),
-          const SizedBox(height: 4),
-          TextField(
-            controller: priceCtrl,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              isDense: true,
-            ),
-            onChanged: (v) => setState(() {}),
-          ),
-          const SizedBox(height: 10),
-          const Text('Qty / Size', style: TextStyle(fontSize: 11, color: Colors.grey)),
-          const SizedBox(height: 4),
-          TextField(
-            controller: unitCtrl,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              isDense: true,
-            ),
-            onChanged: (v) => setState(() {}),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUnitPriceText(String title, String val) {
-    return Column(
-      children: [
-        Text(title, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-        Text(val, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-      ],
-    );
-  }
-}
-
-// ============================================================================
-// TAB 4: DECISION SPINNER & ARENA
-// ============================================================================
-class DecisionSpinnerScreen extends StatefulWidget {
-  final VoidCallback onDecisionMade;
-  const DecisionSpinnerScreen({Key? key, required this.onDecisionMade}) : super(key: key);
-
-  @override
-  State<DecisionSpinnerScreen> createState() => _DecisionSpinnerScreenState();
-}
-
-class _DecisionSpinnerScreenState extends State<DecisionSpinnerScreen> {
-  final List<String> _options = ['Pizza', 'Sushi', 'Burgers', 'Tacos', 'Home Cooked'];
-  final TextEditingController _addOptionController = TextEditingController();
-  String? _winningOption;
-  bool _isSpinning = false;
-
-  void _spinChoice() async {
-    if (_options.isEmpty) return;
-    setState(() {
-      _isSpinning = true;
-      _winningOption = null;
-    });
-
-    await Future.delayed(const Duration(milliseconds: 1200));
-
-    final random = Random();
-    final selected = _options[random.nextInt(_options.length)];
-
-    setState(() {
-      _winningOption = selected;
-      _isSpinning = false;
-    });
-    widget.onDecisionMade();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Micro-Decision Arena',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Stop overthinking micro-choices. Add options and let the engine decide!',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _addOptionController,
-                    decoration: const InputDecoration(
-                      hintText: 'Add new option (e.g. Thai Food)...',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      isDense: true,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.indigo,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  ),
-                  onPressed: () {
-                    if (_addOptionController.text.trim().isNotEmpty) {
-                      setState(() {
-                        _options.add(_addOptionController.text.trim());
-                        _addOptionController.clear();
-                      });
-                    }
-                  },
-                  child: const Text('Add'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            const Text('Current Choice Pool:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: _options.map((opt) {
-                return Chip(
-                  label: Text(opt, style: const TextStyle(fontSize: 12)),
-                  backgroundColor: Colors.indigo.shade50,
-                  deleteIcon: const Icon(Icons.close, size: 14),
-                  onDeleted: () {
-                    setState(() => _options.remove(opt));
-                  },
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 24),
-
-            // Spin Arena Display
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.amber.shade50,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.amber.shade300),
-              ),
-              child: Column(
-                children: [
-                  Icon(
-                    _isSpinning ? Icons.refresh : Icons.casino,
-                    size: 48,
-                    color: Colors.amber.shade900,
-                  ),
-                  const SizedBox(height: 12),
-                  if (_isSpinning)
-                    const Text('Randomizing choice...', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))
-                  else if (_winningOption != null)
-                    Column(
-                      children: [
-                        const Text('DECISION MADE:', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                        const SizedBox(height: 4),
-                        Text(
-                          _winningOption!,
-                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    )
-                  else
-                    const Text('Tap below to make a quick choice!', style: TextStyle(fontSize: 13, color: Colors.black87)),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 46,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.amber.shade800,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                      onPressed: _isSpinning ? null : _spinChoice,
-                      icon: const Icon(Icons.play_arrow),
-                      label: const Text('PICK FOR ME NOW', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================================
-// TAB 5: FAIR BILL & ITEMIZED SPLITTER
-// ============================================================================
-class BillSplitterScreen extends StatefulWidget {
-  final VoidCallback onSplitDone;
-  const BillSplitterScreen({Key? key, required this.onSplitDone}) : super(key: key);
-
-  @override
-  State<BillSplitterScreen> createState() => _BillSplitterScreenState();
-}
-
-class _BillSplitterScreenState extends State<BillSplitterScreen> {
-  final TextEditingController _totalBillController = TextEditingController(text: "120.00");
-  int _peopleCount = 4;
-  double _tipPercentage = 15.0;
-
-  @override
-  Widget build(BuildContext context) {
-    double totalBill = double.tryParse(_totalBillController.text) ?? 0.0;
-    double tipAmount = totalBill * (_tipPercentage / 100);
-    double finalTotal = totalBill + tipAmount;
-    double perPerson = _peopleCount > 0 ? finalTotal / _peopleCount : 0.0;
-
-    String summaryString = "Group Bill Split Summary:\n"
-        "Total Bill: \$${totalBill.toStringAsFixed(2)}\n"
-        "Tip (${_tipPercentage.toInt()}%): \$${tipAmount.toStringAsFixed(2)}\n"
-        "Grand Total: \$${finalTotal.toStringAsFixed(2)}\n"
-        "--------------------\n"
-        "Each Person Pays ($_peopleCount people): \$${perPerson.toStringAsFixed(2)}";
-
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Fair Bill & Tip Splitter',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Instantly split dining or event bills fairly with tips and shareable summary.',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-
-            const Text('Total Bill Amount (\$):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-            const SizedBox(height: 6),
-            TextField(
-              controller: _totalBillController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.monetization_on),
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              ),
-              onChanged: (v) => setState(() {}),
-            ),
-            const SizedBox(height: 16),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Number of People:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.remove_circle_outline),
-                      onPressed: () {
-                        if (_peopleCount > 1) setState(() => _peopleCount--);
-                      },
-                    ),
-                    Text('$_peopleCount', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    IconButton(
-                      icon: const Icon(Icons.add_circle_outline),
-                      onPressed: () => setState(() => _peopleCount++),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Tip Percentage:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                Text('${_tipPercentage.toInt()}%', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo)),
-              ],
-            ),
-            Slider(
-              value: _tipPercentage,
-              min: 0,
-              max: 30,
-              divisions: 6,
-              activeColor: Colors.indigo,
-              label: '${_tipPercentage.toInt()}%',
-              onChanged: (val) => setState(() => _tipPercentage = val),
-            ),
-            const SizedBox(height: 16),
-
-            // Per Person Summary
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.blueGrey.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blueGrey.shade200),
-              ),
-              child: Column(
-                children: [
-                  const Text('EACH PERSON PAYS', style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
                   Text(
-                    '\$${perPerson.toStringAsFixed(2)}',
-                    style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.indigo),
-                  ),
-                  const Divider(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildBillSummaryText('Base Total', '\$${totalBill.toStringAsFixed(2)}'),
-                      _buildBillSummaryText('Tip Total', '\$${tipAmount.toStringAsFixed(2)}'),
-                      _buildBillSummaryText('Grand Total', '\$${finalTotal.toStringAsFixed(2)}'),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.indigo,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: summaryString));
-                      widget.onSplitDone();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Copied bill split breakdown to clipboard!'),
-                          backgroundColor: Colors.indigo,
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.share, size: 16),
-                    label: const Text('Copy Breakdown String', style: TextStyle(fontSize: 12)),
+                    description,
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    softWrap: true,
                   ),
                 ],
               ),
+            ),
+            Switch(
+              value: isGranted,
+              activeColor: Colors.teal,
+              onChanged: onChanged,
             ),
           ],
         ),
@@ -1441,12 +1138,158 @@ class _BillSplitterScreenState extends State<BillSplitterScreen> {
     );
   }
 
-  Widget _buildBillSummaryText(String title, String val) {
-    return Column(
-      children: [
-        Text(title, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-        Text(val, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-      ],
+  // Modals & Dialogs
+  void _showStickyNoteModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E293B),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.sticky_note_2, color: Colors.orange),
+                  SizedBox(width: 8),
+                  Text(
+                    'Floating Sticky Note Preview',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: TextEditingController(text: _floatingStickyText),
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'Quick Floating Reminder',
+                ),
+                onChanged: (val) {
+                  _floatingStickyText = val;
+                },
+              ),
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerRight,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Save Note', style: TextStyle(color: Colors.white)),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showAddClipDialog(BuildContext context) {
+    final textController = TextEditingController();
+    final catController = TextEditingController(text: 'General');
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          title: const Text('Add Stored Clip'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: textController,
+                decoration: const InputDecoration(
+                  labelText: 'Clip Text / Bank Details / Link',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: catController,
+                decoration: const InputDecoration(
+                  labelText: 'Category Tag',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+              onPressed: () {
+                if (textController.text.isNotEmpty) {
+                  _addClipboardItem(textController.text, catController.text);
+                  Navigator.pop(ctx);
+                }
+              },
+              child: const Text('Save Snippet', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showAddExpanderDialog(BuildContext context) {
+    final trigController = TextEditingController();
+    final repController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          title: const Text('Create Text Macro Shortcut'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: trigController,
+                decoration: const InputDecoration(
+                  labelText: 'Trigger (e.g. !addr)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: repController,
+                decoration: const InputDecoration(
+                  labelText: 'Full Expanded Text',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
+              onPressed: () {
+                if (trigController.text.isNotEmpty && repController.text.isNotEmpty) {
+                  _addTextExpander(trigController.text, repController.text);
+                  Navigator.pop(ctx);
+                }
+              },
+              child: const Text('Add Macro', style: TextStyle(color: Colors.black)),
+            ),
+          ],
+        );
+      },
     );
   }
 }
