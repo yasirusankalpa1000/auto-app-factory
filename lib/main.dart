@@ -1,390 +1,130 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 void main() {
-  runApp(const FloatingDeckApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const OmniPopApp());
 }
 
-class FloatingDeckApp extends StatelessWidget {
-  const FloatingDeckApp({super.key});
+class OmniPopApp extends StatelessWidget {
+  const OmniPopApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'FloatingDeck',
+      title: 'OmniPop',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.indigo,
-          brightness: Brightness.light,
-        ),
-        scaffoldBackgroundColor: const Color(0xFFF4F6FA),
+        colorSchemeSeed: Colors.indigo,
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: const Color(0xFFAFAFA),
       ),
       home: const MainHomeScreen(),
     );
   }
 }
 
-class QuickClip {
-  final String id;
-  final String title;
-  final String content;
-  final String category;
-
-  QuickClip({
-    required this.id,
-    required this.title,
-    required this.content,
-    required this.category,
-  });
-}
-
-class MicroOption {
-  String name;
-  double score;
-
-  MicroOption({required this.name, required this.score});
-}
-
 class MainHomeScreen extends StatefulWidget {
-  const MainHomeScreen({super.key});
+  const MainHomeScreen({Key? key}) : super(key: key);
 
   @override
   State<MainHomeScreen> createState() => _MainHomeScreenState();
 }
 
 class _MainHomeScreenState extends State<MainHomeScreen> {
-  int _selectedIndex = 0;
+  int _selectedTabIndex = 0;
+  bool _isFloatingBubbleEnabled = true;
+  Offset _bubblePosition = const Offset(20, 180);
 
-  // Floating Overlay State Simulation
-  bool _isOverlayEnabled = true;
-  Offset _bubblePosition = const Offset(20, 200);
-  bool _isBubbleExpanded = false;
-  String _activeFloatingText = "Quick Tool Deck Active";
-
-  // Quick Clips Data
-  final List<QuickClip> _clips = [
-    QuickClip(
-      id: '1',
-      title: 'Home Address',
-      content: 'No. 45, Golden Palm Avenue, Colombo 07',
-      category: 'Address',
-    ),
-    QuickClip(
-      id: '2',
-      title: 'Bank Account Number',
-      content: '8004928104 - Commercial Bank (Main Branch)',
-      category: 'Finance',
-    ),
-    QuickClip(
-      id: '3',
-      title: 'Standard Work Reply',
-      content: 'Thanks for reaching out! I will review this and respond shortly.',
-      category: 'Work',
-    ),
-  ];
-
-  // Price Comparer State
-  final TextEditingController _item1Price = TextEditingController(text: "450");
-  final TextEditingController _item1Qty = TextEditingController(text: "500");
-  final TextEditingController _item2Price = TextEditingController(text: "780");
-  final TextEditingController _item2Qty = TextEditingController(text: "900");
-  String _comparisonResult = "Compare item prices per unit!";
-  String _bestItemLabel = "";
-
-  // Decision Matrix State
-  final List<MicroOption> _decisionOptions = [
-    MicroOption(name: "Option A (Order Food)", score: 7.0),
-    MicroOption(name: "Option B (Cook Home)", score: 8.5),
-    MicroOption(name: "Option C (Eat Out)", score: 5.0),
-  ];
-  String _decisionWinner = "Tap 'Run Micro-Decision' to evaluate";
-
-  // Add Clip Dialog Controllers
-  final TextEditingController _clipTitleCtrl = TextEditingController();
-  final TextEditingController _clipContentCtrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _item1Price.dispose();
-    _item1Qty.dispose();
-    _item2Price.dispose();
-    _item2Qty.dispose();
-    _clipTitleCtrl.dispose();
-    _clipContentCtrl.dispose();
-    super.dispose();
-  }
-
-  void _calculatePriceComparison() {
-    double p1 = double.tryParse(_item1Price.text) ?? 0;
-    double q1 = double.tryParse(_item1Qty.text) ?? 0;
-    double p2 = double.tryParse(_item2Price.text) ?? 0;
-    double q2 = double.tryParse(_item2Qty.text) ?? 0;
-
-    if (p1 <= 0 || q1 <= 0 || p2 <= 0 || q2 <= 0) {
-      setState(() {
-        _comparisonResult = "Please enter valid prices and quantities.";
-        _bestItemLabel = "";
-      });
-      return;
-    }
-
-    double unit1 = p1 / q1;
-    double unit2 = p2 / q2;
-
-    setState(() {
-      if (unit1 < unit2) {
-        double savings = ((unit2 - unit1) / unit2) * 100;
-        _bestItemLabel = "Option 1 is Cheaper!";
-        _comparisonResult =
-            "Option 1 costs \$${unit1.toStringAsFixed(3)} per unit.\n"
-            "Option 2 costs \$${unit2.toStringAsFixed(3)} per unit.\n"
-            "You save ${savings.toStringAsFixed(1)}% with Option 1!";
-        _activeFloatingText = "Best Deal: Option 1 (\$$p1 for ${q1.toStringAsFixed(0)}g)";
-      } else if (unit2 < unit1) {
-        double savings = ((unit1 - unit2) / unit1) * 100;
-        _bestItemLabel = "Option 2 is Cheaper!";
-        _comparisonResult =
-            "Option 2 costs \$${unit2.toStringAsFixed(3)} per unit.\n"
-            "Option 1 costs \$${unit1.toStringAsFixed(3)} per unit.\n"
-            "You save ${savings.toStringAsFixed(1)}% with Option 2!";
-        _activeFloatingText = "Best Deal: Option 2 (\$$p2 for ${q2.toStringAsFixed(0)}g)";
-      } else {
-        _bestItemLabel = "Both options have equal unit value!";
-        _comparisonResult = "Both cost \$${unit1.toStringAsFixed(3)} per unit.";
-      }
-    });
-  }
-
-  void _runDecisionMatrix() {
-    if (_decisionOptions.isEmpty) return;
-    MicroOption winner = _decisionOptions[0];
-    for (var opt in _decisionOptions) {
-      if (opt.score > winner.score) {
-        winner = opt;
-      }
-    }
-    setState(() {
-      _decisionWinner = "Best Pick: ${winner.name} (Score: ${winner.score.toStringAsFixed(1)})";
-      _activeFloatingText = "Decision Picked: ${winner.name}";
-    });
-  }
-
-  void _addNewClip() {
-    if (_clipTitleCtrl.text.trim().isEmpty || _clipContentCtrl.text.trim().isEmpty) return;
-    setState(() {
-      _clips.add(QuickClip(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        title: _clipTitleCtrl.text.trim(),
-        content: _clipContentCtrl.text.trim(),
-        category: 'Custom',
-      ));
-      _clipTitleCtrl.clear();
-      _clipContentCtrl.clear();
-    });
-    Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Quick Clip added to tray!')),
-    );
-  }
-
-  void _showAddClipDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Add Quick Clip'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _clipTitleCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Title (e.g. Wi-Fi Password)',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _clipContentCtrl,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Snippet Content',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: _addNewClip,
-            child: const Text('Save Clip'),
-          ),
-        ],
-      ),
-    );
-  }
+  // Stats for user engagement tracking
+  int _decisionsMade = 14;
+  double _moneySaved = 42.50;
+  int _scriptsCopied = 9;
 
   @override
   Widget build(BuildContext context) {
+    final Size screenSize = MediaQuery.of(context).size;
+
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.indigo,
-        foregroundColor: Colors.white,
-        title: Row(
-          children: const [
-            Icon(Icons.layers, size: 24),
-            SizedBox(width: 10),
-            Text(
-              'FloatingDeck Companion',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              _isOverlayEnabled ? Icons.notifications_active : Icons.notifications_off,
-              color: Colors.amber,
-            ),
-            onPressed: () {
-              setState(() {
-                _isOverlayEnabled = !_isOverlayEnabled;
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(_isOverlayEnabled
-                      ? 'Simulated Floating HUD Widget Enabled'
-                      : 'Floating HUD Disabled'),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
       body: Stack(
         children: [
           SafeArea(
-            child: IndexedStack(
-              index: _selectedIndex,
+            child: Column(
               children: [
-                _buildHUDControlTab(),
-                _buildShoppingComparerTab(),
-                _buildQuickClipsTab(),
-                _buildDecisionMatrixTab(),
+                _buildTopAppBar(),
+                _buildEngagementHeader(),
+                Expanded(
+                  child: IndexedStack(
+                    index: _selectedTabIndex,
+                    children: [
+                      FridgeMealScreen(onMealLogged: () {
+                        setState(() => _decisionsMade++);
+                      }),
+                      SocialScriptScreen(onScriptCopied: () {
+                        setState(() => _scriptsCopied++);
+                      }),
+                      PriceCompareScreen(onDealSaved: (amount) {
+                        setState(() => _moneySaved += amount);
+                      }),
+                      DecisionSpinnerScreen(onDecisionMade: () {
+                        setState(() => _decisionsMade++);
+                      }),
+                      BillSplitterScreen(onSplitDone: () {
+                        setState(() => _decisionsMade++);
+                      }),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
 
-          // Simulated Interactive Floating Bubble HUD Overlay
-          if (_isOverlayEnabled)
+          // Interactive Draggable Floating Assist Overlay Button
+          if (_isFloatingBubbleEnabled)
             Positioned(
               left: _bubblePosition.dx,
               top: _bubblePosition.dy,
               child: GestureDetector(
                 onPanUpdate: (details) {
                   setState(() {
-                    _bubblePosition += details.delta;
+                    double newX = _bubblePosition.dx + details.delta.dx;
+                    double newY = _bubblePosition.dy + details.delta.dy;
+                    // Keep floating bubble within bounds
+                    newX = newX.clamp(10.0, screenSize.width - 70.0);
+                    newY = newY.clamp(40.0, screenSize.height - 120.0);
+                    _bubblePosition = Offset(newX, newY);
                   });
                 },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.all(12),
+                onTap: () => _openFloatingQuickSheet(context),
+                child: Container(
+                  width: 58,
+                  height: 58,
                   decoration: BoxDecoration(
-                    color: Colors.indigo.shade900,
-                    borderRadius: BorderRadius.circular(_isBubbleExpanded ? 16 : 30),
-                    boxShadow: const [
+                    color: Colors.indigo,
+                    shape: BoxShape.circle,
+                    boxShadow: [
                       BoxShadow(
-                        color: Colors.black87,
+                        color: Colors.indigo.withOpacity(0.4),
                         blurRadius: 10,
-                        offset: Offset(0, 4),
-                      )
-                    ],
-                    border: Border.all(color: Colors.amber, width: 2),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.widgets, color: Colors.amber, size: 20),
-                          const SizedBox(width: 8),
-                          Text(
-                            _isBubbleExpanded ? "Floating Deck HUD" : "HUD",
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          InkWell(
-                            onTap: () {
-                              setState(() {
-                                _isBubbleExpanded = !_isBubbleExpanded;
-                              });
-                            },
-                            child: Icon(
-                              _isBubbleExpanded ? Icons.close : Icons.open_in_new,
-                              color: Colors.white70,
-                              size: 16,
-                            ),
-                          ),
-                        ],
+                        offset: const Offset(0, 4),
                       ),
-                      if (_isBubbleExpanded) ...[
-                        const Divider(color: Colors.white70, height: 16),
-                        Container(
-                          constraints: const BoxConstraints(maxWidth: 180),
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            _activeFloatingText,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            textAlign: TextAlign.center,
-                            softWrap: true,
-                          ),
+                    ],
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: const Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Icon(Icons.widgets, color: Colors.white, size: 28),
+                      Positioned(
+                        right: 4,
+                        top: 4,
+                        child: CircleAvatar(
+                          radius: 5,
+                          backgroundColor: Colors.amber,
                         ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.amber,
-                                foregroundColor: Colors.black,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('HUD Action Triggered! Saved to clipboard.'),
-                                  ),
-                                );
-                              },
-                              child: const Text('Copy Data', style: TextStyle(fontSize: 10)),
-                            ),
-                          ],
-                        ),
-                      ],
+                      ),
                     ],
                   ),
                 ),
@@ -393,208 +133,744 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (idx) {
-          setState(() {
-            _selectedIndex = idx;
-          });
-        },
+        currentIndex: _selectedTabIndex,
+        onTap: (index) => setState(() => _selectedTabIndex = index),
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.indigo,
         unselectedItemColor: Colors.grey,
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+        unselectedLabelStyle: const TextStyle(fontSize: 11),
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: 'Floating HUD',
+            icon: Icon(Icons.restaurant),
+            label: 'Meals',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.calculate),
-            label: 'Price Check',
+            icon: Icon(Icons.chat),
+            label: 'Scripts',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.content_copy),
-            label: 'Quick Clips',
+            icon: Icon(Icons.shopping_cart),
+            label: 'Compare',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.psychology),
-            label: 'Decision Deck',
+            icon: Icon(Icons.casino),
+            label: 'Decision',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.receipt),
+            label: 'Bill Split',
           ),
         ],
       ),
     );
   }
 
-  // TAB 1: Floating HUD Dashboard & System Assistant Controls
-  Widget _buildHUDControlTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildTopAppBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE))),
+      ),
+      child: Row(
         children: [
-          // Banner Banner Card
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Colors.indigo, Colors.indigoAccent],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
+              color: Colors.indigo.shade50,
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Row(
+            child: const Icon(Icons.stars, color: Colors.indigo, size: 24),
+          ),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const CircleAvatar(
-                  backgroundColor: Colors.white70,
-                  radius: 26,
-                  child: Icon(Icons.layers, color: Colors.amber, size: 28),
+                Text(
+                  'OmniPop',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.indigo),
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text(
-                        'Live Floating HUD Overlay',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                Text(
+                  'Daily Micro-Assistant Active',
+                  style: TextStyle(fontSize: 11, color: Colors.grey),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          Row(
+            children: [
+              const Text('Floating Pop', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
+              Switch(
+                value: _isFloatingBubbleEnabled,
+                activeColor: Colors.indigo,
+                onChanged: (val) => setState(() => _isFloatingBubbleEnabled = val),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEngagementHeader() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.indigo.shade800,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildStatItem('Decisions', '$_decisionsMade', Icons.check_circle_outline),
+          Container(height: 20, width: 1, color: Colors.white70),
+          _buildStatItem('Saved', '\$${_moneySaved.toStringAsFixed(2)}', Icons.monetization_on),
+          Container(height: 20, width: 1, color: Colors.white70),
+          _buildStatItem('Scripts', '$_scriptsCopied', Icons.content_copy),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String label, String value, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, color: Colors.amber, size: 16),
+        const SizedBox(width: 4),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+            Text(label, style: const TextStyle(color: Colors.white70, fontSize: 10)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  void _openFloatingQuickSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Row(
+              children: [
+                Icon(Icons.widgets, color: Colors.indigo),
+                SizedBox(width: 8),
+                Text('OmniPop Quick Tools Overlay', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Instant access micro-helpers for real-time daily decisions',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _buildQuickActionTile(
+                  context,
+                  title: 'Quick 50/50 Coin',
+                  subtitle: 'Heads or Tails',
+                  icon: Icons.monetization_on,
+                  color: Colors.amber.shade700,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _showCoinFlipDialog(context);
+                  },
+                ),
+                _buildQuickActionTile(
+                  context,
+                  title: 'Awkward Text Solver',
+                  subtitle: 'Instant Polite Replies',
+                  icon: Icons.chat,
+                  color: Colors.teal,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    setState(() => _selectedTabIndex = 1);
+                  },
+                ),
+                _buildQuickActionTile(
+                  context,
+                  title: 'Store Deal Checker',
+                  subtitle: 'Unit Price Check',
+                  icon: Icons.shopping_bag,
+                  color: Colors.purple,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    setState(() => _selectedTabIndex = 2);
+                  },
+                ),
+                _buildQuickActionTile(
+                  context,
+                  title: 'Fridge Meal Idea',
+                  subtitle: 'Leftover Matcher',
+                  icon: Icons.restaurant_menu,
+                  color: Colors.orange,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    setState(() => _selectedTabIndex = 0);
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActionTile(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return SizedBox(
+      width: (MediaQuery.of(context).size.width - 50) / 2,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withOpacity(0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, color: color, size: 24),
+              const SizedBox(height: 8),
+              Text(
+                title,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                subtitle,
+                style: TextStyle(fontSize: 10, color: Colors.grey.shade700),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showCoinFlipDialog(BuildContext context) {
+    bool isHeads = Random().nextBool();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Quick Decision Coin', textAlign: TextAlign.center),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 40,
+              backgroundColor: isHeads ? Colors.amber : Colors.blueGrey,
+              child: Icon(
+                isHeads ? Icons.star : Icons.shield,
+                size: 40,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              isHeads ? 'HEADS - GO FOR IT!' : 'TAILS - WAIT / PASS',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// TAB 1: FRIDGE LEFTOVER MEAL MATCHER
+// ============================================================================
+class FridgeMealScreen extends StatefulWidget {
+  final VoidCallback onMealLogged;
+  const FridgeMealScreen({Key? key, required onMealLogged})
+      : onMealLogged = onMealLogged,
+        super(key: key);
+
+  @override
+  State<FridgeMealScreen> createState() => _FridgeMealScreenState();
+}
+
+class _FridgeMealScreenState extends State<FridgeMealScreen> {
+  final List<String> _availableIngredients = [
+    'Eggs', 'Rice', 'Bread', 'Cheese', 'Tomato', 'Milk', 'Chicken', 
+    'Pasta', 'Potato', 'Onion', 'Garlic', 'Butter', 'Canned Beans'
+  ];
+
+  final Set<String> _selectedIngredients = {'Eggs', 'Bread', 'Cheese'};
+
+  final List<Map<String, dynamic>> _allRecipes = [
+    {
+      'title': 'Cheesy Omelette Toast',
+      'time': '5 mins',
+      'difficulty': 'Easy',
+      'ingredients': ['Eggs', 'Bread', 'Cheese', 'Butter'],
+      'instructions': '1. Beat eggs with salt.\n2. Melt butter on pan and cook omelette.\n3. Add cheese and serve between toasted bread.',
+    },
+    {
+      'title': 'Quick Fried Rice',
+      'time': '8 mins',
+      'difficulty': 'Easy',
+      'ingredients': ['Rice', 'Eggs', 'Onion', 'Garlic'],
+      'instructions': '1. Sauté garlic and onion in hot pan.\n2. Scramble egg on side, mix with leftover rice.\n3. Season with soy sauce or salt.',
+    },
+    {
+      'title': 'Creamy Tomato Garlic Pasta',
+      'time': '12 mins',
+      'difficulty': 'Medium',
+      'ingredients': ['Pasta', 'Tomato', 'Garlic', 'Cheese', 'Milk'],
+      'instructions': '1. Boil pasta.\n2. Sauté minced garlic & tomato puree.\n3. Add splash of milk and stir in cheese.',
+    },
+    {
+      'title': 'Loaded Stuffed Baked Potato',
+      'time': '15 mins',
+      'difficulty': 'Easy',
+      'ingredients': ['Potato', 'Cheese', 'Butter', 'Onion'],
+      'instructions': '1. Microwave potato for 6 mins until soft.\n2. Slice open, top with butter, chopped onion, and melted cheese.',
+    },
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    List<Map<String, dynamic>> matchingRecipes = _getMatchingRecipes();
+
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Fridge Leftover Meal Matcher',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Select ingredients you currently have to discover fast recipes.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 12),
+
+            // Ingredient Selector Chips
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAxisAlignment.center,
+              children: _availableIngredients.map((item) {
+                final isSelected = _selectedIngredients.contains(item);
+                return FilterChip(
+                  label: Text(item, style: TextStyle(fontSize: 12, color: isSelected ? Colors.white : Colors.black87)),
+                  selected: isSelected,
+                  selectedColor: Colors.indigo,
+                  backgroundColor: Colors.grey.shade200,
+                  onSelected: (bool selected) {
+                    setState(() {
+                      if (selected) {
+                        _selectedIngredients.add(item);
+                      } else {
+                        _selectedIngredients.remove(item);
+                      }
+                    });
+                  },
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 20),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Suggested Recipes (${matchingRecipes.length})',
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+                if (_selectedIngredients.isNotEmpty)
+                  TextButton(
+                    onPressed: () => setState(() => _selectedIngredients.clear()),
+                    child: const Text('Clear All', style: TextStyle(fontSize: 12)),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            if (matchingRecipes.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Column(
+                  children: [
+                    Icon(Icons.search_off, color: Colors.orange, size: 36),
+                    SizedBox(height: 8),
+                    Text(
+                      'No matching recipes found',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      'Try selecting more basic ingredients like Rice, Eggs, or Bread.',
+                      style: TextStyle(fontSize: 11, color: Colors.grey),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              )
+            else
+              Column(
+                children: matchingRecipes.map((recipe) => _buildRecipeCard(recipe)).toList(),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Map<String, dynamic>> _getMatchingRecipes() {
+    return _allRecipes.where((recipe) {
+      List<String> reqs = recipe['ingredients'] as List<String>;
+      // Check if at least 2 ingredients match
+      int matchCount = reqs.where((i) => _selectedIngredients.contains(i)).length;
+      return matchCount >= 2;
+    }).toList();
+  }
+
+  Widget _buildRecipeCard(Map<String, dynamic> recipe) {
+    List<String> ingredients = recipe['ingredients'] as List<String>;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
+      child: ExpansionTile(
+        leading: CircleAvatar(
+          backgroundColor: Colors.indigo.shade50,
+          child: const Icon(Icons.restaurant, color: Colors.indigo),
+        ),
+        title: Text(recipe['title'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        subtitle: Row(
+          children: [
+            const Icon(Icons.schedule, size: 12, color: Colors.grey),
+            const SizedBox(width: 4),
+            Text('${recipe['time']} • ${recipe['difficulty']}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+          ],
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Required Ingredients:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  children: ingredients.map((ing) {
+                    bool hasIt = _selectedIngredients.contains(ing);
+                    return Chip(
+                      labelStyle: TextStyle(fontSize: 10, color: hasIt ? Colors.green.shade900 : Colors.red.shade900),
+                      backgroundColor: hasIt ? Colors.green.shade50 : Colors.red.shade50,
+                      avatar: Icon(
+                        hasIt ? Icons.check_circle : Icons.cancel,
+                        size: 12,
+                        color: hasIt ? Colors.green : Colors.red,
                       ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Drag the floating bubble around your screen to keep active micro-data easily accessible!',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
+                      label: Text(ing),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+                const Text('Quick Instructions:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                const SizedBox(height: 4),
+                Text(
+                  recipe['instructions'],
+                  style: const TextStyle(fontSize: 12, height: 1.4),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.indigo,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    onPressed: () {
+                      widget.onMealLogged();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Cooked ${recipe['title']}! Added to history.'),
+                          backgroundColor: Colors.green,
                         ),
-                        softWrap: true,
-                      ),
-                    ],
+                      );
+                    },
+                    icon: const Icon(Icons.check, size: 16),
+                    label: const Text('Mark as Cooked Today', style: TextStyle(fontSize: 12)),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+}
 
-          const Text(
-            'Floating Tool Presets',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+// ============================================================================
+// TAB 2: SOCIAL SCRIPT & AWKWARD RESPONSE GENERATOR
+// ============================================================================
+class SocialScriptScreen extends StatefulWidget {
+  final VoidCallback onScriptCopied;
+  const SocialScriptScreen({Key? key, required onScriptCopied})
+      : onScriptCopied = onScriptCopied,
+        super(key: key);
+
+  @override
+  State<SocialScriptScreen> createState() => _SocialScriptScreenState();
+}
+
+class _SocialScriptScreenState extends State<SocialScriptScreen> {
+  String _selectedCategory = 'Declining Invitations';
+  String _selectedTone = 'Polite & Kind';
+
+  final List<String> _categories = [
+    'Declining Invitations',
+    'Asking for Overdue Money',
+    'Late Reply Apology',
+    'Work Boundary / Overtime',
+    'Rescheduling Plans',
+  ];
+
+  final List<String> _tones = ['Polite & Kind', 'Firm & Direct', 'Witty & Lighthearted', 'Professional'];
+
+  final Map<String, Map<String, String>> _scriptDatabase = {
+    'Declining Invitations': {
+      'Polite & Kind': "Hey! Thanks so much for inviting me. I won't be able to make it this time due to prior commitments, but I really appreciate you thinking of me! Hope you all have an amazing time!",
+      'Firm & Direct': "Thanks for the invite, but I won't be able to come. My schedule is full for that day.",
+      'Witty & Lighthearted': "I'd love to say yes, but my social battery and schedule are begging for mercy today! Catch you next time for sure!",
+      'Professional': "Thank you for the invitation. Regrettably, I have a prior commitment and will be unable to attend. I appreciate your thoughtful invitation.",
+    },
+    'Asking for Overdue Money': {
+      'Polite & Kind': "Hey! Hope you're having a good week. Just following up on the \$[AMOUNT] from [EVENT/MEAL]. Whenever you have a quick moment, could you send that over? Thanks a lot!",
+      'Firm & Direct': "Hi, just dropping a quick reminder for the \$[AMOUNT] owed for [EVENT]. Please send it through Venmo/Zelle today.",
+      'Witty & Lighthearted': "Hey! My wallet is sending out a polite SOS call regarding that \$[AMOUNT] from the other day! Let me know when you send it over!",
+      'Professional': "Hello, I am following up regarding the outstanding amount of \$[AMOUNT] for [EVENT]. Please transfer the balance when convenient.",
+    },
+    'Late Reply Apology': {
+      'Polite & Kind': "Hi! So sorry for the delayed reply—it's been a super hectic couple of days. Regarding your message...",
+      'Firm & Direct': "Apologies for the delay in responding. Here are the details you requested...",
+      'Witty & Lighthearted': "My phone has been holding my messages hostage! Sorry for the delay!",
+      'Professional': "Thank you for your patience. I am writing to respond to your inquiry...",
+    },
+    'Work Boundary / Overtime': {
+      'Polite & Kind': "Thanks for reaching out! I've wrapped up for today, but I will make this my top priority first thing tomorrow morning.",
+      'Firm & Direct': "I am currently offline for the day. I will address this during business hours tomorrow.",
+      'Witty & Lighthearted': "My brain has officially entered weekend mode! I'll dive straight into this tomorrow morning.",
+      'Professional': "I have received your request. I am currently away from my desk and will review this thoroughly during standard working hours tomorrow.",
+    },
+    'Rescheduling Plans': {
+      'Polite & Kind': "Hey! I'm so sorry, but something urgent came up and I won't be able to make today work. Can we reschedule for later this week?",
+      'Firm & Direct': "I need to move our meeting scheduled for today. Are you free same time next Tuesday?",
+      'Witty & Lighthearted': "Life threw a plot twist my way today! Can we take a raincheck and reschedule?",
+      'Professional': "Due to an unexpected scheduling conflict, I need to request a postponement of our scheduled meeting. Please let me know your availability for next week.",
+    },
+  };
+
+  final TextEditingController _amountController = TextEditingController(text: "25.00");
+
+  @override
+  Widget build(BuildContext context) {
+    String script = _scriptDatabase[_selectedCategory]?[_selectedTone] ?? "Select options above.";
+    if (script.contains("\$[AMOUNT]")) {
+      script = script.replaceAll("\$[AMOUNT]", "\$${_amountController.text.isEmpty ? "0.00" : _amountController.text}");
+    }
+
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Social Script Generator',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-          ),
-          const SizedBox(height: 10),
+            const SizedBox(height: 4),
+            const Text(
+              'Solve awkward social texts with pre-formatted, polite, or direct scripts.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
 
-          // Presets Grid / Wraps
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _buildPresetChip(
-                label: 'Shopping Price Checker',
-                icon: Icons.shopping_cart,
-                color: Colors.teal,
-                onTap: () {
-                  setState(() {
-                    _activeFloatingText = "Active: Unit Price Comparer Ready";
-                    _selectedIndex = 1;
-                  });
-                },
+            const Text('Scenario Category:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.grey.shade300),
               ),
-              _buildPresetChip(
-                label: 'Quick Address Clip',
-                icon: Icons.home,
-                color: Colors.blue,
-                onTap: () {
-                  setState(() {
-                    _activeFloatingText = _clips[0].content;
-                  });
-                },
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _selectedCategory,
+                  isExpanded: true,
+                  items: _categories
+                      .map((cat) => DropdownMenuItem(value: cat, child: Text(cat, style: const TextStyle(fontSize: 13))))
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) setState(() => _selectedCategory = val);
+                  },
+                ),
               ),
-              _buildPresetChip(
-                label: 'Bank Details Clip',
-                icon: Icons.monetization_on,
-                color: Colors.orange,
-                onTap: () {
-                  setState(() {
-                    _activeFloatingText = _clips[1].content;
-                  });
-                },
+            ),
+            const SizedBox(height: 12),
+
+            if (_selectedCategory == 'Asking for Overdue Money') ...[
+              const Text('Amount Owed (\$):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: _amountController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  hintText: 'e.g. 25.00',
+                ),
+                onChanged: (v) => setState(() {}),
               ),
-              _buildPresetChip(
-                label: 'Micro Decision Tool',
-                icon: Icons.lightbulb,
-                color: Colors.purple,
-                onTap: () {
-                  setState(() {
-                    _activeFloatingText = "Micro Decision Evaluator Active";
-                    _selectedIndex = 3;
-                  });
-                },
-              ),
+              const SizedBox(height: 12),
             ],
-          ),
 
-          const SizedBox(height: 24),
+            const Text('Desired Tone:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: _tones.map((tone) {
+                bool isSel = _selectedTone == tone;
+                return ChoiceChip(
+                  label: Text(tone, style: TextStyle(fontSize: 11, color: isSel ? Colors.white : Colors.black87)),
+                  selected: isSel,
+                  selectedColor: Colors.teal,
+                  onSelected: (selected) {
+                    if (selected) setState(() => _selectedTone = tone);
+                  },
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 20),
 
-          // Floating System Status & Notification Simulation Card
-          Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
+            // Script Box Result
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.teal.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.teal.shade200),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Icon(Icons.notifications_active, color: Colors.indigo),
-                      const SizedBox(width: 8),
-                      const Expanded(
-                        child: Text(
-                          'Floating Notification & Overlay Service',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                      Row(
+                        children: [
+                          Icon(Icons.chat_bubble_outline, color: Colors.teal.shade800, size: 18),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Ready Script',
+                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.teal.shade900, fontSize: 13),
                           ),
-                        ),
+                        ],
                       ),
-                      Switch(
-                        value: _isOverlayEnabled,
-                        onChanged: (val) {
-                          setState(() {
-                            _isOverlayEnabled = val;
-                          });
-                        },
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.teal,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(_selectedTone, style: const TextStyle(color: Colors.white, fontSize: 10)),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Allows FloatingDeck to display dynamic price updates, clipboard clips, and micro-tools over other apps seamlessly.',
-                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                  const SizedBox(height: 12),
+                  SelectableText(
+                    script,
+                    style: const TextStyle(fontSize: 13, height: 1.4, color: Colors.black87),
                   ),
-                  const Divider(height: 20),
+                  const SizedBox(height: 16),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Active Floating Text:',
-                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-                      ),
-                      Flexible(
-                        child: Text(
-                          _activeFloatingText,
-                          style: const TextStyle(
-                            color: Colors.indigo,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.teal,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
-                          overflow: TextOverflow.ellipsis,
+                          onPressed: () {
+                            Clipboard.setData(ClipboardData(text: script));
+                            widget.onScriptCopied();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Copied script to clipboard!'),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.copy, size: 16),
+                          label: const Text('Copy to Clipboard', style: TextStyle(fontSize: 12)),
                         ),
                       ),
                     ],
@@ -602,39 +878,170 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
                 ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+}
 
-  Widget _buildPresetChip({
-    required String label,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.4)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
+// ============================================================================
+// TAB 3: SMART GROCERY UNIT PRICE COMPARISON
+// ============================================================================
+class PriceCompareScreen extends StatefulWidget {
+  final Function(double) onDealSaved;
+  const PriceCompareScreen({Key? key, required this.onDealSaved}) : super(key: key);
+
+  @override
+  State<PriceCompareScreen> createState() => _PriceCompareScreenState();
+}
+
+class _PriceCompareScreenState extends State<PriceCompareScreen> {
+  final TextEditingController _priceAController = TextEditingController(text: "8.99");
+  final TextEditingController _unitAController = TextEditingController(text: "500");
+
+  final TextEditingController _priceBController = TextEditingController(text: "14.50");
+  final TextEditingController _unitBController = TextEditingController(text: "900");
+
+  String _unitType = 'Grams (g)';
+  final List<String> _unitTypes = ['Grams (g)', 'Ounces (oz)', 'Milliliters (ml)', 'Count / Items'];
+
+  @override
+  Widget build(BuildContext context) {
+    double priceA = double.tryParse(_priceAController.text) ?? 0;
+    double unitA = double.tryParse(_unitAController.text) ?? 1;
+
+    double priceB = double.tryParse(_priceBController.text) ?? 0;
+    double unitB = double.tryParse(_unitBController.text) ?? 1;
+
+    double unitPriceA = priceA / (unitA > 0 ? unitA : 1);
+    double unitPriceB = priceB / (unitB > 0 ? unitB : 1);
+
+    bool isABetter = unitPriceA < unitPriceB;
+    double diffPercent = 0.0;
+    if (unitPriceA > 0 && unitPriceB > 0) {
+      double higher = isABetter ? unitPriceB : unitPriceA;
+      double lower = isABetter ? unitPriceA : unitPriceB;
+      diffPercent = ((higher - lower) / higher) * 100;
+    }
+
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: color, size: 18),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
+            const Text(
+              'Grocery Deal & Unit Price Saver',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Find out which box or deal is actually cheaper per unit before buying.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 12),
+
+            Row(
+              children: [
+                const Text('Measurement Unit: ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _unitType,
+                        isDense: true,
+                        items: _unitTypes
+                            .map((u) => DropdownMenuItem(value: u, child: Text(u, style: const TextStyle(fontSize: 12))))
+                            .toList(),
+                        onChanged: (val) {
+                          if (val != null) setState(() => _unitType = val);
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            Row(
+              children: [
+                Expanded(child: _buildItemInputBox('Option A', _priceAController, _unitAController, isABetter)),
+                const SizedBox(width: 12),
+                Expanded(child: _buildItemInputBox('Option B', _priceBController, _unitBController, !isABetter)),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Summary Results Box
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isABetter ? Colors.green.shade50 : Colors.purple.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: isABetter ? Colors.green.shade300 : Colors.purple.shade300),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.stars, color: isABetter ? Colors.green.shade800 : Colors.purple.shade800),
+                      const SizedBox(width: 6),
+                      Text(
+                        isABetter ? 'OPTION A IS CHEAPER!' : 'OPTION B IS CHEAPER!',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: isABetter ? Colors.green.shade900 : Colors.purple.shade900,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Saves ~${diffPercent.toStringAsFixed(1)}% per unit compared to the other package.',
+                    style: const TextStyle(fontSize: 12, color: Colors.black87),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildUnitPriceText('A Unit Cost', '\$${unitPriceA.toStringAsFixed(4)}'),
+                      _buildUnitPriceText('B Unit Cost', '\$${unitPriceB.toStringAsFixed(4)}'),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isABetter ? Colors.green.shade800 : Colors.purple.shade800,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    onPressed: () {
+                      double savedApprox = (priceA - priceB).abs() * 0.25;
+                      if (savedApprox <= 0) savedApprox = 1.20;
+                      widget.onDealSaved(savedApprox);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Logged \$${savedApprox.toStringAsFixed(2)} savings!'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.bookmark, size: 16),
+                    label: const Text('Log Deal & Add Savings', style: TextStyle(fontSize: 12)),
+                  ),
+                ],
               ),
             ),
           ],
@@ -643,440 +1050,403 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
     );
   }
 
-  // TAB 2: Shopping Unit Price Comparison Engine
-  Widget _buildShoppingComparerTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
+  Widget _buildItemInputBox(
+    String title,
+    TextEditingController priceCtrl,
+    TextEditingController unitCtrl,
+    bool isWinner,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isWinner ? Colors.green : Colors.grey.shade300, width: isWinner ? 2 : 1),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.teal.shade50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.teal.shade200),
-            ),
-            child: Row(
-              children: const [
-                Icon(Icons.shopping_cart, color: Colors.teal),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Shopping Unit-Price Evaluator\nNever get tricked by misleading package sizes again!',
-                    style: TextStyle(
-                      color: Colors.teal,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                    ),
-                  ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              if (isWinner)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(8)),
+                  child: const Text('BEST VALUE', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
                 ),
-              ],
-            ),
+            ],
           ),
-          const SizedBox(height: 16),
-
-          // Option 1 Input Card
-          Card(
-            elevation: 1.5,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(14.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Item Option A (e.g. Small Pack)',
-                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _item1Price,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Price (\$)',
-                            border: OutlineInputBorder(),
-                            isDense: true,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: TextField(
-                          controller: _item1Qty,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Weight/Qty (g or ml)',
-                            border: OutlineInputBorder(),
-                            isDense: true,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+          const SizedBox(height: 10),
+          const Text('Price (\$)', style: TextStyle(fontSize: 11, color: Colors.grey)),
+          const SizedBox(height: 4),
+          TextField(
+            controller: priceCtrl,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              isDense: true,
             ),
+            onChanged: (v) => setState(() {}),
           ),
-          const SizedBox(height: 12),
-
-          // Option 2 Input Card
-          Card(
-            elevation: 1.5,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(14.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Item Option B (e.g. Large Pack)',
-                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _item2Price,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Price (\$)',
-                            border: OutlineInputBorder(),
-                            isDense: true,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: TextField(
-                          controller: _item2Qty,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Weight/Qty (g or ml)',
-                            border: OutlineInputBorder(),
-                            isDense: true,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+          const SizedBox(height: 10),
+          const Text('Qty / Size', style: TextStyle(fontSize: 11, color: Colors.grey)),
+          const SizedBox(height: 4),
+          TextField(
+            controller: unitCtrl,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              isDense: true,
             ),
-          ),
-          const SizedBox(height: 16),
-
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.indigo,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              onPressed: _calculatePriceComparison,
-              icon: const Icon(Icons.compare_arrows),
-              label: const Text(
-                'Evaluate Best Value',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Result Display Container
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.indigo.shade100, width: 2),
-            ),
-            child: Column(
-              children: [
-                if (_bestItemLabel.isNotEmpty) ...[
-                  Text(
-                    _bestItemLabel,
-                    style: const TextStyle(
-                      color: Colors.green,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                ],
-                Text(
-                  _comparisonResult,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Colors.black87,
-                    height: 1.4,
-                  ),
-                ),
-                if (_bestItemLabel.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _isOverlayEnabled = true;
-                      });
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Result pinned to Floating Overlay HUD!')),
-                      );
-                    },
-                    icon: const Icon(Icons.push_pin, size: 16),
-                    label: const Text('Pin Result to Floating HUD'),
-                  ),
-                ],
-              ],
-            ),
+            onChanged: (v) => setState(() {}),
           ),
         ],
       ),
     );
   }
 
-  // TAB 3: Quick Clips & Text Snippet Tray
-  Widget _buildQuickClipsTab() {
+  Widget _buildUnitPriceText(String title, String val) {
     return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.all(14),
-          color: Colors.indigo.shade50,
-          child: Row(
-            children: [
-              const Icon(Icons.content_copy, color: Colors.indigo),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Text(
-                  'Quick Clips Tray\nTap any snippet to send to floating clipboard or system copy.',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                ),
-              ),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.indigo,
-                  foregroundColor: Colors.white,
-                ),
-                onPressed: _showAddClipDialog,
-                icon: const Icon(Icons.add, size: 16),
-                label: const Text('Add Clip'),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: _clips.isEmpty
-              ? const Center(child: Text('No quick clips added yet.'))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(12),
-                  itemCount: _clips.length,
-                  itemBuilder: (ctx, idx) {
-                    final clip = _clips[idx];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: Colors.indigo.shade100,
-                          child: Icon(
-                            clip.category == 'Address'
-                                ? Icons.home
-                                : clip.category == 'Finance'
-                                    ? Icons.monetization_on
-                                    : Icons.text_snippet,
-                            color: Colors.indigo,
-                          ),
-                        ),
-                        title: Text(
-                          clip.title,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Padding(
-                          padding: const EdgeInsets.only(top: 4.0),
-                          child: Text(
-                            clip.content,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.push_pin, color: Colors.amber),
-                              tooltip: 'Float on Screen',
-                              onPressed: () {
-                                setState(() {
-                                  _activeFloatingText = "${clip.title}: ${clip.content}";
-                                  _isOverlayEnabled = true;
-                                });
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Pinned "${clip.title}" to Floating HUD!'),
-                                  ),
-                                );
-                              },
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.grey),
-                              onPressed: () {
-                                setState(() {
-                                  _clips.removeAt(idx);
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-        ),
+        Text(title, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+        Text(val, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
       ],
     );
   }
+}
 
-  // TAB 4: Micro-Decision Matrix Builder
-  Widget _buildDecisionMatrixTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.purple.shade50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.purple.shade200),
+// ============================================================================
+// TAB 4: DECISION SPINNER & ARENA
+// ============================================================================
+class DecisionSpinnerScreen extends StatefulWidget {
+  final VoidCallback onDecisionMade;
+  const DecisionSpinnerScreen({Key? key, required this.onDecisionMade}) : super(key: key);
+
+  @override
+  State<DecisionSpinnerScreen> createState() => _DecisionSpinnerScreenState();
+}
+
+class _DecisionSpinnerScreenState extends State<DecisionSpinnerScreen> {
+  final List<String> _options = ['Pizza', 'Sushi', 'Burgers', 'Tacos', 'Home Cooked'];
+  final TextEditingController _addOptionController = TextEditingController();
+  String? _winningOption;
+  bool _isSpinning = false;
+
+  void _spinChoice() async {
+    if (_options.isEmpty) return;
+    setState(() {
+      _isSpinning = true;
+      _winningOption = null;
+    });
+
+    await Future.delayed(const Duration(milliseconds: 1200));
+
+    final random = Random();
+    final selected = _options[random.nextInt(_options.length)];
+
+    setState(() {
+      _winningOption = selected;
+      _isSpinning = false;
+    });
+    widget.onDecisionMade();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Micro-Decision Arena',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            child: Row(
-              children: const [
-                Icon(Icons.psychology, color: Colors.purple),
-                SizedBox(width: 10),
+            const SizedBox(height: 4),
+            const Text(
+              'Stop overthinking micro-choices. Add options and let the engine decide!',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+
+            Row(
+              children: [
                 Expanded(
-                  child: Text(
-                    'Micro-Decision Evaluator\nCan\'t decide what to do? Weight your daily choices and let FloatingDeck compute the optimal pick!',
-                    style: TextStyle(
-                      color: Colors.purple,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
+                  child: TextField(
+                    controller: _addOptionController,
+                    decoration: const InputDecoration(
+                      hintText: 'Add new option (e.g. Thai Food)...',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      isDense: true,
                     ),
                   ),
                 ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigo,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  ),
+                  onPressed: () {
+                    if (_addOptionController.text.trim().isNotEmpty) {
+                      setState(() {
+                        _options.add(_addOptionController.text.trim());
+                        _addOptionController.clear();
+                      });
+                    }
+                  },
+                  child: const Text('Add'),
+                ),
               ],
             ),
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-          const Text(
-            'Current Choices & Priority Rating:',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-          ),
-          const SizedBox(height: 10),
+            const Text('Current Choice Pool:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: _options.map((opt) {
+                return Chip(
+                  label: Text(opt, style: const TextStyle(fontSize: 12)),
+                  backgroundColor: Colors.indigo.shade50,
+                  deleteIcon: const Icon(Icons.close, size: 14),
+                  onDeleted: () {
+                    setState(() => _options.remove(opt));
+                  },
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 24),
 
-          ..._decisionOptions.asMap().entries.map((entry) {
-            int idx = entry.key;
-            MicroOption opt = entry.value;
-            return Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: Column(
-                  children: [
-                    Row(
+            // Spin Arena Display
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.amber.shade300),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    _isSpinning ? Icons.refresh : Icons.casino,
+                    size: 48,
+                    color: Colors.amber.shade900,
+                  ),
+                  const SizedBox(height: 12),
+                  if (_isSpinning)
+                    const Text('Randomizing choice...', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))
+                  else if (_winningOption != null)
+                    Column(
                       children: [
-                        Expanded(
-                          child: Text(
-                            opt.name,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ),
+                        const Text('DECISION MADE:', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                        const SizedBox(height: 4),
                         Text(
-                          'Score: ${opt.score.toStringAsFixed(1)}',
-                          style: const TextStyle(
-                            color: Colors.indigo,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          _winningOption!,
+                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                          textAlign: TextAlign.center,
                         ),
                       ],
+                    )
+                  else
+                    const Text('Tap below to make a quick choice!', style: TextStyle(fontSize: 13, color: Colors.black87)),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.amber.shade800,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: _isSpinning ? null : _spinChoice,
+                      icon: const Icon(Icons.play_arrow),
+                      label: const Text('PICK FOR ME NOW', style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
-                    Slider(
-                      value: opt.score,
-                      min: 1.0,
-                      max: 10.0,
-                      divisions: 18,
-                      activeColor: Colors.purple,
-                      onChanged: (val) {
-                        setState(() {
-                          _decisionOptions[idx].score = val;
-                        });
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// TAB 5: FAIR BILL & ITEMIZED SPLITTER
+// ============================================================================
+class BillSplitterScreen extends StatefulWidget {
+  final VoidCallback onSplitDone;
+  const BillSplitterScreen({Key? key, required this.onSplitDone}) : super(key: key);
+
+  @override
+  State<BillSplitterScreen> createState() => _BillSplitterScreenState();
+}
+
+class _BillSplitterScreenState extends State<BillSplitterScreen> {
+  final TextEditingController _totalBillController = TextEditingController(text: "120.00");
+  int _peopleCount = 4;
+  double _tipPercentage = 15.0;
+
+  @override
+  Widget build(BuildContext context) {
+    double totalBill = double.tryParse(_totalBillController.text) ?? 0.0;
+    double tipAmount = totalBill * (_tipPercentage / 100);
+    double finalTotal = totalBill + tipAmount;
+    double perPerson = _peopleCount > 0 ? finalTotal / _peopleCount : 0.0;
+
+    String summaryString = "Group Bill Split Summary:\n"
+        "Total Bill: \$${totalBill.toStringAsFixed(2)}\n"
+        "Tip (${_tipPercentage.toInt()}%): \$${tipAmount.toStringAsFixed(2)}\n"
+        "Grand Total: \$${finalTotal.toStringAsFixed(2)}\n"
+        "--------------------\n"
+        "Each Person Pays ($_peopleCount people): \$${perPerson.toStringAsFixed(2)}";
+
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Fair Bill & Tip Splitter',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Instantly split dining or event bills fairly with tips and shareable summary.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+
+            const Text('Total Bill Amount (\$):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            const SizedBox(height: 6),
+            TextField(
+              controller: _totalBillController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.monetization_on),
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              ),
+              onChanged: (v) => setState(() {}),
+            ),
+            const SizedBox(height: 16),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Number of People:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.remove_circle_outline),
+                      onPressed: () {
+                        if (_peopleCount > 1) setState(() => _peopleCount--);
                       },
+                    ),
+                    Text('$_peopleCount', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    IconButton(
+                      icon: const Icon(Icons.add_circle_outline),
+                      onPressed: () => setState(() => _peopleCount++),
                     ),
                   ],
                 ),
-              ),
-            );
-          }),
-
-          const SizedBox(height: 12),
-
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.purple,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              onPressed: _runDecisionMatrix,
-              icon: const Icon(Icons.flash_on),
-              label: const Text(
-                'Run Micro-Decision Matrix',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.purple.shade50,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.purple.shade200, width: 2),
-            ),
-            child: Column(
-              children: [
-                const Icon(Icons.stars, color: Colors.amber, size: 32),
-                const SizedBox(height: 6),
-                Text(
-                  _decisionWinner,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    color: Colors.purple,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: 12),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Tip Percentage:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                Text('${_tipPercentage.toInt()}%', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo)),
+              ],
+            ),
+            Slider(
+              value: _tipPercentage,
+              min: 0,
+              max: 30,
+              divisions: 6,
+              activeColor: Colors.indigo,
+              label: '${_tipPercentage.toInt()}%',
+              onChanged: (val) => setState(() => _tipPercentage = val),
+            ),
+            const SizedBox(height: 16),
+
+            // Per Person Summary
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.blueGrey.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blueGrey.shade200),
+              ),
+              child: Column(
+                children: [
+                  const Text('EACH PERSON PAYS', style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text(
+                    '\$${perPerson.toStringAsFixed(2)}',
+                    style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.indigo),
+                  ),
+                  const Divider(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildBillSummaryText('Base Total', '\$${totalBill.toStringAsFixed(2)}'),
+                      _buildBillSummaryText('Tip Total', '\$${tipAmount.toStringAsFixed(2)}'),
+                      _buildBillSummaryText('Grand Total', '\$${finalTotal.toStringAsFixed(2)}'),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.indigo,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: summaryString));
+                      widget.onSplitDone();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Copied bill split breakdown to clipboard!'),
+                          backgroundColor: Colors.indigo,
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.share, size: 16),
+                    label: const Text('Copy Breakdown String', style: TextStyle(fontSize: 12)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildBillSummaryText(String title, String val) {
+    return Column(
+      children: [
+        Text(title, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+        Text(val, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+      ],
     );
   }
 }
