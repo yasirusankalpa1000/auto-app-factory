@@ -1,30 +1,63 @@
+import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 void main() {
-  runApp(const BubbleDeckApp());
+  runApp(const OverlayPocketApp());
 }
 
-class BubbleDeckApp extends StatelessWidget {
-  const BubbleDeckApp({super.key});
+class OverlayPocketApp extends StatelessWidget {
+  const OverlayPocketApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'BubbleDeck',
+      title: 'OverlayPocket',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0F172A),
-        colorScheme: const ColorScheme.dark(
-          primary: Colors.teal,
-          secondary: Colors.amber,
-          surface: Color(0xFF1E293B),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.teal,
+          brightness: Brightness.light,
         ),
+        scaffoldBackgroundColor: const Color(0xFFF5F7FA),
       ),
       home: const MainHomeScreen(),
     );
   }
+}
+
+class StickyNoteItem {
+  final String id;
+  final String title;
+  final String content;
+  final Color badgeColor;
+  final String category;
+  bool isPinnedFloating;
+
+  StickyNoteItem({
+    required this.id,
+    required this.title,
+    required this.content,
+    required this.badgeColor,
+    required this.category,
+    this.isPinnedFloating = true,
+  });
+}
+
+class ClipVaultItem {
+  final String id;
+  final String text;
+  final String tag;
+  final DateTime timestamp;
+
+  ClipVaultItem({
+    required this.id,
+    required this.text,
+    required this.tag,
+    required this.timestamp,
+  });
 }
 
 class MainHomeScreen extends StatefulWidget {
@@ -34,960 +67,619 @@ class MainHomeScreen extends StatefulWidget {
   State<MainHomeScreen> createState() => _MainHomeScreenState();
 }
 
-class _MainHomeScreenState extends State<MainHomeScreen> {
-  int _selectedTabIndex = 0;
-  bool _isOverlayActive = true;
+class _MainHomeScreenState extends State<MainHomeScreen>
+    with SingleTickerProviderStateMixin {
+  int _selectedBottomTab = 0;
 
-  // App Global State
-  Offset _bubbleOffset = const Offset(20, 180);
-  bool _isBubbleExpanded = false;
+  // App State Data
+  bool _overlayPermission = true;
+  bool _notificationPermission = true;
+  bool _storagePermission = false;
+
+  bool _isFloatingDockActive = true;
   Color _bubbleColor = Colors.teal;
   double _bubbleOpacity = 0.9;
-  double _bubbleSize = 56.0;
+  Offset _bubblePosition = const Offset(150, 120);
 
-  // Permission states
-  bool _permDisplayOverApps = true;
-  bool _permClipboardRead = true;
-  bool _permAccessibility = true;
-  bool _permNotificationListener = false;
+  int _dailyStreak = 4;
+  int _totalClipsCopied = 28;
 
-  // Multi-Clipboard items
-  final List<Map<String, dynamic>> _clipboardItems = [
-    {
-      'id': '1',
-      'text': 'ACCT: 8940-1294-5501 (Commercial Bank Sri Lanka)',
-      'category': 'Banking',
-      'isPinned': true,
-      'time': '2 mins ago',
-    },
-    {
-      'id': '2',
-      'text': 'https://maps.google.com/?q=6.9271,79.8612',
-      'category': 'Links',
-      'isPinned': true,
-      'time': '15 mins ago',
-    },
-    {
-      'id': '3',
-      'text': 'Package tracking code: LK-99201-X9',
-      'category': 'Codes',
-      'isPinned': false,
-      'time': '1 hour ago',
-    },
-    {
-      'id': '4',
-      'text': 'Payment total: \$145.50 for monthly cloud utility bill',
-      'category': 'Finance',
-      'isPinned': false,
-      'time': '3 hours ago',
-    },
+  // Decision Spinner State
+  bool _isSpinning = false;
+  String _decisionResult = "Tap Spin to decide!";
+  final List<String> _decisionOptions = [
+    "Do It Right Now!",
+    "Wait 10 Minutes",
+    "Ask a Friend",
+    "Buy Later Today",
+    "Save for Weekend",
+    "Take 5 Min Break",
   ];
 
-  // Text Expander Shortcuts
-  final List<Map<String, String>> _textExpanders = [
-    {
-      'trigger': '!acc',
-      'replacement': 'Bank Account: 8940-1294-5501 | Name: A. B. Perera',
-      'uses': '34',
-    },
-    {
-      'trigger': '!mail',
-      'replacement': 'dev.user@example.com',
-      'uses': '89',
-    },
-    {
-      'trigger': '!loc',
-      'replacement': 'No. 45, Main Street, Colombo 03, Sri Lanka',
-      'uses': '12',
-    },
-    {
-      'trigger': '!thanks',
-      'replacement': 'Thank you for your response! Let me know if you need anything else.',
-      'uses': '56',
-    },
+  // Sticky Notes List
+  final List<StickyNoteItem> _stickies = [
+    StickyNoteItem(
+      id: '1',
+      title: 'Commercial Bank Acc',
+      content: '8000 1234 5678 (J. Perera)',
+      badgeColor: Colors.indigo,
+      category: 'Banking',
+      isPinnedFloating: true,
+    ),
+    StickyNoteItem(
+      id: '2',
+      title: 'Delivery Address',
+      content: 'No. 45, Flower Rd, Colombo 07',
+      badgeColor: Colors.deepOrange,
+      category: 'Address',
+      isPinnedFloating: true,
+    ),
+    StickyNoteItem(
+      id: '3',
+      title: 'Wi-Fi Guest Code',
+      content: 'Pass: Hub#2025@Key',
+      badgeColor: Colors.purple,
+      category: 'Quick Info',
+      isPinnedFloating: false,
+    ),
   ];
 
-  // Active floating tools
-  bool _toolMultiClip = true;
-  bool _toolExpander = true;
-  bool _toolQuickCalc = true;
-  bool _toolStickyNotes = true;
+  // Clip Vault
+  final List<ClipVaultItem> _clipVault = [
+    ClipVaultItem(
+      id: '101',
+      text: 'https://maps.google.com/?q=6.9271,79.8612',
+      tag: 'Location Link',
+      timestamp: DateTime.now().subtract(const Duration(minutes: 12)),
+    ),
+    ClipVaultItem(
+      id: '102',
+      text: 'Total Cost: \$45.50 (Includes Express Delivery)',
+      tag: 'Shopping',
+      timestamp: DateTime.now().subtract(const Duration(hours: 2)),
+    ),
+  ];
 
-  // Quick Sticky Note state
-  String _floatingStickyText = 'Call delivery driver regarding order #8812';
+  // Controllers for Dialogs
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _contentController = TextEditingController();
+  final TextEditingController _quickClipController = TextEditingController();
 
-  void _addClipboardItem(String text, String category) {
-    setState(() {
-      _clipboardItems.insert(0, {
-        'id': DateTime.now().millisecondsSinceEpoch.toString(),
-        'text': text,
-        'category': category,
-        'isPinned': false,
-        'time': 'Just now',
-      });
-    });
+  // Chat Generator state
+  String _selectedChatCategory = 'Inquiry';
+  String _customizedReplyOutput = '';
+
+  final Map<String, List<String>> _chatTemplates = {
+    'Inquiry': [
+      "Hello! Is this item currently available? What is the delivery cost to my address?",
+      "Hi there, could you please send me the price details and warranty terms?",
+    ],
+    'Professional': [
+      "Thank you for the update! I have received the details and will get back to you shortly.",
+      "Hi, kindly check the attached details and let me know if any further info is required.",
+    ],
+    'Payment': [
+      "Payment completed! Please find the reference details: Bank Acc 800012345678.",
+      "Hi! Could you please share your bank details and total amount including delivery?",
+    ],
+    'Friendly': [
+      "Hey! I am currently away from my phone. Will reply as soon as possible!",
+      "Super busy right now, catch up with you in 20 minutes!",
+    ]
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _customizedReplyOutput = _chatTemplates['Inquiry']![0];
   }
 
-  void _addTextExpander(String trigger, String replacement) {
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _contentController.dispose();
+    _quickClipController.dispose();
+    super.dispose();
+  }
+
+  void _addNewStickyNote() {
+    if (_titleController.text.trim().isEmpty ||
+        _contentController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter both title and content')),
+      );
+      return;
+    }
+
     setState(() {
-      _textExpanders.add({
-        'trigger': trigger.startsWith('!') ? trigger : '!$trigger',
-        'replacement': replacement,
-        'uses': '0',
-      });
+      _stickies.insert(
+        0,
+        StickyNoteItem(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          title: _titleController.text.trim(),
+          content: _contentController.text.trim(),
+          badgeColor: Colors.teal,
+          category: 'Custom',
+          isPinnedFloating: true,
+        ),
+      );
+      _titleController.clear();
+      _contentController.clear();
+    });
+
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Floating Sticky Note Added!')),
+    );
+  }
+
+  void _pasteToClipVault() {
+    if (_quickClipController.text.trim().isEmpty) return;
+    setState(() {
+      _clipVault.insert(
+        0,
+        ClipVaultItem(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          text: _quickClipController.text.trim(),
+          tag: 'Quick Stash',
+          timestamp: DateTime.now(),
+        ),
+      );
+      _totalClipsCopied++;
+      _quickClipController.clear();
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Added to Clip Vault!')),
+    );
+  }
+
+  void _copyToClipboard(String text) {
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Copied: "$text"'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _spinDecision() {
+    if (_isSpinning) return;
+    setState(() {
+      _isSpinning = true;
+      _decisionResult = "Spinning choice...";
+    });
+
+    Timer(const Duration(milliseconds: 1200), () {
+      final rand = math.Random();
+      final picked = _decisionOptions[rand.nextInt(_decisionOptions.length)];
+      if (mounted) {
+        setState(() {
+          _isSpinning = false;
+          _decisionResult = picked;
+        });
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final pages = [
-      _buildSandboxTab(),
-      _buildClipboardTab(),
-      _buildExpanderTab(),
-      _buildToolsStudioTab(),
-      _buildPermissionsTab(),
-    ];
-
     return Scaffold(
       appBar: AppBar(
-        title: Row(
+        title: const Row(
           children: [
-            const Icon(Icons.widgets, color: Colors.teal),
-            const SizedBox(width: 8),
-            const Flexible(
-              child: Text(
-                'BubbleDeck',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                overflow: TextOverflow.ellipsis,
-              ),
+            Icon(Icons.layers, color: Colors.teal),
+            SizedBox(width: 8),
+            Text(
+              'OverlayPocket',
+              style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ],
         ),
         actions: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             margin: const EdgeInsets.only(right: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: _isOverlayActive
-                  ? Colors.green.withOpacity(0.2)
-                  : Colors.grey.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: _isOverlayActive ? Colors.green : Colors.grey,
-              ),
+              color: Colors.amber.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.amber),
             ),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.circle,
-                  size: 10,
-                  color: _isOverlayActive ? Colors.green : Colors.grey,
-                ),
-                const SizedBox(width: 6),
+                const Icon(Icons.bolt, size: 16, color: Colors.amber),
+                const SizedBox(width: 4),
                 Text(
-                  _isOverlayActive ? 'OVERLAY ON' : 'PAUSED',
-                  style: TextStyle(
-                    fontSize: 11,
+                  'Streak: $_dailyStreak d',
+                  style: const TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: _isOverlayActive ? Colors.green : Colors.grey,
+                    fontSize: 12,
+                    color: Colors.black87,
                   ),
-                ),
-                Switch(
-                  value: _isOverlayActive,
-                  activeColor: Colors.teal,
-                  onChanged: (val) {
-                    setState(() {
-                      _isOverlayActive = val;
-                    });
-                  },
                 ),
               ],
             ),
           ),
         ],
       ),
-      body: pages[_selectedTabIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedTabIndex,
-        selectedItemColor: Colors.teal,
-        unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: const Color(0xFF1E293B),
-        onTap: (idx) {
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Top Status & Floating Dock Switcher
+            _buildFloatingStatusHeader(),
+
+            // Main View Area
+            Expanded(
+              child: IndexedStack(
+                index: _selectedBottomTab,
+                children: [
+                  _buildFloatingStudioTab(),
+                  _buildClipVaultTab(),
+                  _buildChatResponseTab(),
+                  _buildDecisionSpinnerTab(),
+                  _buildPermissionsHubTab(),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedBottomTab,
+        onDestinationSelected: (int index) {
           setState(() {
-            _selectedTabIndex = idx;
+            _selectedBottomTab = index;
           });
         },
-        items: const [
-          BottomNavigationBarItem(
+        destinations: const [
+          NavigationDestination(
             icon: Icon(Icons.touch_app),
-            label: 'Sandbox',
+            label: 'Floating Dock',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.content_copy),
-            label: 'Multi-Clip',
+          NavigationDestination(
+            icon: Icon(Icons.content_paste),
+            label: 'Clip Vault',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bolt),
-            label: 'Expander',
+          NavigationDestination(
+            icon: Icon(Icons.forum),
+            label: 'Quick Replies',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.tune),
-            label: 'Studio',
+          NavigationDestination(
+            icon: Icon(Icons.casino),
+            label: 'Decision',
           ),
-          BottomNavigationBarItem(
+          NavigationDestination(
             icon: Icon(Icons.security),
-            label: 'System',
+            label: 'Permissions',
           ),
         ],
       ),
+      floatingActionButton: _selectedBottomTab == 0
+          ? FloatingActionButton.extended(
+              onPressed: () => _showAddStickyDialog(context),
+              backgroundColor: Colors.teal,
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text(
+                'Add Sticky',
+                style: TextStyle(color: Colors.white, FontWeight: FontWeight.bold),
+              ),
+            )
+          : null,
     );
   }
 
-  // TAB 1: Live Interactive Overlay Sandbox
-  Widget _buildSandboxTab() {
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Informational header
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.teal.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.teal.withOpacity(0.3)),
-              ),
-              child: Row(
+  Widget _buildFloatingStatusHeader() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
                 children: [
-                  const Icon(Icons.info, color: Colors.teal),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Drag the floating bubble around the phone sandbox below! Tap it to test live dynamic floating actions.',
-                      style: const TextStyle(fontSize: 13, color: Colors.white70),
-                      softWrap: true,
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _isFloatingDockActive ? Colors.green : Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _isFloatingDockActive
+                        ? 'Floating Overlay Active'
+                        : 'Floating Overlay Standby',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
                     ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 16),
+              Switch(
+                value: _isFloatingDockActive,
+                activeColor: Colors.teal,
+                onChanged: (val) {
+                  setState(() {
+                    _isFloatingDockActive = val;
+                  });
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
-            // Phone Simulator Sandbox Frame
-            Center(
-              child: Container(
-                width: 320,
-                height: 480,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF020617),
-                  borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: Colors.grey.shade700, width: 4),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black87,
-                      blurRadius: 16,
-                      offset: Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
-                  child: Stack(
+  // TAB 1: Floating Dock & Overlay HUD Studio
+  Widget _buildFloatingStudioTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Interactive Dock Workspace Preview',
+            style: TextStyle(fontSize: 16, FontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Drag the floating pocket bubble below to test desktop overlay position.',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          const SizedBox(height: 12),
+
+          // Interactive Drag Playground Box
+          Container(
+            height: 200,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.04),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.teal.withOpacity(0.3), width: 1.5),
+            ),
+            child: Stack(
+              children: [
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Simulated background phone wallpaper & mock app interface
-                      Positioned.fill(
+                      Icon(Icons.phonelink_setup,
+                          color: Colors.grey.withOpacity(0.5), size: 36),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Simulated Phone Screen View',
+                        style: TextStyle(
+                          color: Colors.grey.withOpacity(0.7),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Floating Draggable Bubble
+                if (_isFloatingDockActive)
+                  Positioned(
+                    left: _bubblePosition.dx,
+                    top: _bubblePosition.dy,
+                    child: GestureDetector(
+                      onPanUpdate: (details) {
+                        setState(() {
+                          double newX = _bubblePosition.dx + details.delta.dx;
+                          double newY = _bubblePosition.dy + details.delta.dy;
+                          newX = newX.clamp(10.0, 270.0);
+                          newY = newY.clamp(10.0, 130.0);
+                          _bubblePosition = Offset(newX, newY);
+                        });
+                      },
+                      child: Opacity(
+                        opacity: _bubbleOpacity,
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: _bubbleColor,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: _bubbleColor.withOpacity(0.4),
+                                blurRadius: 10,
+                                spreadRadius: 2,
+                              )
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.layers,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Bubble Style Customizers
+          Card(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Dock Bubble Customizer',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Text('Color: ', style: TextStyle(fontSize: 12)),
+                      const SizedBox(width: 8),
+                      _buildColorPickerChip(Colors.teal),
+                      _buildColorPickerChip(Colors.indigo),
+                      _buildColorPickerChip(Colors.deepOrange),
+                      _buildColorPickerChip(Colors.purple),
+                      _buildColorPickerChip(Colors.black),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Text('Opacity: ', style: TextStyle(fontSize: 12)),
+                      Expanded(
+                        child: Slider(
+                          value: _bubbleOpacity,
+                          min: 0.3,
+                          max: 1.0,
+                          activeColor: Colors.teal,
+                          onChanged: (val) {
+                            setState(() {
+                              _bubbleOpacity = val;
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Active Floating Sticky Notes Section
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Active Floating Stickies',
+                style: TextStyle(fontSize: 16, FontWeight: FontWeight.bold),
+              ),
+              Text(
+                '${_stickies.length} items',
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _stickies.length,
+            itemBuilder: (context, index) {
+              final item = _stickies[index];
+              return Card(
+                elevation: 1.5,
+                margin: const EdgeInsets.symmetric(vertical: 6),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 12,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: item.badgeColor,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Mock Phone Status Bar
-                            Container(
-                              height: 28,
-                              color: Colors.black87,
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    '09:41',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 11,
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    item.title,
+                                    style: const TextStyle(
                                       fontWeight: FontWeight.bold,
+                                      fontSize: 14,
                                     ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  Row(
-                                    children: [
-                                      Icon(Icons.wifi, size: 12, color: Colors.white),
-                                      SizedBox(width: 4),
-                                      Icon(Icons.battery_full, size: 12, color: Colors.white),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // Simulated Chat App Screen Background
-                            Expanded(
-                              child: Container(
-                                color: const Color(0xFF0F172A),
-                                padding: const EdgeInsets.all(12),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF1E293B),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: const Row(
-                                        children: [
-                                          CircleAvatar(
-                                            radius: 12,
-                                            backgroundColor: Colors.teal,
-                                            child: Text('W', style: TextStyle(fontSize: 10, color: Colors.white)),
-                                          ),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            'WhatsApp Chat Simulation',
-                                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    _buildMockChatMessage('Hey! Can you send me your bank details & tracking ID?'),
-                                    const SizedBox(height: 8),
-                                    _buildMockChatMessage('Tap the floating bubble to paste instantly without switching apps!', isUser: true),
-                                    const Spacer(),
-                                    // Mock text input bar
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF1E293B),
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: const Row(
-                                        children: [
-                                          Icon(Icons.emoji_emotions, size: 16, color: Colors.grey),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            'Type a message...',
-                                            style: TextStyle(fontSize: 11, color: Colors.grey),
-                                          ),
-                                          Spacer(),
-                                          Icon(Icons.send, size: 16, color: Colors.teal),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
                                 ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    item.category,
+                                    style: const TextStyle(
+                                        fontSize: 10, color: Colors.black87),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              item.content,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Colors.black87,
                               ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 2,
                             ),
                           ],
                         ),
                       ),
-
-                      // Interactive Draggable Floating Bubble Overlay
-                      if (_isOverlayActive)
-                        Positioned(
-                          left: _bubbleOffset.dx,
-                          top: _bubbleOffset.dy,
-                          child: GestureDetector(
-                            onPanUpdate: (details) {
-                              setState(() {
-                                double newX = _bubbleOffset.dx + details.delta.dx;
-                                double newY = _bubbleOffset.dy + details.delta.dy;
-                                // Clamp within simulated screen boundaries
-                                newX = newX.clamp(0.0, 260.0);
-                                newY = newY.clamp(30.0, 410.0);
-                                _bubbleOffset = Offset(newX, newY);
-                              });
-                            },
-                            onTap: () {
-                              setState(() {
-                                _isBubbleExpanded = !_isBubbleExpanded;
-                              });
-                            },
-                            child: Material(
-                              elevation: 8,
-                              shape: const CircleBorder(),
-                              color: _bubbleColor.withOpacity(_bubbleOpacity),
-                              child: Container(
-                                width: _bubbleSize,
-                                height: _bubbleSize,
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  _isBubbleExpanded ? Icons.close : Icons.layers,
-                                  color: Colors.white,
-                                  size: 26,
-                                ),
-                              ),
-                            ),
-                          ),
+                      IconButton(
+                        icon: const Icon(Icons.copy, size: 20, color: Colors.teal),
+                        tooltip: 'Quick Copy',
+                        onPressed: () => _copyToClipboard(item.content),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          item.isPinnedFloating
+                              ? Icons.push_pin
+                              : Icons.push_pin_outlined,
+                          size: 20,
+                          color: item.isPinnedFloating
+                              ? Colors.amber
+                              : Colors.grey,
                         ),
-
-                      // Expanded Dynamic Floating Action Drawer Overlay
-                      if (_isOverlayActive && _isBubbleExpanded)
-                        Positioned(
-                          left: (_bubbleOffset.dx > 130) ? _bubbleOffset.dx - 180 : _bubbleOffset.dx + 10,
-                          top: (_bubbleOffset.dy > 250) ? _bubbleOffset.dy - 180 : _bubbleOffset.dy + 10,
-                          child: Container(
-                            width: 200,
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1E293B).withOpacity(0.95),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.teal.withOpacity(0.6), width: 1.5),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Colors.black87,
-                                  blurRadius: 12,
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    const Row(
-                                      children: [
-                                        Icon(Icons.bolt, size: 14, color: Colors.amber),
-                                        SizedBox(width: 4),
-                                        Text(
-                                          'Quick Actions',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          _isBubbleExpanded = false;
-                                        });
-                                      },
-                                      child: const Icon(Icons.close, size: 14, color: Colors.grey),
-                                    ),
-                                  ],
-                                ),
-                                const Divider(height: 12, color: Colors.white70),
-
-                                // Action Item 1: Multi Clipboard Stack
-                                if (_toolMultiClip) ...[
-                                  _buildFloatingActionItem(
-                                    icon: Icons.content_paste,
-                                    label: 'Paste Recent Bank',
-                                    color: Colors.teal,
-                                    onTap: () {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('Pasted bank details to current app!'),
-                                          duration: Duration(seconds: 1),
-                                        ),
-                                      );
-                                      setState(() {
-                                        _isBubbleExpanded = false;
-                                      });
-                                    },
-                                  ),
-                                  const SizedBox(height: 6),
-                                ],
-
-                                // Action Item 2: Dynamic Expander Trigger
-                                if (_toolExpander) ...[
-                                  _buildFloatingActionItem(
-                                    icon: Icons.text_fields,
-                                    label: 'Insert !mail Macro',
-                                    color: Colors.amber,
-                                    onTap: () {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('Expanded !mail -> dev.user@example.com'),
-                                          duration: Duration(seconds: 1),
-                                        ),
-                                      );
-                                      setState(() {
-                                        _isBubbleExpanded = false;
-                                      });
-                                    },
-                                  ),
-                                  const SizedBox(height: 6),
-                                ],
-
-                                // Action Item 3: Quick Sticky Note Peek
-                                if (_toolStickyNotes) ...[
-                                  _buildFloatingActionItem(
-                                    icon: Icons.sticky_note_2,
-                                    label: 'Read Floating Note',
-                                    color: Colors.orange,
-                                    onTap: () {
-                                      _showStickyNoteModal(context);
-                                    },
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ),
+                        tooltip: 'Toggle Pin',
+                        onPressed: () {
+                          setState(() {
+                            item.isPinnedFloating = !item.isPinnedFloating;
+                          });
+                        },
+                      ),
                     ],
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Live Diagnostics card
-            Card(
-              color: const Color(0xFF1E293B),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Floating Overlay Performance',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _buildStatChip(Icons.memory, 'Memory', '14 MB'),
-                        _buildStatChip(Icons.speed, 'Latency', '2 ms'),
-                        _buildStatChip(Icons.touch_app, 'Triggers Today', '128'),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildMockChatMessage(String text, {bool isUser = false}) {
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        constraints: const BoxConstraints(maxWidth: 200),
-        decoration: BoxDecoration(
-          color: isUser ? Colors.teal.shade800 : const Color(0xFF334155),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Text(
-          text,
-          style: const TextStyle(fontSize: 10, color: Colors.white),
-          softWrap: true,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFloatingActionItem({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(fontSize: 11, color: Colors.white),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatChip(IconData icon, String label, String value) {
-    return Column(
-      children: [
-        Icon(icon, size: 18, color: Colors.teal),
-        const SizedBox(height: 4),
-        Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-        Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-      ],
-    );
-  }
-
-  // TAB 2: Multi-Clipboard History Stack Vault
-  Widget _buildClipboardTab() {
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Multi-Clipboard Vault',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () => _showAddClipDialog(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
-                    foregroundColor: Colors.white,
-                  ),
-                  icon: const Icon(Icons.add, size: 16),
-                  label: const Text('New Clip'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Items copied anywhere on your phone are stacked floatingly in real-time.',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-
-            // Search Bar
-            TextField(
-              decoration: const InputDecoration(
-                hintText: 'Search stored clips & numbers...',
-                prefixIcon: Icon(Icons.search, color: Colors.teal),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(12)),
-                ),
-                contentPadding: EdgeInsets.symmetric(vertical: 10),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Stored Clipboard Cards
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _clipboardItems.length,
-              itemBuilder: (context, index) {
-                final item = _clipboardItems[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  color: const Color(0xFF1E293B),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.teal.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                item['category'],
-                                style: const TextStyle(fontSize: 10, color: Colors.teal, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                            const Spacer(),
-                            Text(
-                              item['time'],
-                              style: const TextStyle(fontSize: 10, color: Colors.grey),
-                            ),
-                            IconButton(
-                              icon: Icon(
-                                item['isPinned'] ? Icons.star : Icons.star_border,
-                                size: 18,
-                                color: item['isPinned'] ? Colors.amber : Colors.grey,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  item['isPinned'] = !item['isPinned'];
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          item['text'],
-                          style: const TextStyle(fontSize: 13, color: Colors.white),
-                          softWrap: true,
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            TextButton.icon(
-                              onPressed: () {
-                                setState(() {
-                                  _clipboardItems.removeAt(index);
-                                });
-                              },
-                              icon: const Icon(Icons.delete, size: 14, color: Colors.grey),
-                              label: const Text('Remove', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                            ),
-                            const SizedBox(width: 8),
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Copied clip to active system clipboard!')),
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.teal.shade700,
-                                foregroundColor: Colors.white,
-                              ),
-                              icon: const Icon(Icons.copy, size: 14),
-                              label: const Text('Copy Quick', style: TextStyle(fontSize: 11)),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // TAB 3: Text Expander Macros
-  Widget _buildExpanderTab() {
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Text Expander Engine',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () => _showAddExpanderDialog(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.amber,
-                    foregroundColor: Colors.black,
-                  ),
-                  icon: const Icon(Icons.add, size: 16),
-                  label: const Text('New Macro'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Type short triggers anywhere on screen to replace them instantly with full snippets.',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-
-            // Active Expanders List
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _textExpanders.length,
-              itemBuilder: (context, index) {
-                final macro = _textExpanders[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  color: const Color(0xFF1E293B),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: Colors.amber.withOpacity(0.2),
-                      child: const Icon(Icons.bolt, color: Colors.amber, size: 20),
-                    ),
-                    title: Text(
-                      macro['trigger']!,
-                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.amber),
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 4),
-                        Text(
-                          macro['replacement']!,
-                          style: const TextStyle(fontSize: 12, color: Colors.white70),
-                          softWrap: true,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Used ${macro['uses']} times',
-                          style: const TextStyle(fontSize: 10, color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.grey, size: 18),
-                      onPressed: () {
-                        setState(() {
-                          _textExpanders.removeAt(index);
-                        });
-                      },
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // TAB 4: Floating Tools & Customization Studio
-  Widget _buildToolsStudioTab() {
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Floating Overlay Studio',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Customize bubble appearance, active overlay widgets, and opacity.',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-
-            // Active Modules Toggle
-            Card(
-              color: const Color(0xFF1E293B),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Enabled Overlay Utilities',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                    ),
-                    const SizedBox(height: 8),
-                    SwitchListTile(
-                      title: const Text('Multi-Clipboard Stack', style: TextStyle(fontSize: 13)),
-                      subtitle: const Text('Captures copied text items', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                      value: _toolMultiClip,
-                      activeColor: Colors.teal,
-                      onChanged: (val) => setState(() => _toolMultiClip = val),
-                    ),
-                    SwitchListTile(
-                      title: const Text('Dynamic Text Expander', style: TextStyle(fontSize: 13)),
-                      subtitle: const Text('Replaces !shortcuts auto-magically', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                      value: _toolExpander,
-                      activeColor: Colors.teal,
-                      onChanged: (val) => setState(() => _toolExpander = val),
-                    ),
-                    SwitchListTile(
-                      title: const Text('Quick Floating Calculator', style: TextStyle(fontSize: 13)),
-                      subtitle: const Text('Mini calculation pad over active apps', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                      value: _toolQuickCalc,
-                      activeColor: Colors.teal,
-                      onChanged: (val) => setState(() => _toolQuickCalc = val),
-                    ),
-                    SwitchListTile(
-                      title: const Text('Sticky Floating Reminders', style: TextStyle(fontSize: 13)),
-                      subtitle: const Text('Pins micro notes over screen', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                      value: _toolStickyNotes,
-                      activeColor: Colors.teal,
-                      onChanged: (val) => setState(() => _toolStickyNotes = val),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Bubble Styling Customizer
-            Card(
-              color: const Color(0xFF1E293B),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Bubble Aesthetics',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                    ),
-                    const SizedBox(height: 12),
-                    const Text('Bubble Primary Theme Color', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 12,
-                      crossAxisAlignment: WrapCrossAxisAlignment.center,
-                      children: [
-                        _buildColorOption(Colors.teal),
-                        _buildColorOption(Colors.amber),
-                        _buildColorOption(Colors.indigo),
-                        _buildColorOption(Colors.purple),
-                        _buildColorOption(Colors.orange),
-                        _buildColorOption(Colors.blue),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Text('Bubble Opacity: ${(_bubbleOpacity * 100).round()}%', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                    Slider(
-                      value: _bubbleOpacity,
-                      min: 0.3,
-                      max: 1.0,
-                      activeColor: Colors.teal,
-                      onChanged: (val) => setState(() => _bubbleOpacity = val),
-                    ),
-                    Text('Bubble Diameter: ${_bubbleSize.round()} px', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                    Slider(
-                      value: _bubbleSize,
-                      min: 40.0,
-                      max: 72.0,
-                      activeColor: Colors.teal,
-                      onChanged: (val) => setState(() => _bubbleSize = val),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildColorOption(Color color) {
+  Widget _buildColorPickerChip(Color color) {
     bool isSelected = _bubbleColor == color;
     return GestureDetector(
       onTap: () {
@@ -996,230 +688,587 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
         });
       },
       child: Container(
-        width: 36,
-        height: 36,
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
-          color: color,
           shape: BoxShape.circle,
           border: Border.all(
-            color: isSelected ? Colors.white : Colors.transparent,
-            width: 3,
+            color: isSelected ? Colors.teal : Colors.transparent,
+            width: 2,
           ),
         ),
-        child: isSelected ? const Icon(Icons.check, size: 18, color: Colors.white) : null,
+        child: CircleAvatar(
+          backgroundColor: color,
+          radius: 12,
+        ),
       ),
     );
   }
 
-  // TAB 5: Permissions & Diagnostic Center
-  Widget _buildPermissionsTab() {
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'System Integration & Permissions',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'BubbleDeck requires specific Android/iOS system permissions to display overlays above apps.',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
+  // TAB 2: Smart Clip Vault
+  Widget _buildClipVaultTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Smart Clipboard Stash',
+            style: TextStyle(fontSize: 16, FontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Paste quick snippet strings or phone numbers to hold temporary clips.',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          const SizedBox(height: 12),
 
-            _buildPermissionTile(
-              title: 'Display Over Other Apps',
-              description: 'Allows the floating bubble action pad to stay visible over WhatsApp, Chrome, etc.',
-              isGranted: _permDisplayOverApps,
-              onChanged: (val) => setState(() => _permDisplayOverApps = val),
-            ),
-            const SizedBox(height: 10),
-            _buildPermissionTile(
-              title: 'Clipboard Auto-Sync',
-              description: 'Automatically intercepts copied text into your multi-clipboard stack.',
-              isGranted: _permClipboardRead,
-              onChanged: (val) => setState(() => _permClipboardRead = val),
-            ),
-            const SizedBox(height: 10),
-            _buildPermissionTile(
-              title: 'Accessibility Service (Text Expander)',
-              description: 'Detects dynamic text macro triggers like !acc and expands them automatically.',
-              isGranted: _permAccessibility,
-              onChanged: (val) => setState(() => _permAccessibility = val),
-            ),
-            const SizedBox(height: 10),
-            _buildPermissionTile(
-              title: 'Notification Reader',
-              description: 'Captures OTPs and tracking codes directly into floating actions.',
-              isGranted: _permNotificationListener,
-              onChanged: (val) => setState(() => _permNotificationListener = val),
-            ),
-            const SizedBox(height: 20),
+          // Fast Input Box
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _quickClipController,
+                  decoration: const InputDecoration(
+                    hintText: 'Paste link, code, address, or number...',
+                    border: OutlineInputBorder(),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: _pasteToClipVault,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                ),
+                icon: const Icon(Icons.add_link, color: Colors.white, size: 18),
+                label: const Text(
+                  'Stash',
+                  style: TextStyle(color: Colors.white, FontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
 
-            Card(
-              color: const Color(0xFF1E293B),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(
+          const SizedBox(height: 16),
+
+          Card(
+            color: Colors.teal.withOpacity(0.08),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  Column(
+                    children: [
+                      Text(
+                        '$_totalClipsCopied',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          FontWeight: FontWeight.bold,
+                          color: Colors.teal,
+                        ),
+                      ),
+                      const Text(
+                        'Clips Saved',
+                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                  Container(width: 1, height: 30, color: Colors.grey.withOpacity(0.3)),
+                  const Column(
+                    children: [
+                      Text(
+                        'Instant',
+                        style: TextStyle(
+                          fontSize: 18,
+                          FontWeight: FontWeight.bold,
+                          color: Colors.teal,
+                        ),
+                      ),
+                      Text(
+                        'Auto-Format',
+                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _clipVault.length,
+            itemBuilder: (context, index) {
+              final clip = _clipVault[index];
+              return Card(
+                margin: const EdgeInsets.symmetric(vertical: 6),
+                child: ListTile(
+                  title: Text(
+                    clip.text,
+                    style: const TextStyle(fontSize: 13, FontWeight: FontWeight.w500),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Row(
                       children: [
-                        Icon(Icons.security, color: Colors.teal),
-                        SizedBox(width: 8),
-                        Text(
-                          'Privacy & Security Guarantee',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.teal.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            clip.tag,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Colors.teal,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'All clipboard items, text macros, and notes stay strictly on your local device. No data is ever sent to external cloud servers.',
-                      style: TextStyle(fontSize: 12, color: Colors.white70),
-                      softWrap: true,
-                    ),
-                  ],
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.copy, color: Colors.teal, size: 20),
+                        onPressed: () => _copyToClipboard(clip.text),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline,
+                            color: Colors.grey, size: 20),
+                        onPressed: () {
+                          setState(() {
+                            _clipVault.removeAt(index);
+                          });
+                        },
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
-          ],
-        ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildPermissionTile({
-    required String title,
-    required String description,
-    required bool isGranted,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return Card(
-      color: const Color(0xFF1E293B),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            Icon(
-              isGranted ? Icons.check_circle : Icons.warning,
-              color: isGranted ? Colors.green : Colors.amber,
-              size: 28,
+  // TAB 3: Quick Chat Response Generator
+  Widget _buildChatResponseTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Quick Response & Template Builder',
+            style: TextStyle(fontSize: 16, FontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Pick quick pre-formatted templates to reply instantly across WhatsApp, IG, or SMS.',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          const SizedBox(height: 12),
+
+          Wrap(
+            spacing: 8,
+            children: _chatTemplates.keys.map((category) {
+              final bool isSelected = category == _selectedChatCategory;
+              return ChoiceChip(
+                label: Text(category),
+                selected: isSelected,
+                selectedColor: Colors.teal,
+                labelStyle: TextStyle(
+                  color: isSelected ? Colors.white : Colors.black87,
+                  fontWeight: FontWeight.w600,
+                ),
+                onSelected: (bool selected) {
+                  if (selected) {
+                    setState(() {
+                      _selectedChatCategory = category;
+                      _customizedReplyOutput =
+                          _chatTemplates[category]![0];
+                    });
+                  }
+                },
+              );
+            }).toList(),
+          ),
+
+          const SizedBox(height: 16),
+
+          const Text(
+            'Select Template Sample:',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          ),
+          const SizedBox(height: 8),
+
+          Column(
+            children: _chatTemplates[_selectedChatCategory]!.map((template) {
+              final bool isCurrent = _customizedReplyOutput == template;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: isCurrent
+                      ? Colors.teal.withOpacity(0.1)
+                      : Colors.white,
+                  border: Border.all(
+                    color: isCurrent ? Colors.teal : Colors.grey.withOpacity(0.3),
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: ListTile(
+                  title: Text(
+                    template,
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                  trailing: Radio<String>(
+                    value: template,
+                    groupValue: _customizedReplyOutput,
+                    activeColor: Colors.teal,
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() {
+                          _customizedReplyOutput = val;
+                        });
+                      }
+                    },
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+
+          const SizedBox(height: 16),
+
+          Card(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(width: 12),
-            Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  const Text(
+                    'Output Ready to Copy:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    description,
-                    style: const TextStyle(fontSize: 11, color: Colors.grey),
-                    softWrap: true,
+                  const SizedBox(height: 6),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _customizedReplyOutput,
+                      style: const TextStyle(fontSize: 13, color: Colors.black87),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () =>
+                              _copyToClipboard(_customizedReplyOutput),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.teal,
+                          ),
+                          icon: const Icon(Icons.copy,
+                              color: Colors.white, size: 18),
+                          label: const Text(
+                            'Copy Text',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _stickies.insert(
+                              0,
+                              StickyNoteItem(
+                                id: DateTime.now()
+                                    .millisecondsSinceEpoch
+                                    .toString(),
+                                title: 'Quick Reply Template',
+                                content: _customizedReplyOutput,
+                                badgeColor: Colors.teal,
+                                category: 'Reply',
+                                isPinnedFloating: true,
+                              ),
+                            );
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Pinned to Floating Stickies!'),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.push_pin, size: 18),
+                        label: const Text('Pin HUD'),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            Switch(
-              value: isGranted,
-              activeColor: Colors.teal,
-              onChanged: onChanged,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  // Modals & Dialogs
-  void _showStickyNoteModal(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF1E293B),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+  // TAB 4: Decision Spinner & Engagement Hub
+  Widget _buildDecisionSpinnerTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Daily Micro-Decision Spinner',
+            style: TextStyle(fontSize: 16, FontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Can\'t decide what to do right now? Spin the instant wheel assistant.',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          const SizedBox(height: 20),
+
+          Center(
+            child: Column(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _isSpinning ? Colors.amber : Colors.teal,
+                    boxShadow: [
+                      BoxShadow(
+                        color: (_isSpinning ? Colors.amber : Colors.teal)
+                            .withOpacity(0.4),
+                        blurRadius: 20,
+                        spreadRadius: 4,
+                      )
+                    ],
+                  ),
+                  child: Icon(
+                    _isSpinning ? Icons.refresh : Icons.casino,
+                    size: 64,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  _decisionResult,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    FontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: _spinDecision,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
+                  ),
+                  icon: const Icon(Icons.play_arrow, color: Colors.white),
+                  label: const Text(
+                    'Spin Decision Engine',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 8),
+
+          const Text(
+            'Spinner Decision Pool:',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          ),
+          const SizedBox(height: 8),
+
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _decisionOptions.map((opt) {
+              return Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  opt,
+                  style: const TextStyle(fontSize: 12, color: Colors.black87),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
       ),
-      builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Row(
+    );
+  }
+
+  // TAB 5: Permissions & Floating Notifications Hub
+  Widget _buildPermissionsHubTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Permissions & Overlay Setup',
+            style: TextStyle(fontSize: 16, FontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Ensure full permission access so OverlayPocket can float over other apps.',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          const SizedBox(height: 16),
+
+          Card(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: const Text('Display Over Other Apps (Overlay)'),
+                  subtitle: const Text('Allows floating bubble over WhatsApp & Browser'),
+                  value: _overlayPermission,
+                  activeColor: Colors.teal,
+                  onChanged: (val) {
+                    setState(() {
+                      _overlayPermission = val;
+                    });
+                  },
+                ),
+                const Divider(height: 1),
+                SwitchListTile(
+                  title: const Text('Notification Bar Quick Control'),
+                  subtitle: const Text('Shows active stickies in notification panel'),
+                  value: _notificationPermission,
+                  activeColor: Colors.teal,
+                  onChanged: (val) {
+                    setState(() {
+                      _notificationPermission = val;
+                    });
+                  },
+                ),
+                const Divider(height: 1),
+                SwitchListTile(
+                  title: const Text('Clipboard Auto Stash Access'),
+                  subtitle: const Text('Detect copied links automatically'),
+                  value: _storagePermission,
+                  activeColor: Colors.teal,
+                  onChanged: (val) {
+                    setState(() {
+                      _storagePermission = val;
+                    });
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          Card(
+            color: Colors.amber.withOpacity(0.1),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: Colors.amber),
+            ),
+            child: const Padding(
+              padding: EdgeInsets.all(12),
+              child: Row(
                 children: [
-                  Icon(Icons.sticky_note_2, color: Colors.orange),
-                  SizedBox(width: 8),
-                  Text(
-                    'Floating Sticky Note Preview',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  Icon(Icons.info_outline, color: Colors.amber),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Note: Displaying over other apps keeps your context stickies and clip helper available 24/7 without closing your chat windows.',
+                      style: TextStyle(fontSize: 12, color: Colors.black87),
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: TextEditingController(text: _floatingStickyText),
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  labelText: 'Quick Floating Reminder',
-                ),
-                onChanged: (val) {
-                  _floatingStickyText = val;
-                },
-              ),
-              const SizedBox(height: 16),
-              Align(
-                alignment: Alignment.centerRight,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Save Note', style: TextStyle(color: Colors.white)),
-                ),
-              ),
-            ],
+            ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
-  void _showAddClipDialog(BuildContext context) {
-    final textController = TextEditingController();
-    final catController = TextEditingController(text: 'General');
-
+  void _showAddStickyDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (ctx) {
         return AlertDialog(
-          backgroundColor: const Color(0xFF1E293B),
-          title: const Text('Add Stored Clip'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: textController,
-                decoration: const InputDecoration(
-                  labelText: 'Clip Text / Bank Details / Link',
-                  border: OutlineInputBorder(),
+          title: const Text('Add Floating Sticky'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Title (e.g., Bank Acc, Phone)',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: catController,
-                decoration: const InputDecoration(
-                  labelText: 'Category Tag',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _contentController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Content to display on HUD',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -1227,65 +1276,14 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
-              onPressed: () {
-                if (textController.text.isNotEmpty) {
-                  _addClipboardItem(textController.text, catController.text);
-                  Navigator.pop(ctx);
-                }
-              },
-              child: const Text('Save Snippet', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showAddExpanderDialog(BuildContext context) {
-    final trigController = TextEditingController();
-    final repController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1E293B),
-          title: const Text('Create Text Macro Shortcut'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: trigController,
-                decoration: const InputDecoration(
-                  labelText: 'Trigger (e.g. !addr)',
-                  border: OutlineInputBorder(),
-                ),
+              onPressed: _addNewStickyNote,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal,
               ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: repController,
-                decoration: const InputDecoration(
-                  labelText: 'Full Expanded Text',
-                  border: OutlineInputBorder(),
-                ),
+              child: const Text(
+                'Save Sticky',
+                style: TextStyle(color: Colors.white),
               ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
-              onPressed: () {
-                if (trigController.text.isNotEmpty && repController.text.isNotEmpty) {
-                  _addTextExpander(trigController.text, repController.text);
-                  Navigator.pop(ctx);
-                }
-              },
-              child: const Text('Add Macro', style: TextStyle(color: Colors.black)),
             ),
           ],
         );
