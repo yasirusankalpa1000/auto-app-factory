@@ -1,579 +1,454 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 void main() {
-  runApp(const OmniClipApp());
+  runApp(const FloatDeckApp());
 }
 
-class OmniClipApp extends StatelessWidget {
-  const OmniClipApp({super.key});
+class FloatDeckApp extends StatelessWidget {
+  const FloatDeckApp({super.key});
 
   @override
   Widget build(BuildContext meContext) {
     return MaterialApp(
-      title: 'OmniClip',
+      title: 'FloatDeck',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.indigo,
           brightness: Brightness.light,
-          primary: Colors.indigo,
-          secondary: Colors.teal,
         ),
-        scaffoldBackgroundColor: const Color(0xFFF8F9FE),
-        cardTheme: CardThemeData(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
+        scaffoldBackgroundColor: Colors.grey[50],
       ),
-      home: const MainScreen(),
+      home: const MainDeckScreen(),
     );
   }
 }
 
-class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+class MainDeckScreen extends StatefulWidget {
+  const MainDeckScreen({super.key});
 
   @override
-  State<MainScreen> meState() => _MainScreenState();
+  State<MainDeckScreen> createState() => _MainDeckScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
-  int _currentIndex = 0;
-  bool _isOverlayActive = true;
-  String _activeDockStatus = "Live Clip Engine Running";
+class _MainDeckScreenState extends State<MainDeckScreen> {
+  int _selectedTabIndex = 0;
+  
+  // Floating Widget Overlay State
+  bool _overlayEnabled = true;
+  Offset _bubblePosition = const Offset(20, 200);
+  bool _isMenuExpanded = false;
 
-  final List<Widget> _pages = const [
-    ContextSuiteTab(),
-    ImpulseEngineTab(),
-    FloatingHudTab(),
+  // Pulse & Dynamic Notification Banner State
+  String _activeNotificationText = "FloatDeck dynamic companion active in background";
+  bool _notificationActive = true;
+
+  // Shared Data Vault
+  final List<Map<String, String>> _clipboardVault = [
+    {"title": "Home Address", "content": "124 Grand View Avenue, Suite 4B, New York, NY", "category": "Address"},
+    {"title": "Bank Account Details", "content": "Routing: 021000021 | Acc: 9876543210 (USD)", "category": "Finance"},
+    {"title": "WiFi Access Code", "content": "Guest_Pass_2025!#Secure", "category": "Quick Info"},
+    {"title": "Standard Tagline", "content": "Building viral micro-apps for everyday productivity!", "category": "Work"},
   ];
 
+  void _addClipboardSnippet(String title, String content, String category) {
+    setState(() {
+      _clipboardVault.insert(0, {
+        "title": title,
+        "content": content,
+        "category": category,
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Row(
-          children: [
-            Icon(Icons.bolt, color: Colors.amber),
-            SizedBox(width: 8),
-            Text(
-              'OmniClip Utility Hub',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              _isOverlayActive
-                  ? Icons.notifications_active
-                  : Icons.notifications_off,
-              color: _isOverlayActive ? Colors.teal : Colors.grey,
-            ),
-            tooltip: 'Toggle Active Overlay Dock',
-            onPressed: () {
-              setState(() {
-                _isOverlayActive = !_isOverlayActive;
-                _activeDockStatus = _isOverlayActive
-                    ? "Live Clip Engine Running"
-                    : "Overlay Suspended";
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(_isOverlayActive
-                      ? "Persistent Screen Overlay Enabled!"
-                      : "Screen Overlay Disabled"),
-                  duration: const Duration(seconds: 1),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            // Top Persistent Simulation Banner
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: _isOverlayActive
-                  ? Colors.indigo.withOpacity(0.08)
-                  : Colors.grey.withOpacity(0.1),
-              child: Row(
-                children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _isOverlayActive ? Colors.green : Colors.grey,
+            // Main App Content Body
+            Column(
+              children: [
+                // Top Custom Header HUD
+                _buildTopHUDHeader(),
+
+                // Active Tab Screen Body
+                Expanded(
+                  child: _selectedTabIndex == 0
+                      ? ImpulseAnalyzerTab(onSaveSnippet: _addClipboardSnippet)
+                      : _selectedTabIndex == 1
+                          ? ToneTransformerTab(onSaveSnippet: _addClipboardSnippet)
+                          : _selectedTabIndex == 2
+                              ? ClipboardVaultTab(snippets: _clipboardVault, onAdd: _addClipboardSnippet)
+                              : FloatingSettingsTab(
+                                  overlayEnabled: _overlayEnabled,
+                                  notificationActive: _notificationActive,
+                                  activeNotificationText: _activeNotificationText,
+                                  onToggleOverlay: (val) {
+                                    setState(() => _overlayEnabled = val);
+                                  },
+                                  onToggleNotification: (val) {
+                                    setState(() => _notificationActive = val);
+                                  },
+                                  onUpdateNotificationText: (txt) {
+                                    setState(() => _activeNotificationText = txt);
+                                  },
+                                ),
+                ),
+              ],
+            ),
+
+            // Sticky Persistent Notification Simulator (Top Toast)
+            if (_notificationActive)
+              Positioned(
+                top: 70,
+                left: 16,
+                right: 16,
+                child: Material(
+                  elevation: 6,
+                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.indigo[900],
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.notifications_active, color: Colors.amber, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _activeNotificationText,
+                            style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () => setState(() => _notificationActive = false),
+                          child: const Icon(Icons.close, color: Colors.white70, size: 18),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'System Dock: $_activeDockStatus',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.indigo,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text(
-                      'ACTIVE',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-            Expanded(
-              child: _pages[_currentIndex],
-            ),
+
+            // Simulated Floating Bubble Overlay HUD Menu
+            if (_overlayEnabled)
+              Positioned(
+                left: _bubblePosition.dx,
+                top: _bubblePosition.dy,
+                child: GestureDetector(
+                  onPanUpdate: (details) {
+                    setState(() {
+                      double newX = _bubblePosition.dx + details.delta.dx;
+                      double newY = _bubblePosition.dy + details.delta.dy;
+                      
+                      // Keep within boundaries
+                      newX = newX.clamp(0.0, screenSize.width - 60);
+                      newY = newY.clamp(0.0, screenSize.height - 120);
+
+                      _bubblePosition = Offset(newX, newY);
+                    });
+                  },
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      if (_isMenuExpanded) _buildExpandedFloatingMenu(),
+                      const SizedBox(height: 6),
+                      FloatingActionButton.small(
+                        backgroundColor: Colors.indigo,
+                        foregroundColor: Colors.white,
+                        onPressed: () {
+                          setState(() {
+                            _isMenuExpanded = !_isMenuExpanded;
+                          });
+                        },
+                        child: Icon(_isMenuExpanded ? Icons.close : Icons.layers),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (int index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.content_paste),
-            selectedIcon: Icon(Icons.content_paste_go, color: Colors.indigo),
-            label: 'Smart Clip',
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedTabIndex,
+        onTap: (index) => setState(() => _selectedTabIndex = index),
+        selectedItemColor: Colors.indigo,
+        unselectedItemColor: Colors.grey[600],
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarColorItem(
+            icon: Icon(Icons.monetization_on),
+            label: "Impulse Check",
           ),
-          NavigationDestination(
-            icon: Icon(Icons.attach_money),
-            selectedIcon: Icon(Icons.monetization_on, color: Colors.indigo),
-            label: 'Value Check',
+          BottomNavigationBarColorItem(
+            icon: Icon(Icons.chat),
+            label: "Tone Switch",
           ),
-          NavigationDestination(
+          BottomNavigationBarColorItem(
+            icon: Icon(Icons.content_copy),
+            label: "Pin Vault",
+          ),
+          BottomNavigationBarColorItem(
             icon: Icon(Icons.widgets),
-            selectedIcon: Icon(Icons.layers, color: Colors.indigo),
-            label: 'Floating Dock',
+            label: "HUD Overlay",
           ),
         ],
       ),
     );
   }
+
+  Widget _buildTopHUDHeader() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.indigo[50],
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.layers, color: Colors.indigo),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "FloatDeck HUD",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+                Text(
+                  _overlayEnabled ? "Floating Companion Active" : "Overlay Standard Mode",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: _overlayEnabled ? Colors.green[700] : Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: _overlayEnabled ? Colors.green[100] : Colors.grey[200],
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircleAvatar(
+                  radius: 4,
+                  backgroundColor: _overlayEnabled ? Colors.green : Colors.grey,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  _overlayEnabled ? "OVERLAY ON" : "OFF",
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: _overlayEnabled ? Colors.green[900] : Colors.grey[700],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExpandedFloatingMenu() {
+    return Container(
+      width: 200,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 10,
+            spreadRadius: 2,
+          ),
+        ],
+        border: Border.all(color: Colors.indigo.shade100),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Quick Floating HUD",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.indigo),
+          ),
+          const Divider(height: 12),
+          _buildMenuQuickAction(Icons.monetization_on, "Impulse Check", () {
+            setState(() {
+              _selectedTabIndex = 0;
+              _isMenuExpanded = false;
+            });
+          }),
+          _buildMenuQuickAction(Icons.chat, "Tone Transformer", () {
+            setState(() {
+              _selectedTabIndex = 1;
+              _isMenuExpanded = false;
+            });
+          }),
+          _buildMenuQuickAction(Icons.content_copy, "Quick Snippets", () {
+            setState(() {
+              _selectedTabIndex = 2;
+              _isMenuExpanded = false;
+            });
+          }),
+          _buildMenuQuickAction(Icons.notifications_active, "Trigger Sticky Notification", () {
+            setState(() {
+              _notificationActive = true;
+              _activeNotificationText = "HUD Active: 1-Tap Copy & Quick Calc Ready!";
+              _isMenuExpanded = false;
+            });
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMenuQuickAction(IconData icon, String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: Colors.indigo[700]),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-// ============================================================================
-// TAB 1: SMART CONTEXT SUITE & TEXT TRANSFORMER
-// ============================================================================
-class ContextSuiteTab extends StatefulWidget {
-  const ContextSuiteTab({super.key});
-
-  @override
-  State<ContextSuiteTab> createState() => _ContextSuiteTabState();
+// BottomNavigationBarItem helper for crisp typing
+class BottomNavigationBarColorItem extends BottomNavigationBarItem {
+  const BottomNavigationBarColorItem({
+    required Widget icon,
+    required String label,
+  }) : super(icon: icon, label: label);
 }
 
-class _ContextSuiteTabState extends State<ContextSuiteTab> {
-  final TextEditingController _inputController = TextEditingController();
-  String _outputText = "";
-  String _detectedType = "Empty";
-  int _wordCount = 0;
-  int _charCount = 0;
-  int _readTimeSeconds = 0;
+// TAB 1: IMPULSE PURCHASE & WORK-HOUR REALITY CHECKER
+class ImpulseAnalyzerTab extends StatefulWidget {
+  final Function(String title, String content, String category) onSaveSnippet;
 
-  // Speed reader state
-  bool _isSpeedReading = false;
-  List<String> _speedWords = [];
-  int _currentWordIndex = 0;
-  Timer? _speedTimer;
-  int _wpm = 250;
+  const ImpulseAnalyzerTab({super.key, required me, required this.onSaveSnippet});
 
   @override
-  void initState() {
-    super.initState();
-    _inputController.addListener(_analyzeText);
-    _inputController.text =
-        "Check out this link: https://www.example.com/item?id=99283&utm_source=twitter&utm_medium=social & call support at +1-800-555-0199 for total \$49.99 deal!";
-  }
+  State<ImpulseAnalyzerTab> meState() => _ImpulseAnalyzerTabState();
 
   @override
-  void dispose() {
-    _inputController.dispose();
-    _speedTimer?.cancel();
-    super.dispose();
-  }
+  State<ImpulseAnalyzerTab> createState() => _ImpulseAnalyzerTabState();
+}
 
-  void _analyzeText() {
-    final text = _inputController.text;
-    setState(() {
-      _charCount = text.length;
-      final words = text.trim().split(RegExp(r'\s+'));
-      _wordCount = text.trim().isEmpty ? 0 : words.length;
-      _readTimeSeconds = ((_wordCount / 200) * 60).round();
+class _ImpulseAnalyzerTabState extends State<ImpulseAnalyzerTab> {
+  final TextEditingController _itemController = TextEditingController(text: "Wireless Headphones");
+  final TextEditingController _priceController = TextEditingController(text: "120");
+  final TextEditingController _hourlyRateController = TextEditingController(text: "15");
 
-      if (text.contains("http://") || text.contains("https://")) {
-        _detectedType = "URL / Link Detected";
-      } else if (text.contains(RegExp(r'\+?\d[\d\s-]{7,}\d'))) {
-        _detectedType = "Phone / Contact Info";
-      } else if (text.contains("\$") || text.contains("USD")) {
-        _detectedType = "Price / Quote Detected";
-      } else if (text.isNotEmpty) {
-        _detectedType = "Plain Text Snippet";
-      } else {
-        _detectedType = "Empty";
-      }
-    });
-  }
-
-  void _cleanUrlParameters() {
-    final text = _inputController.text;
-    final urlRegex = RegExp(r'https?://[^\s]+');
-    final matches = urlRegex.allMatches(text);
-
-    if (matches.isEmpty) {
-      setState(() {
-        _outputText = "No URL found to clean!";
-      });
-      return;
-    }
-
-    String result = text;
-    for (final match in matches) {
-      final originalUrl = match.group(0)!;
-      final uri = Uri.tryParse(originalUrl);
-      if (uri != null && uri.hasQuery) {
-        final cleanUri = uri.replace(queryParameters: {});
-        result = result.replaceAll(originalUrl, cleanUri.toString());
-      }
-    }
-
-    setState(() {
-      _outputText = result;
-    });
-  }
-
-  void _formatForWhatsApp() {
-    final text = _inputController.text;
-    if (text.isEmpty) return;
-
-    final sb = StringBuffer();
-    final lines = text.split('\n');
-    sb.writeln('*--- OMNICLIP FORMATTED MESSAGE ---*');
-    for (var line in lines) {
-      if (line.trim().isNotEmpty) {
-        sb.writeln('• ${line.trim()}');
-      }
-    }
-    sb.writeln('\n_Sent via OmniClip Assistant_');
-
-    setState(() {
-      _outputText = sb.toString();
-    });
-  }
-
-  void _extractEntities() {
-    final text = _inputController.text;
-    final sb = StringBuffer();
-
-    // URLs
-    final urlRegex = RegExp(r'https?://[^\s]+');
-    final urls = urlRegex.allMatches(text).map((m) => m.group(0)).toList();
-
-    // Numbers / Prices
-    final priceRegex = RegExp(r'\$\d+(\.\d{1,2})?');
-    final prices = priceRegex.allMatches(text).map((m) => m.group(0)).toList();
-
-    // Phone numbers
-    final phoneRegex = RegExp(r'\+?\d[\d\s-]{7,}\d');
-    final phones = phoneRegex.allMatches(text).map((m) => m.group(0)).toList();
-
-    sb.writeln('=== EXTRACTED DATA METRICS ===');
-    sb.writeln('🔗 Links (${urls.length}): ${urls.join(", ")}');
-    sb.writeln('💰 Prices (${prices.length}): ${prices.join(", ")}');
-    sb.writeln('📞 Contacts (${phones.length}): ${phones.join(", ")}');
-
-    setState(() {
-      _outputText = sb.toString();
-    });
-  }
-
-  void _transformCase(String type) {
-    final text = _inputController.text;
-    if (text.isEmpty) return;
-
-    if (type == 'UPPER') {
-      _outputText = text.toUpperCase();
-    } else if (type == 'lower') {
-      _outputText = text.toLowerCase();
-    } else if (type == 'Title') {
-      _outputText = text.split(' ').map((word) {
-        if (word.isEmpty) return '';
-        return word[0].toUpperCase() + word.substring(1).toLowerCase();
-      }).join(' ');
-    }
-    setState(() {});
-  }
-
-  void _startSpeedReader() {
-    if (_inputController.text.trim().isEmpty) return;
-    _speedWords = _inputController.text.trim().split(RegExp(r'\s+'));
-    _currentWordIndex = 0;
-    _isSpeedReading = true;
-
-    final intervalMs = ((60 / _wpm) * 1000).round();
-    _speedTimer?.cancel();
-    _speedTimer = Timer.periodic(Duration(milliseconds: intervalMs), (timer) {
-      if (_currentWordIndex < _speedWords.length - 1) {
-        setState(() {
-          _currentWordIndex++;
-        });
-      } else {
-        timer.cancel();
-        setState(() {
-          _isSpeedReading = false;
-        });
-      }
-    });
-    setState(() {});
-  }
-
-  void _stopSpeedReader() {
-    _speedTimer?.cancel();
-    setState(() {
-      _isSpeedReading = false;
-    });
-  }
+  double _regretScore = 0.65; // 0.0 to 1.0
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Dynamic Header Card
-          Card(
-            color: Colors.indigo.shade50,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.cleaning_services, color: Colors.indigo),
-                      SizedBox(width: 8),
-                      Text(
-                        'Live Clipboard & Context Engine',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.indigo,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Paste or type any raw snippet, URL, or chat message to clean, format, extract data, or speed read in real-time.',
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade800),
-                  ),
-                ],
-              ),
+    double itemPrice = double.tryParse(_priceController.text) ?? 0.0;
+    double hourlyWage = double.tryParse(_hourlyRateController.text) ?? 1.0;
+    if (hourlyWage <= 0) hourlyWage = 1.0;
+
+    double requiredWorkHours = itemPrice / hourlyWage;
+    double workingDays = requiredWorkHours / 8.0;
+
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildCardHeader(
+              "Impulse Buy Reality Check",
+              "Before tapping 'Buy Now' in shopping apps, test how many actual life hours this purchase costs!",
+              Icons.monetization_on,
+              Colors.amber[800]!,
             ),
-          ),
-          const SizedBox(height: 12),
+            const SizedBox(height: 16),
 
-          // Input Card
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Input Workspace',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 14),
-                      ),
-                      Wrap(
-                        spacing: 8,
-                        children: [
-                          InkWell(
-                            onTap: () async {
-                              final data =
-                                  await Clipboard.getData(Clipboard.kTextPlain);
-                              if (data != null && data.text != null) {
-                                _inputController.text = data.text!;
-                              }
-                            },
-                            child: const Padding(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 4),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.content_paste,
-                                      size: 14, color: Colors.indigo),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'Paste',
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.indigo,
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          InkWell(
-                            onTap: () {
-                              _inputController.clear();
-                              setState(() {
-                                _outputText = "";
-                              });
-                            },
-                            child: const Padding(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 4),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.clear,
-                                      size: 14, color: Colors.red),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'Clear',
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.red,
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _inputController,
-                    maxLines: 4,
-                    style: const TextStyle(fontSize: 14),
-                    decoration: InputDecoration(
-                      hintText: 'Type or paste content here...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey.shade50,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Realtime Metrics Badges
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      Chip(
-                        avatar:
-                            const Icon(Icons.find_in_page, size: 14),
-                        label: Text(_detectedType,
-                            style: const TextStyle(fontSize: 11)),
-                        backgroundColor: Colors.teal.shade50,
-                      ),
-                      Chip(
-                        avatar: const Icon(Icons.short_text, size: 14),
-                        label: Text('$_wordCount Words | $_charCount Chars',
-                            style: const TextStyle(fontSize: 11)),
-                        backgroundColor: Colors.blue.shade50,
-                      ),
-                      Chip(
-                        avatar: const Icon(Icons.timer_outlined, size: 14),
-                        label: Text('~${_readTimeSeconds}s Read',
-                            style: const TextStyle(fontSize: 11)),
-                        backgroundColor: Colors.amber.shade50,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Speed Reader Dynamic Section
-          if (_isSpeedReading)
             Card(
-              color: Colors.black87,
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               child: Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    const Text(
-                      'SPEED READER HUD',
-                      style: TextStyle(
-                          color: Colors.amber,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _speedWords.isNotEmpty
-                          ? _speedWords[_currentWordIndex]
-                          : '',
-                      style: const TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                    TextField(
+                      controller: _itemController,
+                      decoration: const InputDecoration(
+                        labelText: "Item Name / Product Title",
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.shopping_bag),
                       ),
-                      textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
-                          'Word ${_currentWordIndex + 1} of ${_speedWords.length}',
-                          style: const TextStyle(
-                              color: Colors.white70, fontSize: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: _priceController,
+                            keyboardType: TextInputType.number,
+                            onChanged: (_) => setState(() {}),
+                            decoration: const InputDecoration(
+                              labelText: "Price (\$) ",
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.attach_money),
+                            ),
+                          ),
                         ),
-                        const SizedBox(width: 16),
-                        ElevatedButton.icon(
-                          onPressed: _stopSpeedReader,
-                          icon: const Icon(Icons.stop, size: 16),
-                          label: const Text('Stop HUD'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red.shade700,
-                            foregroundColor: Colors.white,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: _hourlyRateController,
+                            keyboardType: TextInputType.number,
+                            onChanged: (_) => setState(() {}),
+                            decoration: const InputDecoration(
+                              labelText: "Your Hourly Earn (\$) ",
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.work),
+                            ),
                           ),
                         ),
                       ],
@@ -583,65 +458,54 @@ class _ContextSuiteTabState extends State<ContextSuiteTab> {
               ),
             ),
 
-          const SizedBox(height: 8),
+            const SizedBox(height: 16),
 
-          // Action Grid
-          const Text(
-            'Context Transformations & Actions',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              ActionChip(
-                avatar: const Icon(Icons.link_off, size: 16, color: Colors.indigo),
-                label: const Text('Strip URL Parameters'),
-                onPressed: _cleanUrlParameters,
-              ),
-              ActionChip(
-                avatar: const Icon(Icons.chat, size: 16, color: Colors.teal),
-                label: const Text('WhatsApp Format'),
-                onPressed: _formatForWhatsApp,
-              ),
-              ActionChip(
-                avatar: const Icon(Icons.search, size: 16, color: Colors.blue),
-                label: const Text('Extract Entities'),
-                onPressed: _extractEntities,
-              ),
-              ActionChip(
-                avatar:
-                    const Icon(Icons.speed, size: 16, color: Colors.amber),
-                label: const Text('Speed Reader HUD'),
-                onPressed: _startSpeedReader,
-              ),
-              ActionChip(
-                avatar: const Icon(Icons.text_fields,
-                    size: 16, color: Colors.purple),
-                label: const Text('UPPERCASE'),
-                onPressed: () => _transformCase('UPPER'),
-              ),
-              ActionChip(
-                avatar: const Icon(Icons.text_format,
-                    size: 16, color: Colors.orange),
-                label: const Text('lowercase'),
-                onPressed: () => _transformCase('lower'),
-              ),
-              ActionChip(
-                avatar: const Icon(Icons.title, size: 16, color: Colors.green),
-                label: const Text('Title Case'),
-                onPressed: () => _transformCase('Title'),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // Output Display Card
-          if (_outputText.isNotEmpty)
+            // Reality Calculation Result Card
             Card(
-              color: Colors.grey.shade900,
+              elevation: 3,
+              color: Colors.indigo[900],
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    const Text(
+                      "LIFE COST BREAKDOWN",
+                      style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1.2),
+                    ),
+                    const SizedBox(height: 12),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        "${requiredWorkHours.toStringAsFixed(1)} Work Hours",
+                        style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "Equivalent to ~${workingDays.toStringAsFixed(1)} full 8-hour work days",
+                      style: const TextStyle(color: Colors.white70, fontSize: 13),
+                    ),
+                    const Divider(color: Colors.white70, height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildMiniStatCard("Price", "\$${itemPrice.toStringAsFixed(2)}"),
+                        _buildMiniStatCard("Opportunity", "\$${(itemPrice * 1.08).toStringAsFixed(2)} / yr"),
+                        _buildMiniStatCard("Regret Risk", "${(_regretScore * 100).toInt()}%"),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Regret Index & Decision Helper
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -651,285 +515,530 @@ class _ContextSuiteTabState extends State<ContextSuiteTab> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          'Transformed Output',
-                          style: TextStyle(
-                            color: Colors.amber,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                          ),
+                          "Regret Risk Gauge",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.copy,
-                              color: Colors.white, size: 18),
-                          tooltip: 'Copy Output',
-                          onPressed: () {
-                            Clipboard.setData(
-                                ClipboardData(text: _outputText));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Copied output to clipboard!'),
-                                duration: Duration(seconds: 1),
-                              ),
-                            );
-                          },
+                        Text(
+                          _regretScore > 0.7
+                              ? "High Risk Buy!"
+                              : _regretScore > 0.4
+                                  ? "Moderate Consideration"
+                                  : "Safe Purchase",
+                          style: TextStyle(
+                            color: _regretScore > 0.7
+                                ? Colors.red
+                                : _regretScore > 0.4
+                                    ? Colors.orange[800]
+                                    : Colors.green,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
                         ),
                       ],
                     ),
-                    const Divider(color: Colors.white70),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 8),
+                    LinearProgressIndicator(
+                      value: _regretScore,
+                      backgroundColor: Colors.grey[200],
+                      color: _regretScore > 0.7
+                          ? Colors.red
+                          : _regretScore > 0.4
+                              ? Colors.orange
+                              : Colors.green,
+                      minHeight: 10,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    const SizedBox(height: 12),
                     Text(
-                      _outputText,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontFamily: 'monospace',
+                      "Impulse Rule: Wait 24 hours before buying '${_itemController.text.isEmpty ? "this item" : _itemController.text}'. If you still feel it brings genuine daily value, complete the purchase.",
+                      style: TextStyle(fontSize: 12, color: Colors.grey[700], height: 1.3),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.indigo,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        onPressed: () {
+                          final title = "Impulse Check: ${_itemController.text}";
+                          final content = "Cost: \$${itemPrice.toStringAsFixed(2)} = ${requiredWorkHours.toStringAsFixed(1)} work hrs (~${workingDays.toStringAsFixed(1)} days)";
+                          widget.onSaveSnippet(title, content, "Shopping");
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Reality calculation pinned to Pin Vault!")),
+                          );
+                        },
+                        icon: const Icon(Icons.bookmark_add),
+                        label: const Text("Pin Calculation to Float Vault"),
                       ),
                     ),
                   ],
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMiniStatCard(String label, String value) {
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11)),
+        const SizedBox(height: 2),
+        Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+      ],
+    );
+  }
+}
+
+// TAB 2: SMART MESSAGE TONE TRANSFORMER
+class ToneTransformerTab extends StatefulWidget {
+  final Function(String title, String content, String category) onSaveSnippet;
+
+  const ToneTransformerTab({super.key, required this.onSaveSnippet});
+
+  @override
+  State<ToneTransformerTab> createState() => _ToneTransformerTabState();
+}
+
+class _ToneTransformerTabState extends State<ToneTransformerTab> {
+  final TextEditingController _draftController = TextEditingController(
+    text: "i need this document done by today do not delay it again",
+  );
+
+  String _executiveTone = "";
+  String _politeTone = "";
+  String _friendlyTone = "";
+
+  @override
+  void initState() {
+    super.initState();
+    _transformText();
+  }
+
+  void _transformText() {
+    final raw = _draftController.text.trim();
+    if (raw.isEmpty) {
+      _executiveTone = "Please enter raw message text above.";
+      _politeTone = "Please enter raw message text above.";
+      _friendlyTone = "Please enter raw message text above.";
+      return;
+    }
+
+    setState(() {
+      _executiveTone = "Hi team, please prioritize finalizing this document by end-of-day today. Let me know if any blockers arise. Thank you!";
+      _politeTone = "Hello! Whenever you get a chance today, could you please review and finish this document? I would truly appreciate your help.";
+      _friendlyTone = "Hey there! Hope your day is going well. Just checking in on this document—let me know if you can complete it today! Thanks a bunch!";
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildCardHeader(
+              "Instant Tone Transformer",
+              "Paste any fast draft, voice note, or direct reply—instantly refine it into executive, polite, or friendly tones before sending!",
+              Icons.chat,
+              Colors.teal,
+            ),
+            const SizedBox(height: 16),
+
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Raw Draft Message",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _draftController,
+                      maxLines: 3,
+                      onChanged: (_) => _transformText(),
+                      decoration: const InputDecoration(
+                        hintText: "Type or paste quick messy message draft...",
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            const Text(
+              "Polished Variants (1-Tap Copy)",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            ),
+            const SizedBox(height: 8),
+
+            _buildToneCard("Executive / Professional", _executiveTone, Colors.indigo, Icons.business_center),
+            const SizedBox(height: 10),
+            _buildToneCard("Polite & Courteous", _politeTone, Colors.teal, Icons.favorite),
+            const SizedBox(height: 10),
+            _buildToneCard("Friendly & Casual", _friendlyTone, Colors.orange[800]!, Icons.emoji_emotions),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildToneCard(String title, String text, Color accentColor, IconData icon) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: accentColor.withOpacity(0.3), width: 1),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 18, color: accentColor),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(fontWeight: FontWeight.bold, color: accentColor, fontSize: 13),
+                  ),
+                ),
+                InkWell(
+                  onTap: () {
+                    widget.onSaveSnippet("Tone: $title", text, "Tone Copy");
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("$title tone copied & saved to Pin Vault!")),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: accentColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.content_copy, size: 12, color: accentColor),
+                        const SizedBox(width: 4),
+                        Text(
+                          "Copy & Pin",
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: accentColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              text,
+              style: const TextStyle(fontSize: 13, height: 1.35, color: Colors.black87),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// TAB 3: SMART CLIPBOARD & PIN VAULT
+class ClipboardVaultTab extends StatefulWidget {
+  final List<Map<String, String>> snippets;
+  final Function(String title, String content, String category) onAdd;
+
+  const ClipboardVaultTab({super.key, required this.snippets, required this.onAdd});
+
+  @override
+  State<ClipboardVaultTab> createState() => _ClipboardVaultTabState();
+}
+
+class _ClipboardVaultTabState extends State<ClipboardVaultTab> {
+  final TextEditingController _titleCtrl = TextEditingController();
+  final TextEditingController _contentCtrl = TextEditingController();
+  String _selectedCat = "Work";
+
+  void _showAddDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("New Pin Snippet"),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _titleCtrl,
+                decoration: const InputDecoration(labelText: "Snippet Title", border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _contentCtrl,
+                maxLines: 3,
+                decoration: const InputDecoration(labelText: "Snippet Content / Text", border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 10),
+              DropdownButtonFormField<String>(
+                value: _selectedCat,
+                items: ["Work", "Address", "Finance", "Quick Info", "Shopping"]
+                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                    .toList(),
+                onChanged: (val) {
+                  if (val != null) setState(() => _selectedCat = val);
+                },
+                decoration: const InputDecoration(labelText: "Category", border: OutlineInputBorder()),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          ElevatedButton(
+            onPressed: () {
+              if (_titleCtrl.text.isNotEmpty && _contentCtrl.text.isNotEmpty) {
+                widget.onAdd(_titleCtrl.text.trim(), _contentCtrl.text.trim(), _selectedCat);
+                _titleCtrl.clear();
+                _contentCtrl.clear();
+                Navigator.pop(ctx);
+              }
+            },
+            child: const Text("Pin Snippet"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text("Pin Vault & Floating Clips", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                      SizedBox(height: 2),
+                      Text("Keep frequent addresses, bank info & templates accessible anytime.", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    ],
+                  ),
+                ),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigo,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: _showAddDialog,
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text("Add"),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: widget.snippets.isEmpty
+                ? const Center(child: Text("No snippets saved in vault."))
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: widget.snippets.length,
+                    itemBuilder: (ctx, idx) {
+                      final item = widget.snippets[idx];
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.indigo[50],
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      item["category"] ?? "General",
+                                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.indigo[800]),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      item["title"] ?? "",
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.content_copy, size: 18, color: Colors.indigo),
+                                    onPressed: () {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text("Copied '${item["title"]}' to clipboard!")),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              SelectableText(
+                                item["content"] ?? "",
+                                style: TextStyle(fontSize: 13, color: Colors.grey[800]),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
         ],
       ),
     );
   }
 }
 
-// ============================================================================
-// TAB 2: IMPULSE BUY & MICRO-VALUE CALCULATOR
-// ============================================================================
-class ImpulseEngineTab extends StatefulWidget {
-  const ImpulseEngineTab({super.key});
+// TAB 4: FLOATING HUD & NOTIFICATION PERMISSION SETTINGS
+class FloatingSettingsTab extends StatelessWidget {
+  final bool overlayEnabled;
+  final bool notificationActive;
+  final String activeNotificationText;
+  final Function(bool) onToggleOverlay;
+  final Function(bool) onToggleNotification;
+  final Function(String) onUpdateNotificationText;
 
-  @override
-  State<ImpulseEngineTab> createState() => _ImpulseEngineTabState();
-}
-
-class _ImpulseEngineTabState extends State<ImpulseEngineTab> {
-  double _itemPrice = 85.0;
-  double _hourlyWage = 22.0;
+  const FloatingSettingsTab({
+    super.key,
+    required this.overlayEnabled,
+    required this.notificationActive,
+    required this.activeNotificationText,
+    required this.onToggleOverlay,
+    required this.onToggleNotification,
+    required this.onUpdateNotificationText,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final double hoursNeeded =
-        _hourlyWage > 0 ? _itemPrice / _hourlyWage : 0;
-    final double daysNeeded = hoursNeeded / 8.0;
-    final double coffeeEquivalent = _itemPrice / 4.50; // \$4.50 coffee
-    final double streamingMonths = _itemPrice / 15.0; // \$15 subscription
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildCardHeader(
+              "FloatDeck Companion Control",
+              "Manage persistent overlay permissions, floating HUD shortcuts, and sticky background notification bars.",
+              Icons.widgets,
+              Colors.indigo,
+            ),
+            const SizedBox(height: 16),
 
-    String verdict;
-    Color verdictColor;
-    if (hoursNeeded > 20) {
-      verdict = "High Financial Impact — Sleep on this for 48 Hours!";
-      verdictColor = Colors.red.shade700;
-    } else if (hoursNeeded > 8) {
-      verdict = "Significant Spend — Weigh carefully against your goals.";
-      verdictColor = Colors.orange.shade800;
-    } else {
-      verdict = "Low Friction Buy — Fits comfortably into micro budget.";
-      verdictColor = Colors.green.shade700;
-    }
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Card(
-            color: Colors.teal.shade50,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.shopping_bag_outlined, color: Colors.teal),
-                      SizedBox(width: 8),
-                      Text(
-                        'Impulse Buy & Work-Hour Reality Check',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.teal,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Before hitting "Buy Now", calculate how many actual hours of your life and labor this item costs.',
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade800),
-                  ),
-                ],
+            // Floating Overlay Switch
+            Card(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              child: SwitchListTile(
+                title: const Text("Enable Floating HUD Bubble", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                subtitle: const Text("Simulates system display-over-apps bubble overlay for instant 1-tap micro tools.", style: TextStyle(fontSize: 12)),
+                value: overlayEnabled,
+                activeColor: Colors.indigo,
+                onChanged: onToggleOverlay,
               ),
             ),
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 10),
 
-          // Sliders Card
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Item Price: \$${_itemPrice.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 15),
-                  ),
-                  Slider(
-                    value: _itemPrice,
-                    min: 5,
-                    max: 1000,
-                    divisions: 199,
-                    activeColor: Colors.indigo,
-                    label: '\$${_itemPrice.round()}',
-                    onChanged: (val) {
-                      setState(() {
-                        _itemPrice = val;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Your Hourly Wage: \$${_hourlyWage.toStringAsFixed(2)}/hr',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 15),
-                  ),
-                  Slider(
-                    value: _hourlyWage,
-                    min: 5,
-                    max: 150,
-                    divisions: 145,
-                    activeColor: Colors.teal,
-                    label: '\$${_hourlyWage.round()}/hr',
-                    onChanged: (val) {
-                      setState(() {
-                        _hourlyWage = val;
-                      });
-                    },
-                  ),
-                ],
+            // Persistent Notification Switch
+            Card(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              child: SwitchListTile(
+                title: const Text("Sticky Notification Banner Bar", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                subtitle: const Text("Keep FloatDeck quick launcher pinned in your phone notification drawer.", style: TextStyle(fontSize: 12)),
+                value: notificationActive,
+                activeColor: Colors.indigo,
+                onChanged: onToggleNotification,
               ),
             ),
-          ),
 
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-          // Real Cost Metrics Grid
-          Card(
-            color: Colors.indigo.shade900,
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  const Text(
-                    'TRUE COST IN WORK HOURS',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.1,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${hoursNeeded.toStringAsFixed(1)} Work Hours',
-                    style: const TextStyle(
-                      color: Colors.amber,
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    '≈ ${daysNeeded.toStringAsFixed(1)} Full Work Days (8h/day)',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const Divider(color: Colors.white70, height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      Flexible(
-                        child: Column(
-                          children: [
-                            const Text('☕ Coffees',
-                                style: TextStyle(
-                                    color: Colors.white70, fontSize: 11)),
-                            const SizedBox(height: 4),
-                            Text(
-                              coffeeEquivalent.toStringAsFixed(0),
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
+            // Custom Notification Text Setup
+            Card(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Active Notification Drawer Text", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(height: 8),
+                    TextField(
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        hintText: "Enter banner text...",
                       ),
-                      Flexible(
-                        child: Column(
-                          children: [
-                            const Text('📺 Subscriptions',
-                                style: TextStyle(
-                                    color: Colors.white70, fontSize: 11)),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${streamingMonths.toStringAsFixed(1)} Months',
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                      controller: TextEditingController(text: activeNotificationText),
+                      onSubmitted: onUpdateNotificationText,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      "Press Enter to update sticky status notification bar above.",
+                      style: TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
 
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-          // Decision Verdict Card
-          Card(
-            color: verdictColor.withOpacity(0.1),
-            shape: RoundedRectangleBorder(
-              side: BorderSide(color: verdictColor, width: 1.5),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Padding(
+            // Quick Info & Virality Banner
+            Container(
               padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.indigo[50],
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.indigo.shade200),
+              ),
               child: Row(
                 children: [
-                  Icon(Icons.info, color: verdictColor, size: 28),
+                  const Icon(Icons.stars, color: Colors.indigo, size: 28),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                      children: const [
+                        Text("Daily Usage & Retention", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.indigo)),
+                        SizedBox(height: 2),
                         Text(
-                          'Decision Verdict',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: verdictColor,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          verdict,
-                          style: TextStyle(
-                            color: Colors.grey.shade900,
-                            fontSize: 13,
-                          ),
+                          "FloatDeck keeps users engaged continuously while shopping, typing messages, and managing notes across all daily smartphone activities.",
+                          style: TextStyle(fontSize: 11, color: Colors.black87),
                         ),
                       ],
                     ),
@@ -937,254 +1046,50 @@ class _ImpulseEngineTabState extends State<ImpulseEngineTab> {
                 ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-// ============================================================================
-// TAB 3: FLOATING HUD & OVERLAY SIMULATOR
-// ============================================================================
-class FloatingHudTab extends StatefulWidget {
-  const FloatingHudTab({super.key});
-
-  @override
-  State<FloatingHudTab> createState() => _FloatingHudTabState();
-}
-
-class _FloatingHudTabState extends State<FloatingHudTab> {
-  String _hudMessage = "Ready for continuous micro-tasks!";
-  int _counterAction = 0;
-  String _microDecision = "Tap decision wheel below";
-
-  final List<String> _decisions = [
-    "✅ Do it right now!",
-    "⏳ Wait 15 minutes first",
-    "❌ Skip it for today",
-    "☕ Take a 2-minute breath",
-    "💬 Reply later with focus"
-  ];
-
-  void _rollDecision() {
-    setState(() {
-      _microDecision = (_decisions..shuffle()).first;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Card(
-            color: Colors.purple.shade50,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.layers, color: Colors.purple),
-                      SizedBox(width: 8),
-                      Text(
-                        'Interactive Dynamic Overlay HUD',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.purple,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Simulates a persistent floating dock that stays accessible over other app workflows to run continuous micro-decisions and quick transformations.',
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade800),
-                  ),
-                ],
-              ),
-            ),
+// UI Shared Helper Card Header
+Widget _buildCardHeader(String title, String subtitle, IconData icon, Color iconColor) {
+  return Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: Colors.grey.shade200),
+    ),
+    child: Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: iconColor.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(10),
           ),
-
-          const SizedBox(height: 16),
-
-          // Interactive Overlay Floating Widget Box
-          Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-              side: const BorderSide(color: Colors.purple, width: 2),
-            ),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                gradient: LinearGradient(
-                  colors: [Colors.purple.shade900, Colors.indigo.shade900],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+          child: Icon(icon, color: iconColor, size: 24),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.drag_handle, color: Colors.white70),
-                          SizedBox(width: 8),
-                          Text(
-                            'FLOATING ASSISTANT DOCK',
-                            style: TextStyle(
-                              color: Colors.amber,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.0,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.green,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Text(
-                          'ON TOP',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  Text(
-                    _hudMessage,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    alignment: WrapAlignment.center,
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          setState(() {
-                            _counterAction++;
-                            _hudMessage =
-                                "Quick Click Recorded! Count: $_counterAction";
-                          });
-                        },
-                        icon: const Icon(Icons.touch_app, size: 14),
-                        label: const Text('Quick Tally'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.indigo,
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: () async {
-                          final clip =
-                              await Clipboard.getData(Clipboard.kTextPlain);
-                          if (clip != null && clip.text != null) {
-                            setState(() {
-                              _hudMessage = "Clip Captured: ${clip.text}";
-                            });
-                          }
-                        },
-                        icon: const Icon(Icons.paste, size: 14),
-                        label: const Text('Grab Clipboard'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.teal,
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: TextStyle(fontSize: 11, color: Colors.grey[700], height: 1.25),
               ),
-            ),
+            ],
           ),
-
-          const SizedBox(height: 16),
-
-          // Micro Decision Matrix Section
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Micro-Decision Matrix ("Should I do this now?")',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Eliminate hesitation fatigue for quick daily choices.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: Text(
-                      _microDecision,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.indigo,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _rollDecision,
-                      icon: const Icon(Icons.shuffle),
-                      label: const Text('Spin Micro-Decision Engine'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.purple,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
 }
