@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 
 void main() {
-  runApp(const DynamicBarApp());
+  runApp(const DeskDeckApp());
 }
 
-class DynamicBarApp extends StatelessWidget {
-  const DynamicBarApp({super.key});
+class DeskDeckApp extends StatelessWidget {
+  const DeskDeckApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'DynamicBar',
+      title: 'DeskDeck',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
@@ -19,7 +20,7 @@ class DynamicBarApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFF0F172A),
         cardTheme: CardThemeData(
           color: const Color(0xFF1E293B),
-          elevation: 3,
+          elevation: 4,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -38,1143 +39,514 @@ class MainHomeScreen extends StatefulWidget {
 }
 
 class _MainHomeScreenState extends State<MainHomeScreen> {
-  int _currentTabIndex = 0;
+  int _currentIndex = 0;
+  bool _isFloatingOverlayVisible = false;
+  Offset _overlayPosition = const Offset(20, 120);
 
-  // Floating Overlay Dock State
-  bool _isFloatingEnabled = true;
-  bool _isDockExpanded = false;
-  Offset _dockPosition = const Offset(20, 200);
-
-  // Dynamic Top Banner Alert State
-  String? _activeNotification;
-
-  // Clipboard & Text Sanitizer State
-  final TextEditingController _clipboardController = TextEditingController();
-  String _sanitizedResult = "";
-  List<String> _extractedLinks = [];
-  List<String> _extractedEmails = [];
-
-  // Sticky Shelf Notes
-  final List<Map<String, String>> _stickyNotes = [
-    {
-      "title": "Wi-Fi Passcode",
-      "content": "GuestNet_2025!#9",
-      "tag": "Urgent",
-      "color": "amber",
-    },
-    {
-      "title": "Delivery Code",
-      "content": "Locker #4810 - OTP: 9921",
-      "tag": "Personal",
-      "color": "teal",
-    },
+  final List<Widget> _pages = const [
+    LinkSanitizerTab(),
+    ValueCalcTab(),
+    DecisionWheelTab(),
+    DeskCompanionTab(),
   ];
-
-  // Micro Tools State
-  double _billAmount = 45.0;
-  double _tipPercentage = 15.0;
-  int _splitCount = 2;
-
-  final TextEditingController _quickTextAnalyzerController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _clipboardController.text =
-        "Check this out: https://example.com/product?item=99&utm_source=facebook&fbclid=XYZ123 Email contact@service.org or call +1 800 555 0199 for help!";
-    _sanitizeInputText();
-  }
-
-  void _triggerDynamicAlert(String message) {
-    setState(() {
-      _activeNotification = message;
-    });
-    Future.delayed(const Duration(seconds: 4), () {
-      if (mounted) {
-        setState(() {
-          _activeNotification = null;
-        });
-      }
-    });
-  }
-
-  void _sanitizeInputText() {
-    final raw = _clipboardController.text;
-    if (raw.isEmpty) {
-      setState(() {
-        _sanitizedResult = "";
-        _extractedLinks.clear();
-        _extractedEmails.clear();
-      });
-      return;
-    }
-
-    // Remove tracking query params (utm_*, fbclid, gclid)
-    String cleaned = raw.replaceAll(
-      RegExp(r'(\?|&)(utm_[^&]+|fbclid=[^&]+|gclid=[^&]+)'),
-      '',
-    );
-
-    // Extract emails
-    final emailMatches =
-        RegExp(r'[\w\.-]+@[\w\.-]+\.\w+').allMatches(raw);
-    List<String> emails = emailMatches.map((m) => m.group(0)!).toList();
-
-    // Extract Links
-    final linkMatches =
-        RegExp(r'https?://[^\s]+').allMatches(cleaned);
-    List<String> links = linkMatches.map((m) => m.group(0)!).toList();
-
-    setState(() {
-      _sanitizedResult = cleaned;
-      _extractedEmails = emails;
-      _extractedLinks = links;
-    });
-  }
-
-  void _addNewStickyNote(String title, String content, String tag) {
-    setState(() {
-      _stickyNotes.insert(0, {
-        "title": title.isEmpty ? "Quick Note" : title,
-        "content": content,
-        "tag": tag,
-        "color": "indigo",
-      });
-    });
-    _triggerDynamicAlert("New micro-note pinned to HUD shelf!");
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF1E293B),
+        elevation: 0,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.indigo.shade600,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.deck, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              'DeskDeck',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Toggle Floating Utility Dock',
+            icon: Icon(
+              _isFloatingOverlayVisible ? Icons.layers_clear : Icons.layers,
+              color: _isFloatingOverlayVisible ? Colors.cyan : Colors.white70,
+            ),
+            onPressed: () {
+              setState(() {
+                _isFloatingOverlayVisible = !_isFloatingOverlayVisible;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  duration: const Duration(seconds: 2),
+                  content: Text(
+                    _isFloatingOverlayVisible
+                        ? 'Floating Dock Overlay Activated!'
+                        : 'Floating Dock Hidden',
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
       body: Stack(
         children: [
           SafeArea(
-            child: Column(
-              children: [
-                _buildHeaderBar(),
-                Expanded(
-                  child: IndexedStack(
-                    index: _currentTabIndex,
-                    children: [
-                      _buildDockStudioTab(),
-                      _buildClipboardSanitizerTab(),
-                      _buildStickyShelfTab(),
-                      _buildQuickToolsTab(),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+            child: _pages[_currentIndex],
           ),
-
-          // Dynamic Top Banner Notification Simulation
-          if (_activeNotification != null)
+          if (_isFloatingOverlayVisible)
             Positioned(
-              top: 50,
-              left: 20,
-              right: 20,
-              child: Material(
-                elevation: 8,
-                borderRadius: BorderRadius.circular(24),
-                color: Colors.indigo,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.indigo,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: Colors.cyan, width: 1.5),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.notifications_active,
-                        color: Colors.cyan,
-                        size: 22,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          _activeNotification!,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                          softWrap: true,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-          // Simulated Interactive Floating Dock Bubble
-          if (_isFloatingEnabled)
-            Positioned(
-              left: _dockPosition.dx,
-              top: _dockPosition.dy,
+              left: _overlayPosition.dx,
+              top: _overlayPosition.dy,
               child: GestureDetector(
                 onPanUpdate: (details) {
                   setState(() {
-                    _dockPosition += details.delta;
+                    _overlayPosition += details.delta;
                   });
                 },
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    InkWell(
-                      onTap: () {
-                        setState(() {
-                          _isDockExpanded = !_isDockExpanded;
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.indigo,
-                          shape: BoxShape.circle,
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Colors.black87,
-                              blurRadius: 10,
-                              offset: Offset(0, 4),
-                            ),
-                          ],
-                          border: Border.all(
-                            color: Colors.cyan,
-                            width: 2,
-                          ),
+                child: Material(
+                  elevation: 12,
+                  borderRadius: BorderRadius.circular(24),
+                  color: Colors.indigo.shade900.withOpacity(0.95),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.cyan.shade400, width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.cyan.withOpacity(0.3),
+                          blurRadius: 12,
+                          spreadRadius: 2,
                         ),
-                        child: Icon(
-                          _isDockExpanded
-                              ? Icons.close
-                              : Icons.widgets,
-                          color: Colors.white,
-                          size: 26,
-                        ),
-                      ),
+                      ],
                     ),
-                    if (_isDockExpanded) ...[
-                      const SizedBox(height: 8),
-                      Container(
-                        width: 220,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1E293B),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.grey),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Colors.black87,
-                              blurRadius: 12,
-                            ),
-                          ],
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.drag_indicator, color: Colors.white70, size: 18),
+                        const SizedBox(width: 6),
+                        IconButton(
+                          icon: const Icon(Icons.cleaning_services, color: Colors.cyan, size: 20),
+                          onPressed: () {
+                            setState(() => _currentIndex = 0);
+                          },
+                          tooltip: 'Link Cleaner',
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              "HUD Quick Access",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.cyan,
-                                fontSize: 13,
-                              ),
-                            ),
-                            const Divider(color: Colors.grey),
-                            ListTile(
-                              dense: true,
-                              contentPadding: EdgeInsets.zero,
-                              leading: const Icon(
-                                Icons.cleaning_services,
-                                color: Colors.amber,
-                                size: 18,
-                              ),
-                              title: const Text(
-                                "Sanitize Clipboard",
-                                style: TextStyle(fontSize: 12),
-                              ),
-                              onTap: () {
-                                setState(() {
-                                  _currentTabIndex = 1;
-                                  _isDockExpanded = false;
-                                });
-                                _sanitizeInputText();
-                                _triggerDynamicAlert(
-                                  "Clipboard sanitized automatically!",
-                                );
-                              },
-                            ),
-                            ListTile(
-                              dense: true,
-                              contentPadding: EdgeInsets.zero,
-                              leading: const Icon(
-                                Icons.note_add,
-                                color: Colors.teal,
-                                size: 18,
-                              ),
-                              title: const Text(
-                                "Quick Micro Note",
-                                style: TextStyle(fontSize: 12),
-                              ),
-                              onTap: () {
-                                setState(() {
-                                  _currentTabIndex = 2;
-                                  _isDockExpanded = false;
-                                });
-                              },
-                            ),
-                            ListTile(
-                              dense: true,
-                              contentPadding: EdgeInsets.zero,
-                              leading: const Icon(
-                                Icons.calculate,
-                                color: Colors.orange,
-                                size: 18,
-                              ),
-                              title: const Text(
-                                "Tip & Split Calculator",
-                                style: TextStyle(fontSize: 12),
-                              ),
-                              onTap: () {
-                                setState(() {
-                                  _currentTabIndex = 3;
-                                  _isDockExpanded = false;
-                                });
-                              },
-                            ),
-                          ],
+                        IconButton(
+                          icon: const Icon(Icons.monetization_on, color: Colors.greenAccent, size: 20),
+                          onPressed: () {
+                            setState(() => _currentIndex = 1);
+                          },
+                          tooltip: 'Value Calc',
                         ),
-                      ),
-                    ],
-                  ],
+                        IconButton(
+                          icon: const Icon(Icons.casino, color: Colors.amber, size: 20),
+                          onPressed: () {
+                            setState(() => _currentIndex = 2);
+                          },
+                          tooltip: 'Decision Spinner',
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.desktop_windows, color: Colors.purpleAccent, size: 20),
+                          onPressed: () {
+                            setState(() => _currentIndex = 3);
+                          },
+                          tooltip: 'Desk Mode',
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentTabIndex,
-        selectedItemColor: Colors.cyan,
-        unselectedItemColor: Colors.grey,
-        backgroundColor: const Color(0xFF0F172A),
+        currentIndex: _currentIndex,
+        onTap: (idx) => setState(() => _currentIndex = idx),
         type: BottomNavigationBarType.fixed,
-        onTap: (index) {
-          setState(() {
-            _currentTabIndex = index;
-          });
-        },
+        backgroundColor: const Color(0xFF1E293B),
+        selectedItemColor: Colors.cyan,
+        unselectedItemColor: Colors.white70,
+        selectedFontSize: 12,
+        unselectedFontSize: 12,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: 'HUD Dock',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.content_paste),
+            icon: Icon(Icons.cleaning_services),
             label: 'Sanitizer',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.sticky_note_2),
-            label: 'Sticky Shelf',
+            icon: Icon(Icons.calculate),
+            label: 'Value Split',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.build),
-            label: 'Quick Tools',
+            icon: Icon(Icons.casino),
+            label: 'Decision',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.desktop_windows),
+            label: 'Desk Dock',
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildHeaderBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: const BoxDecoration(
-        color: Color(0xFF1E293B),
-        border: Border(
-          bottom: BorderSide(color: Color(0xFF334155), width: 1),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.indigo,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Icons.widgets,
-              color: Colors.cyan,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                  "DynamicBar HUD",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                Text(
-                  "On-Screen Micro-Utility Workspace",
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: Icon(
-              _isFloatingEnabled
-                  ? Icons.visibility
-                  : Icons.visibility_off,
-              color: _isFloatingEnabled ? Colors.cyan : Colors.grey,
-            ),
-            tooltip: "Toggle Floating HUD",
-            onPressed: () {
-              setState(() {
-                _isFloatingEnabled = !_isFloatingEnabled;
-              });
-              _triggerDynamicAlert(
-                _isFloatingEnabled
-                    ? "Floating Assistive Dock Activated"
-                    : "Floating Dock Hidden",
-              );
-            },
-          ),
-        ],
-      ),
-    );
+// ============================================================================
+// TAB 1: LINK SANITIZER & TEXT WORKBENCH
+// ============================================================================
+class LinkSanitizerTab extends StatefulWidget {
+  const LinkSanitizerTab({super.key});
+
+  @override
+  State<LinkSanitizerTab> createState() => _LinkSanitizerTabState();
+}
+
+class _LinkSanitizerTabState extends State<LinkSanitizerTab> {
+  final TextEditingController _inputController = TextEditingController();
+  String _cleanedText = '';
+  List<String> _extractedLinks = [];
+  List<String> _extractedEmails = [];
+  List<String> _extractedHashtags = [];
+
+  void _processText() {
+    final raw = _inputController.text;
+    if (raw.trim().isEmpty) {
+      setState(() {
+        _cleanedText = '';
+        _extractedLinks = [];
+        _extractedEmails = [];
+        _extractedHashtags = [];
+      });
+      return;
+    }
+
+    // 1. Clean Tracking Parameters
+    String result = raw;
+    result = result.replaceAll(RegExp(r'(\?|&)(utm_[^&\s]+|igsh=[^&\s]+|si=[^&\s]+|fbclid=[^&\s]+|gclid=[^&\s]+|mc_cid=[^&\s]+)'), '');
+    result = result.replaceAll(RegExp(r'\?&'), '?');
+    if (result.endsWith('?') || result.endsWith('&')) {
+      result = result.substring(0, result.length - 1);
+    }
+
+    // 2. Extract Elements
+    final urlRegex = RegExp(r'https?://[^\s]+', caseSensitive: false);
+    final emailRegex = RegExp(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', caseSensitive: false);
+    final hashtagRegex = RegExp(r'#[a-zA-Z0-9_]+');
+
+    final links = urlRegex.allMatches(raw).map((m) => m.group(0) ?? '').toList();
+    final emails = emailRegex.allMatches(raw).map((m) => m.group(0) ?? '').toList();
+    final hashtags = hashtagRegex.allMatches(raw).map((m) => m.group(0) ?? '').toList();
+
+    setState(() {
+      _cleanedText = result;
+      _extractedLinks = links;
+      _extractedEmails = emails;
+      _extractedHashtags = hashtags;
+    });
   }
 
-  // --- TAB 1: DOCK STUDIO & HUD OVERLAY CONTROLLER ---
-  Widget _buildDockStudioTab() {
+  void _loadSampleText() {
+    _inputController.text =
+        "Check this video https://youtube.com/watch?v=dQw4w9WgXcQ?si=abc123tracking&utm_source=copy !\n"
+        "Also Instagram link: https://instagram.com/p/C12345/?igsh=XYZ987_test\n"
+        "Contact me at support@deskdeck.app or #flutter #viral #tech";
+    _processText();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.star, color: Colors.amber, size: 20),
-                      const SizedBox(width: 8),
-                      const Expanded(
-                        child: Text(
-                          "Active Assistant Status",
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _isFloatingEnabled
-                              ? Colors.green
-                              : Colors.grey,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          _isFloatingEnabled ? "ACTIVE" : "STANDBY",
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    "DynamicBar sits softly over your daily smartphone routines. Drag the floating bubble anywhere on screen to trigger context actions without closing your active apps.",
-                    style: TextStyle(fontSize: 12, color: Colors.white70),
-                  ),
-                  const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.indigo,
-                          foregroundColor: Colors.white,
-                        ),
-                        onPressed: () {
-                          _triggerDynamicAlert(
-                            "DynamicBar Notification Test Triggered!",
-                          );
-                        },
-                        icon: const Icon(Icons.notifications_active, size: 16),
-                        label: const Text(
-                          "Test Alert HUD",
-                          style: TextStyle(fontSize: 12),
-                        ),
-                      ),
-                      OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.cyan,
-                          side: const BorderSide(color: Colors.cyan),
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _dockPosition = const Offset(20, 200);
-                          });
-                          _triggerDynamicAlert("Dock position reset to top left.");
-                        },
-                        icon: const Icon(Icons.refresh, size: 16),
-                        label: const Text(
-                          "Reset Position",
-                          style: TextStyle(fontSize: 12),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Expanded(
+                child: Text(
+                  'Link Cleaner & Text Workbench',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                  softWrap: true,
+                ),
               ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            "Quick Active Shelf Banners",
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: Colors.cyan,
-            ),
+              TextButton.icon(
+                onPressed: _loadSampleText,
+                icon: const Icon(Icons.lightbulb, size: 16, color: Colors.cyan),
+                label: const Text('Sample', style: TextStyle(color: Colors.cyan)),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _stickyNotes.length,
-            itemBuilder: (context, index) {
-              final note = _stickyNotes[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  leading: const Icon(Icons.push_pin, color: Colors.teal),
-                  title: Text(
-                    note["title"] ?? "",
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
-                  ),
-                  subtitle: Text(
-                    note["content"] ?? "",
-                    style: const TextStyle(fontSize: 12, color: Colors.white70),
-                    softWrap: true,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  trailing: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.indigo,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      note["tag"] ?? "General",
-                      style: const TextStyle(fontSize: 10, color: Colors.white),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- TAB 2: SMART CLIPBOARD SANITIZER & LINK EXTRACTOR ---
-  Widget _buildClipboardSanitizerTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.cleaning_services,
-                          color: Colors.amber, size: 20),
-                      const SizedBox(width: 8),
-                      const Expanded(
-                        child: Text(
-                          "Clipboard Sanitizer & Link Stripper",
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    "Paste messy web links or emails. DynamicBar automatically removes tracking parameters (utm_source, fbclid) and extracts data.",
-                    style: TextStyle(fontSize: 11, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _clipboardController,
-                    maxLines: 4,
-                    style: const TextStyle(fontSize: 12),
-                    decoration: const InputDecoration(
-                      hintText: "Paste text or raw link here...",
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.all(12),
-                    ),
-                    onChanged: (val) => _sanitizeInputText(),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.teal,
-                          foregroundColor: Colors.white,
-                        ),
-                        onPressed: () {
-                          _sanitizeInputText();
-                          _triggerDynamicAlert("Sanitized text updated!");
-                        },
-                        icon: const Icon(Icons.check, size: 16),
-                        label: const Text("Clean Text", style: TextStyle(fontSize: 12)),
-                      ),
-                      OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.grey,
-                        ),
-                        onPressed: () {
-                          _clipboardController.clear();
-                          _sanitizeInputText();
-                        },
-                        icon: const Icon(Icons.delete, size: 16),
-                        label: const Text("Clear", style: TextStyle(fontSize: 12)),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+          const Text(
+            'Paste messy social links or text. Removes ?igsh=, ?utm_, ?si= trackers instantly for privacy and clean sharing!',
+            style: TextStyle(color: Colors.white70, fontSize: 13),
           ),
           const SizedBox(height: 16),
-          const Text(
-            "Sanitized Output & Extracted Data",
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: Colors.cyan,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            color: const Color(0xFF0F172A),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        "Cleaned Result",
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.amber,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.copy, size: 16, color: Colors.cyan),
-                        onPressed: () {
-                          _triggerDynamicAlert("Cleaned text copied to clipboard!");
-                        },
-                      ),
-                    ],
-                  ),
-                  Text(
-                    _sanitizedResult.isEmpty
-                        ? "No output generated yet."
-                        : _sanitizedResult,
-                    style: const TextStyle(fontSize: 12, color: Colors.white),
-                  ),
-                  const Divider(color: Colors.grey, height: 24),
-                  const Text(
-                    "Extracted Links:",
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.cyan,
-                    ),
-                  ),
-                  if (_extractedLinks.isEmpty)
-                    const Text(
-                      "None found",
-                      style: TextStyle(fontSize: 11, color: Colors.grey),
-                    )
-                  else
-                    ..._extractedLinks.map(
-                      (link) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Text(
-                          link,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Colors.lightBlueAccent,,
-                          ),
-                          softWrap: true,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    "Extracted Emails:",
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.cyan,
-                    ),
-                  ),
-                  if (_extractedEmails.isEmpty)
-                    const Text(
-                      "None found",
-                      style: TextStyle(fontSize: 11, color: Colors.grey),
-                    )
-                  else
-                    ..._extractedEmails.map(
-                      (email) => Text(
-                        email,
-                        style: const TextStyle(fontSize: 11, color: Colors.tealAccent),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- TAB 3: STICKY SHELF (FLOATING MEMO BOARD) ---
-  Widget _buildStickyShelfTab() {
-    final titleController = TextEditingController();
-    final contentController = TextEditingController();
-    final tagController = TextEditingController();
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Pin Micro-Note to HUD Shelf",
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: titleController,
-                    decoration: const InputDecoration(
-                      labelText: "Note Title (e.g., Gate Code, Item ID)",
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                    ),
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: contentController,
-                    maxLines: 2,
-                    decoration: const InputDecoration(
-                      labelText: "Note Snippet / Info",
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.all(10),
-                    ),
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: tagController,
-                    decoration: const InputDecoration(
-                      labelText: "Tag (e.g., Urgent, Work, Personal)",
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                    ),
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.indigo,
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: () {
-                        if (contentController.text.isNotEmpty) {
-                          _addNewStickyNote(
-                            titleController.text,
-                            contentController.text,
-                            tagController.text.isEmpty
-                                ? "General"
-                                : tagController.text,
-                          );
-                          titleController.clear();
-                          contentController.clear();
-                          tagController.clear();
-                        }
-                      },
-                      icon: const Icon(Icons.add, size: 18),
-                      label: const Text(
-                        "Pin to Shelf HUD",
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ),
-                  ),
-                ],
+          TextField(
+            controller: _inputController,
+            maxLines: 4,
+            onChanged: (_) => _processText(),
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(
+              hintText: 'Paste messy links or block of text here...',
+              hintStyle: TextStyle(color: Colors.white70),
+              filled: true,
+              fillColor: Color(0xFF1E293B),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(12)),
               ),
             ),
           ),
           const SizedBox(height: 16),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                "Pinned Micro-Notes",
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.cyan,
+              Expanded(
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigo.shade600,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: _processText,
+                  icon: const Icon(Icons.auto_fix_high, color: Colors.white),
+                  label: const Text('Clean & Strip Trackers', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 ),
               ),
-              Text(
-                "${_stickyNotes.length} Items",
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              const SizedBox(width: 8),
+              IconButton(
+                style: IconButton.styleFrom(
+                  backgroundColor: const Color(0xFF1E293B),
+                  padding: const EdgeInsets.all(12),
+                ),
+                icon: const Icon(Icons.clear, color: Colors.white70),
+                onPressed: () {
+                  _inputController.clear();
+                  _processText();
+                },
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _stickyNotes.length,
-            itemBuilder: (context, index) {
-              final note = _stickyNotes[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 4,
-                        height: 40,
-                        color: Colors.cyan,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    note["title"] ?? "Note",
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                      color: Colors.white,
-                                    ),
-                                    softWrap: true,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.teal.withOpacity(0.3),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    note["tag"] ?? "General",
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      color: Colors.tealAccent,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              note["content"] ?? "",
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.white70,
-                              ),
-                              softWrap: true,
-                            ),
-                          ],
+          const SizedBox(height: 20),
+          if (_cleanedText.isNotEmpty) ...[
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Cleaned Output:',
+                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyan),
                         ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete,
-                            size: 18, color: Colors.grey),
-                        onPressed: () {
-                          setState(() {
-                            _stickyNotes.removeAt(index);
-                          });
-                          _triggerDynamicAlert("Note removed from shelf.");
-                        },
-                      ),
-                    ],
-                  ),
+                        IconButton(
+                          icon: const Icon(Icons.copy, size: 18, color: Colors.cyan),
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Cleaned text copied to clipboard!')),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SelectableText(
+                      _cleanedText,
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ],
                 ),
-              );
-            },
-          ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          if (_extractedLinks.isNotEmpty || _extractedEmails.isNotEmpty || _extractedHashtags.isNotEmpty) ...[
+            const Text(
+              'Extracted Elements:',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAxisAlignment.center,
+              children: [
+                ..._extractedLinks.map((url) => Chip(
+                      avatar: const Icon(Icons.link, size: 16, color: Colors.cyan),
+                      label: Text(url.length > 25 ? '${url.substring(0, 25)}...' : url),
+                      backgroundColor: const Color(0xFF1E293B),
+                      labelStyle: const TextStyle(color: Colors.white, fontSize: 12),
+                    )),
+                ..._extractedEmails.map((email) => Chip(
+                      avatar: const Icon(Icons.email, size: 16, color: Colors.amber),
+                      label: Text(email),
+                      backgroundColor: const Color(0xFF1E293B),
+                      labelStyle: const TextStyle(color: Colors.white, fontSize: 12),
+                    )),
+                ..._extractedHashtags.map((tag) => Chip(
+                      avatar: const Icon(Icons.tag, size: 16, color: Colors.purpleAccent),
+                      label: Text(tag),
+                      backgroundColor: const Color(0xFF1E293B),
+                      labelStyle: const TextStyle(color: Colors.white, fontSize: 12),
+                    )),
+              ],
+            ),
+          ],
         ],
       ),
     );
   }
+}
 
-  // --- TAB 4: QUICK ON-SCREEN TOOLS (TIP & SPLIT & TEXT METRICS) ---
-  Widget _buildQuickToolsTab() {
-    double totalTip = (_billAmount * _tipPercentage) / 100;
-    double totalBill = _billAmount + totalTip;
-    double perPerson = totalBill / (_splitCount > 0 ? _splitCount : 1);
+// ============================================================================
+// TAB 2: VALUE CALCULATOR & BILL SPLITTER
+// ============================================================================
+class ValueCalcTab extends StatefulWidget {
+  const ValueCalcTab({super.key});
 
-    int wordCount = _quickTextAnalyzerController.text.trim().isEmpty
-        ? 0
-        : _quickTextAnalyzerController.text.trim().split(RegExp(r'\s+')).length;
-    int charCount = _quickTextAnalyzerController.text.length;
-    double readTimeMinutes = wordCount / 200.0;
+  @override
+  State<ValueCalcTab> createState() => _ValueCalcTabState();
+}
+
+class _ValueCalcTabState extends State<ValueCalcTab> {
+  // Buy or Pass state
+  final TextEditingController _priceController = TextEditingController(text: '120');
+  final TextEditingController _usesController = TextEditingController(text: '30');
+  double _costPerUse = 4.0;
+  String _verdict = 'Fair Value';
+  Color _verdictColor = Colors.orange;
+
+  // Bill Splitter state
+  double _billAmount = 85.0;
+  int _peopleCount = 3;
+  double _tipPercentage = 15;
+
+  void _calculatePurchaseValue() {
+    final price = double.tryParse(_priceController.text) ?? 0;
+    final uses = double.tryParse(_usesController.text) ?? 1;
+
+    if (uses <= 0) return;
+
+    final cost = price / uses;
+    String verdict = 'Great Value';
+    Color color = Colors.green;
+
+    if (cost > 10) {
+      verdict = 'Impulse Buy Warning!';
+      color = Colors.redAccent;
+    } else if (cost > 3) {
+      verdict = 'Fair Daily Value';
+      color = Colors.amber;
+    }
+
+    setState(() {
+      _costPerUse = cost;
+      _verdict = verdict;
+      _verdictColor = color;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final totalTip = _billAmount * (_tipPercentage / 100);
+    final totalBill = _billAmount + totalTip;
+    final perPerson = totalBill / (_peopleCount > 0 ? _peopleCount : 1);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Tool 1: Fast Bill Splitter
+          const Text(
+            'Should I Buy It? (Cost-Per-Use)',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Evaluate if a purchase is worth buying based on predicted usage!',
+            style: TextStyle(color: Colors.white70, fontSize: 13),
+          ),
+          const SizedBox(height: 12),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.calculate, color: Colors.amber, size: 20),
-                      SizedBox(width: 8),
-                      Text(
-                        "Instant Tip & Bill Splitter",
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
                   Row(
                     children: [
-                      const Text(
-                        "Bill Amount: \$",
-                        style: TextStyle(fontSize: 12),
-                      ),
-                      const SizedBox(width: 8),
                       Expanded(
-                        child: Slider(
-                          value: _billAmount,
-                          min: 5.0,
-                          max: 300.0,
-                          divisions: 59,
-                          activeColor: Colors.cyan,
-                          label: "\$${_billAmount.toStringAsFixed(1)}",
-                          onChanged: (val) {
-                            setState(() {
-                              _billAmount = val;
-                            });
-                          },
+                        child: TextField(
+                          controller: _priceController,
+                          keyboardType: TextInputType.number,
+                          onChanged: (_) => _calculatePurchaseValue(),
+                          style: const TextStyle(color: Colors.white),
+                          decoration: const InputDecoration(
+                            labelText: 'Price (\$)',
+                            labelStyle: TextStyle(color: Colors.white70),
+                            border: OutlineInputBorder(),
+                          ),
                         ),
                       ),
-                      Text(
-                        "\$${_billAmount.toStringAsFixed(1)}",
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      const Text(
-                        "Tip: ",
-                        style: TextStyle(fontSize: 12),
-                      ),
+                      const SizedBox(width: 12),
                       Expanded(
-                        child: Slider(
-                          value: _tipPercentage,
-                          min: 0.0,
-                          max: 30.0,
-                          divisions: 6,
-                          activeColor: Colors.teal,
-                          label: "${_tipPercentage.toInt()}%",
-                          onChanged: (val) {
-                            setState(() {
-                              _tipPercentage = val;
-                            });
-                          },
-                        ),
-                      ),
-                      Text(
-                        "${_tipPercentage.toInt()}%",
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                        child: TextField(
+                          controller: _usesController,
+                          keyboardType: TextInputType.number,
+                          onChanged: (_) => _calculatePurchaseValue(),
+                          style: const TextStyle(color: Colors.white),
+                          decoration: const InputDecoration(
+                            labelText: 'Expected Uses',
+                            labelStyle: TextStyle(color: Colors.white70),
+                            border: OutlineInputBorder(),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  Row(
-                    children: [
-                      const Text(
-                        "Split Between: ",
-                        style: TextStyle(fontSize: 12),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.remove_circle, color: Colors.grey),
-                        onPressed: () {
-                          if (_splitCount > 1) {
-                            setState(() {
-                              _splitCount--;
-                            });
-                          }
-                        },
-                      ),
-                      Text(
-                        "$_splitCount people",
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.add_circle, color: Colors.cyan),
-                        onPressed: () {
-                          setState(() {
-                            _splitCount++;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                  const Divider(color: Colors.grey),
+                  const SizedBox(height: 16),
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: const Color(0xFF0F172A),
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: _verdictColor, width: 1.5),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    child: Column(
                       children: [
-                        Column(
-                          children: [
-                            const Text(
-                              "Total Bill",
-                              style: TextStyle(fontSize: 10, color: Colors.grey),
-                            ),
-                            Text(
-                              "\$${totalBill.toStringAsFixed(2)}",
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.amber,
-                              ),
-                            ),
-                          ],
+                        Text(
+                          'Cost Per Use: \$${_costPerUse.toStringAsFixed(2)}',
+                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
                         ),
-                        Column(
-                          children: [
-                            const Text(
-                              "Per Person",
-                              style: TextStyle(fontSize: 10, color: Colors.grey),
-                            ),
-                            Text(
-                              "\$${perPerson.toStringAsFixed(2)}",
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.tealAccent,
-                              ),
-                            ),
-                          ],
+                        const SizedBox(height: 4),
+                        Text(
+                          _verdict,
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _verdictColor),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Equals roughly ${(_costPerUse / 4.5).toStringAsFixed(1)} cups of coffee per wear/use.',
+                          style: const TextStyle(color: Colors.white70, fontSize: 12),
+                          textAlign: TextAlign.center,
                         ),
                       ],
                     ),
@@ -1183,54 +555,556 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
-
-          // Tool 2: Instant Text Analyzer & Reading Time
+          const SizedBox(height: 24),
+          const Text(
+            'Micro Bill & Tip Splitter',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Quickly share lunch/dinner bills transparently with friends.',
+            style: TextStyle(color: Colors.white70, fontSize: 13),
+          ),
+          const SizedBox(height: 12),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Icon(Icons.analytics, color: Colors.cyan, size: 20),
-                      SizedBox(width: 8),
-                      Text(
-                        "Speed Read & Text Analytics HUD",
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                      const Text('Total Bill Amount:', style: TextStyle(color: Colors.white70)),
+                      Text('\$${_billAmount.toStringAsFixed(2)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.cyan)),
+                    ],
+                  ),
+                  Slider(
+                    value: _billAmount,
+                    min: 5,
+                    max: 500,
+                    divisions: 99,
+                    activeColor: Colors.cyan,
+                    onChanged: (v) => setState(() => _billAmount = v),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Tip Percentage (${_tipPercentage.toInt()}%):', style: const TextStyle(color: Colors.white70)),
+                      Text('\$${totalTip.toStringAsFixed(2)}', style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  Slider(
+                    value: _tipPercentage,
+                    min: 0,
+                    max: 30,
+                    divisions: 6,
+                    activeColor: Colors.amber,
+                    onChanged: (v) => setState(() => _tipPercentage = v),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Split Between ($_peopleCount People):', style: const TextStyle(color: Colors.white70)),
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.remove_circle_outline, color: Colors.white70),
+                            onPressed: _peopleCount > 1 ? () => setState(() => _peopleCount--) : null,
+                          ),
+                          Text('$_peopleCount', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                          IconButton(
+                            icon: const Icon(Icons.add_circle_outline, color: Colors.white70),
+                            onPressed: () => setState(() => _peopleCount++),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const Divider(color: Colors.white70, height: 24),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.indigo.shade900,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Each Person Pays:',
+                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                        Text(
+                          '\$${perPerson.toStringAsFixed(2)}',
+                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.greenAccent),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// TAB 3: MICRO-DECISION WHEEL
+// ============================================================================
+class DecisionWheelTab extends StatefulWidget {
+  const DecisionWheelTab({super.key});
+
+  @override
+  State<DecisionWheelTab> createState() => _DecisionWheelTabState();
+}
+
+class _DecisionWheelTabState extends State<DecisionWheelTab> with SingleTickerProviderStateMixin {
+  final List<String> _options = ['Pizza 🍕', 'Burgers 🍔', 'Sushi 🍣', 'Tacos 🌮', 'Cook Home 🍳'];
+  final TextEditingController _optionController = TextEditingController();
+  late AnimationController _animController;
+  late Animation<double> _animation;
+  double _currentAngle = 0;
+  String? _selectedOption;
+
+  final List<Color> _sliceColors = [
+    Colors.indigo,
+    Colors.teal,
+    Colors.amber.shade800,
+    Colors.purple,
+    Colors.deepOrange,
+    Colors.blueGrey,
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    );
+
+    _animation = CurvedAnimation(parent: _animController, curve: Curves.decelerate);
+    _animController.addListener(() {
+      setState(() {
+        _currentAngle = _animation.value;
+      });
+    });
+
+    _animController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _determineWinner();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    _optionController.dispose();
+    super.dispose();
+  }
+
+  void _spinWheel() {
+    if (_animController.isAnimating || _options.isEmpty) return;
+
+    setState(() {
+      _selectedOption = null;
+    });
+
+    final randomRounds = 4 + math.Random().nextInt(4);
+    final randomOffset = math.Random().nextDouble() * math.pi * 2;
+    final endAngle = _currentAngle + (randomRounds * math.pi * 2) + randomOffset;
+
+    _animation = Tween<double>(begin: _currentAngle, end: endAngle).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.decelerate),
+    );
+
+    _animController.forward(from: 0);
+  }
+
+  void _determineWinner() {
+    if (_options.isEmpty) return;
+    final normalizedAngle = (_currentAngle % (math.pi * 2));
+    final sliceAngle = (math.pi * 2) / _options.length;
+    // Top pointer is at -pi/2 angle
+    int index = ((math.pi * 2 - normalizedAngle) / sliceAngle).floor() % _options.length;
+    setState(() {
+      _selectedOption = _options[index];
+    });
+  }
+
+  void _addOption() {
+    if (_optionController.text.trim().isNotEmpty) {
+      setState(() {
+        _options.add(_optionController.text.trim());
+        _optionController.clear();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          const Text(
+            'Micro-Decision Wheel',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Can\'t decide what to eat or do? Spin the wheel!',
+            style: TextStyle(color: Colors.white70, fontSize: 13),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            height: 240,
+            width: 240,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Transform.rotate(
+                  angle: _currentAngle,
+                  child: CustomPaint(
+                    size: const Size(220, 220),
+                    painter: WheelPainter(options: _options, colors: _sliceColors),
+                  ),
+                ),
+                // Top Indicator Pointer
+                Positioned(
+                  top: 0,
+                  child: Icon(Icons.arrow_drop_down, size: 40, color: Colors.cyan.shade300),
+                ),
+                // Center Spin Button
+                GestureDetector(
+                  onTap: _spinWheel,
+                  child: Container(
+                    width: 54,
+                    height: 54,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F172A),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.cyan, width: 2),
+                      boxShadow: const [BoxShadow(color: Colors.black87, blurRadius: 8)],
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'SPIN',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.cyan),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (_selectedOption != null) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade900.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.amber, width: 1.5),
+              ),
+              child: Text(
+                'Winner: $_selectedOption!',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.amberAccent),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _optionController,
+                          style: const TextStyle(color: Colors.white, fontSize: 14),
+                          decoration: const InputDecoration(
+                            hintText: 'Add custom choice...',
+                            hintStyle: TextStyle(color: Colors.white70),
+                            isDense: true,
+                            border: OutlineInputBorder(),
+                          ),
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _quickTextAnalyzerController,
-                    maxLines: 3,
-                    style: const TextStyle(fontSize: 12),
-                    decoration: const InputDecoration(
-                      hintText: "Type or paste paragraph to inspect metrics...",
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.all(10),
-                    ),
-                    onChanged: (v) {
-                      setState(() {});
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildMetricChip("Words", "$wordCount"),
-                      _buildMetricChip("Characters", "$charCount"),
-                      _buildMetricChip(
-                        "Est. Read Time",
-                        "${readTimeMinutes.toStringAsFixed(1)} min",
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.cyan),
+                        onPressed: _addOption,
+                        child: const Text('Add', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: _options.asMap().entries.map((entry) {
+                      return Chip(
+                        label: Text(entry.value, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                        backgroundColor: const Color(0xFF0F172A),
+                        deleteIcon: const Icon(Icons.close, size: 14, color: Colors.white70),
+                        onDeleted: _options.length > 2
+                            ? () {
+                                setState(() {
+                                  _options.removeAt(entry.key);
+                                });
+                              }
+                            : null,
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class WheelPainter extends CustomPainter {
+  final List<String> options;
+  final List<Color> colors;
+
+  WheelPainter({required this.options, required this.colors});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (options.isEmpty) return;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+    final sweepAngle = (math.pi * 2) / options.length;
+
+    final paint = Paint()..style = PaintingStyle.fill;
+
+    for (int i = 0; i < options.length; i++) {
+      paint.color = colors[i % colors.length];
+      final startAngle = i * sweepAngle - (math.pi / 2);
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        sweepAngle,
+        true,
+        paint,
+      );
+
+      // Draw Text Label
+      final textAngle = startAngle + (sweepAngle / 2);
+      final textX = center.dx + (radius * 0.65) * math.cos(textAngle);
+      final textY = center.dy + (radius * 0.65) * math.sin(textAngle);
+
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: options[i],
+          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout();
+
+      canvas.save();
+      canvas.translate(textX, textY);
+      canvas.rotate(textAngle + math.pi / 2);
+      textPainter.paint(canvas, Offset(-textPainter.width / 2, -textPainter.height / 2));
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+// ============================================================================
+// TAB 4: AMBIENT DESK COMPANION
+// ============================================================================
+class DeskCompanionTab extends StatefulWidget {
+  const DeskCompanionTab({super.key});
+
+  @override
+  State<DeskCompanionTab> createState() => _DeskCompanionTabState();
+}
+
+class _DeskCompanionTabState extends State<DeskCompanionTab> with SingleTickerProviderStateMixin {
+  late AnimationController _waveController;
+  bool _isSoundRain = false;
+  bool _isSoundCafe = false;
+  bool _isSoundWaves = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _waveController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _waveController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final timeStr = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
+    final dateStr = "${_monthName(now.month)} ${now.day}, ${now.year}";
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: const [
+              Text(
+                'Desk Companion Dock',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+              Chip(
+                avatar: Icon(Icons.bolt, size: 14, color: Colors.greenAccent),
+                label: Text('Active Desk Mode', style: TextStyle(fontSize: 11, color: Colors.white)),
+                backgroundColor: Color(0xFF1E293B),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Massive Desk Clock Display
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.indigo.shade900, const Color(0xFF1E293B)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.indigo.shade400.withOpacity(0.4)),
+              boxShadow: const [
+                BoxShadow(color: Colors.black87, blurRadius: 10, offset: Offset(0, 4)),
+              ],
+            ),
+            child: Column(
+              children: [
+                Text(
+                  timeStr,
+                  style: const TextStyle(
+                    fontSize: 56,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.cyanAccent,
+                    letterSpacing: 2,
+                  ),
+                ),
+                Text(
+                  dateStr,
+                  style: const TextStyle(fontSize: 15, color: Colors.white70, letterSpacing: 1),
+                ),
+                const SizedBox(height: 16),
+                // Animated Audio Visualizer Bars
+                AnimatedBuilder(
+                  animation: _waveController,
+                  builder: (context, child) {
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(12, (index) {
+                        final height = 10.0 + math.sin((_waveController.value * math.pi * 2) + index) * 12 + 10;
+                        final active = _isSoundRain || _isSoundCafe || _isSoundWaves;
+                        return Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          width: 4,
+                          height: active ? height : 6,
+                          decoration: BoxDecoration(
+                            color: active ? Colors.cyan : Colors.white70,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        );
+                      }),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Ambient Desk Sound Generator',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _buildSoundTile(
+                  title: 'Rain Ambient',
+                  icon: Icons.grain,
+                  isActive: _isSoundRain,
+                  color: Colors.blue,
+                  onTap: () => setState(() => _isSoundRain = !_isSoundRain),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildSoundTile(
+                  title: 'Cafe Buzz',
+                  icon: Icons.coffee,
+                  isActive: _isSoundCafe,
+                  color: Colors.amber,
+                  onTap: () => setState(() => _isSoundCafe = !_isSoundCafe),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildSoundTile(
+                  title: 'Ocean Waves',
+                  icon: Icons.waves,
+                  isActive: _isSoundWaves,
+                  color: Colors.teal,
+                  onTap: () => setState(() => _isSoundWaves = !_isSoundWaves),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: const [
+                      Icon(Icons.lightbulb_outline, color: Colors.amber, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        'Daily Focus Quote',
+                        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '"Simplicity is about subtracting the obvious and adding the meaningful."',
+                    style: TextStyle(fontStyle: FontStyle.italic, color: Colors.white70, fontSize: 13),
                   ),
                 ],
               ),
@@ -1241,31 +1115,47 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
     );
   }
 
-  Widget _buildMetricChip(String label, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.indigo.withOpacity(0.5)),
-      ),
-      child: Column(
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 10, color: Colors.grey),
+  Widget _buildSoundTile({
+    required String title,
+    required IconData icon,
+    required bool isActive,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+        decoration: BoxDecoration(
+          color: isActive ? color.withOpacity(0.2) : const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isActive ? color : Colors.transparent,
+            width: 1.5,
           ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: isActive ? color : Colors.white70, size: 24),
+            const SizedBox(height: 6),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                color: isActive ? Colors.white : Colors.white70,
+              ),
+              textAlign: TextAlign.center,
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
+  }
+
+  String _monthName(int month) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return months[month - 1];
   }
 }
