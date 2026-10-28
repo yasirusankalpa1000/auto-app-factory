@@ -1,1161 +1,1045 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 
 void main() {
-  runApp(const DeskDeckApp());
+  runApp(const ContextPilotApp());
 }
 
-class DeskDeckApp extends StatelessWidget {
-  const DeskDeckApp({super.key});
+class ContextPilotApp extends StatelessWidget {
+  const ContextPilotApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'DeskDeck',
+      title: 'ContextPilot',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        brightness: Brightness.dark,
-        colorSchemeSeed: Colors.indigo,
-        scaffoldBackgroundColor: const Color(0xFF0F172A),
-        cardTheme: CardThemeData(
-          color: const Color(0xFF1E293B),
-          elevation: 4,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.deepPurple,
+          brightness: Brightness.dark,
         ),
+        scaffoldBackgroundColor: const Color(0xFF121218),
       ),
-      home: const MainHomeScreen(),
+      home: const MainNavigationScreen(),
     );
   }
 }
 
-class MainHomeScreen extends StatefulWidget {
-  const MainHomeScreen({super.key});
+class MainNavigationScreen extends StatefulWidget {
+  const MainNavigationScreen({super.key});
 
   @override
-  State<MainHomeScreen> createState() => _MainHomeScreenState();
+  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
-class _MainHomeScreenState extends State<MainHomeScreen> {
+class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
-  bool _isFloatingOverlayVisible = false;
-  Offset _overlayPosition = const Offset(20, 120);
+  bool _isFloatingHudEnabled = true;
+  String _activeHudText = "ContextPilot HUD Ready: Tap for Quick Replies";
 
-  final List<Widget> _pages = const [
-    LinkSanitizerTab(),
-    ValueCalcTab(),
-    DecisionWheelTab(),
-    DeskCompanionTab(),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
-        elevation: 0,
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.indigo.shade600,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.deck, color: Colors.white, size: 20),
-            ),
-            const SizedBox(width: 10),
-            const Text(
-              'DeskDeck',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Toggle Floating Utility Dock',
-            icon: Icon(
-              _isFloatingOverlayVisible ? Icons.layers_clear : Icons.layers,
-              color: _isFloatingOverlayVisible ? Colors.cyan : Colors.white70,
-            ),
-            onPressed: () {
-              setState(() {
-                _isFloatingOverlayVisible = !_isFloatingOverlayVisible;
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  duration: const Duration(seconds: 2),
-                  content: Text(
-                    _isFloatingOverlayVisible
-                        ? 'Floating Dock Overlay Activated!'
-                        : 'Floating Dock Hidden',
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          SafeArea(
-            child: _pages[_currentIndex],
-          ),
-          if (_isFloatingOverlayVisible)
-            Positioned(
-              left: _overlayPosition.dx,
-              top: _overlayPosition.dy,
-              child: GestureDetector(
-                onPanUpdate: (details) {
-                  setState(() {
-                    _overlayPosition += details.delta;
-                  });
-                },
-                child: Material(
-                  elevation: 12,
-                  borderRadius: BorderRadius.circular(24),
-                  color: Colors.indigo.shade900.withOpacity(0.95),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: Colors.cyan.shade400, width: 1.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.cyan.withOpacity(0.3),
-                          blurRadius: 12,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.drag_indicator, color: Colors.white70, size: 18),
-                        const SizedBox(width: 6),
-                        IconButton(
-                          icon: const Icon(Icons.cleaning_services, color: Colors.cyan, size: 20),
-                          onPressed: () {
-                            setState(() => _currentIndex = 0);
-                          },
-                          tooltip: 'Link Cleaner',
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.monetization_on, color: Colors.greenAccent, size: 20),
-                          onPressed: () {
-                            setState(() => _currentIndex = 1);
-                          },
-                          tooltip: 'Value Calc',
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.casino, color: Colors.amber, size: 20),
-                          onPressed: () {
-                            setState(() => _currentIndex = 2);
-                          },
-                          tooltip: 'Decision Spinner',
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.desktop_windows, color: Colors.purpleAccent, size: 20),
-                          onPressed: () {
-                            setState(() => _currentIndex = 3);
-                          },
-                          tooltip: 'Desk Mode',
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (idx) => setState(() => _currentIndex = idx),
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: const Color(0xFF1E293B),
-        selectedItemColor: Colors.cyan,
-        unselectedItemColor: Colors.white70,
-        selectedFontSize: 12,
-        unselectedFontSize: 12,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.cleaning_services),
-            label: 'Sanitizer',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calculate),
-            label: 'Value Split',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.casino),
-            label: 'Decision',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.desktop_windows),
-            label: 'Desk Dock',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ============================================================================
-// TAB 1: LINK SANITIZER & TEXT WORKBENCH
-// ============================================================================
-class LinkSanitizerTab extends StatefulWidget {
-  const LinkSanitizerTab({super.key});
-
-  @override
-  State<LinkSanitizerTab> createState() => _LinkSanitizerTabState();
-}
-
-class _LinkSanitizerTabState extends State<LinkSanitizerTab> {
-  final TextEditingController _inputController = TextEditingController();
-  String _cleanedText = '';
-  List<String> _extractedLinks = [];
-  List<String> _extractedEmails = [];
-  List<String> _extractedHashtags = [];
-
-  void _processText() {
-    final raw = _inputController.text;
-    if (raw.trim().isEmpty) {
-      setState(() {
-        _cleanedText = '';
-        _extractedLinks = [];
-        _extractedEmails = [];
-        _extractedHashtags = [];
-      });
-      return;
-    }
-
-    // 1. Clean Tracking Parameters
-    String result = raw;
-    result = result.replaceAll(RegExp(r'(\?|&)(utm_[^&\s]+|igsh=[^&\s]+|si=[^&\s]+|fbclid=[^&\s]+|gclid=[^&\s]+|mc_cid=[^&\s]+)'), '');
-    result = result.replaceAll(RegExp(r'\?&'), '?');
-    if (result.endsWith('?') || result.endsWith('&')) {
-      result = result.substring(0, result.length - 1);
-    }
-
-    // 2. Extract Elements
-    final urlRegex = RegExp(r'https?://[^\s]+', caseSensitive: false);
-    final emailRegex = RegExp(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', caseSensitive: false);
-    final hashtagRegex = RegExp(r'#[a-zA-Z0-9_]+');
-
-    final links = urlRegex.allMatches(raw).map((m) => m.group(0) ?? '').toList();
-    final emails = emailRegex.allMatches(raw).map((m) => m.group(0) ?? '').toList();
-    final hashtags = hashtagRegex.allMatches(raw).map((m) => m.group(0) ?? '').toList();
-
-    setState(() {
-      _cleanedText = result;
-      _extractedLinks = links;
-      _extractedEmails = emails;
-      _extractedHashtags = hashtags;
-    });
-  }
-
-  void _loadSampleText() {
-    _inputController.text =
-        "Check this video https://youtube.com/watch?v=dQw4w9WgXcQ?si=abc123tracking&utm_source=copy !\n"
-        "Also Instagram link: https://instagram.com/p/C12345/?igsh=XYZ987_test\n"
-        "Contact me at support@deskdeck.app or #flutter #viral #tech";
-    _processText();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Expanded(
-                child: Text(
-                  'Link Cleaner & Text Workbench',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                  softWrap: true,
-                ),
-              ),
-              TextButton.icon(
-                onPressed: _loadSampleText,
-                icon: const Icon(Icons.lightbulb, size: 16, color: Colors.cyan),
-                label: const Text('Sample', style: TextStyle(color: Colors.cyan)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Paste messy social links or text. Removes ?igsh=, ?utm_, ?si= trackers instantly for privacy and clean sharing!',
-            style: TextStyle(color: Colors.white70, fontSize: 13),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _inputController,
-            maxLines: 4,
-            onChanged: (_) => _processText(),
-            style: const TextStyle(color: Colors.white),
-            decoration: const InputDecoration(
-              hintText: 'Paste messy links or block of text here...',
-              hintStyle: TextStyle(color: Colors.white70),
-              filled: true,
-              fillColor: Color(0xFF1E293B),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.all(Radius.circular(12)),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.indigo.shade600,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: _processText,
-                  icon: const Icon(Icons.auto_fix_high, color: Colors.white),
-                  label: const Text('Clean & Strip Trackers', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                style: IconButton.styleFrom(
-                  backgroundColor: const Color(0xFF1E293B),
-                  padding: const EdgeInsets.all(12),
-                ),
-                icon: const Icon(Icons.clear, color: Colors.white70),
-                onPressed: () {
-                  _inputController.clear();
-                  _processText();
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          if (_cleanedText.isNotEmpty) ...[
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Cleaned Output:',
-                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyan),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.copy, size: 18, color: Colors.cyan),
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Cleaned text copied to clipboard!')),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    SelectableText(
-                      _cleanedText,
-                      style: const TextStyle(color: Colors.white, fontSize: 14),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-          if (_extractedLinks.isNotEmpty || _extractedEmails.isNotEmpty || _extractedHashtags.isNotEmpty) ...[
-            const Text(
-              'Extracted Elements:',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              crossAxisAlignment: WrapCrossAxisAlignment.center,
-              children: [
-                ..._extractedLinks.map((url) => Chip(
-                      avatar: const Icon(Icons.link, size: 16, color: Colors.cyan),
-                      label: Text(url.length > 25 ? '${url.substring(0, 25)}...' : url),
-                      backgroundColor: const Color(0xFF1E293B),
-                      labelStyle: const TextStyle(color: Colors.white, fontSize: 12),
-                    )),
-                ..._extractedEmails.map((email) => Chip(
-                      avatar: const Icon(Icons.email, size: 16, color: Colors.amber),
-                      label: Text(email),
-                      backgroundColor: const Color(0xFF1E293B),
-                      labelStyle: const TextStyle(color: Colors.white, fontSize: 12),
-                    )),
-                ..._extractedHashtags.map((tag) => Chip(
-                      avatar: const Icon(Icons.tag, size: 16, color: Colors.purpleAccent),
-                      label: Text(tag),
-                      backgroundColor: const Color(0xFF1E293B),
-                      labelStyle: const TextStyle(color: Colors.white, fontSize: 12),
-                    )),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-// ============================================================================
-// TAB 2: VALUE CALCULATOR & BILL SPLITTER
-// ============================================================================
-class ValueCalcTab extends StatefulWidget {
-  const ValueCalcTab({super.key});
-
-  @override
-  State<ValueCalcTab> createState() => _ValueCalcTabState();
-}
-
-class _ValueCalcTabState extends State<ValueCalcTab> {
-  // Buy or Pass state
-  final TextEditingController _priceController = TextEditingController(text: '120');
-  final TextEditingController _usesController = TextEditingController(text: '30');
-  double _costPerUse = 4.0;
-  String _verdict = 'Fair Value';
-  Color _verdictColor = Colors.orange;
-
-  // Bill Splitter state
-  double _billAmount = 85.0;
-  int _peopleCount = 3;
-  double _tipPercentage = 15;
-
-  void _calculatePurchaseValue() {
-    final price = double.tryParse(_priceController.text) ?? 0;
-    final uses = double.tryParse(_usesController.text) ?? 1;
-
-    if (uses <= 0) return;
-
-    final cost = price / uses;
-    String verdict = 'Great Value';
-    Color color = Colors.green;
-
-    if (cost > 10) {
-      verdict = 'Impulse Buy Warning!';
-      color = Colors.redAccent;
-    } else if (cost > 3) {
-      verdict = 'Fair Daily Value';
-      color = Colors.amber;
-    }
-
-    setState(() {
-      _costPerUse = cost;
-      _verdict = verdict;
-      _verdictColor = color;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final totalTip = _billAmount * (_tipPercentage / 100);
-    final totalBill = _billAmount + totalTip;
-    final perPerson = totalBill / (_peopleCount > 0 ? _peopleCount : 1);
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Should I Buy It? (Cost-Per-Use)',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Evaluate if a purchase is worth buying based on predicted usage!',
-            style: TextStyle(color: Colors.white70, fontSize: 13),
-          ),
-          const SizedBox(height: 12),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _priceController,
-                          keyboardType: TextInputType.number,
-                          onChanged: (_) => _calculatePurchaseValue(),
-                          style: const TextStyle(color: Colors.white),
-                          decoration: const InputDecoration(
-                            labelText: 'Price (\$)',
-                            labelStyle: TextStyle(color: Colors.white70),
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: _usesController,
-                          keyboardType: TextInputType.number,
-                          onChanged: (_) => _calculatePurchaseValue(),
-                          style: const TextStyle(color: Colors.white),
-                          decoration: const InputDecoration(
-                            labelText: 'Expected Uses',
-                            labelStyle: TextStyle(color: Colors.white70),
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0F172A),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: _verdictColor, width: 1.5),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          'Cost Per Use: \$${_costPerUse.toStringAsFixed(2)}',
-                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _verdict,
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _verdictColor),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Equals roughly ${(_costPerUse / 4.5).toStringAsFixed(1)} cups of coffee per wear/use.',
-                          style: const TextStyle(color: Colors.white70, fontSize: 12),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'Micro Bill & Tip Splitter',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Quickly share lunch/dinner bills transparently with friends.',
-            style: TextStyle(color: Colors.white70, fontSize: 13),
-          ),
-          const SizedBox(height: 12),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Total Bill Amount:', style: TextStyle(color: Colors.white70)),
-                      Text('\$${_billAmount.toStringAsFixed(2)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.cyan)),
-                    ],
-                  ),
-                  Slider(
-                    value: _billAmount,
-                    min: 5,
-                    max: 500,
-                    divisions: 99,
-                    activeColor: Colors.cyan,
-                    onChanged: (v) => setState(() => _billAmount = v),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Tip Percentage (${_tipPercentage.toInt()}%):', style: const TextStyle(color: Colors.white70)),
-                      Text('\$${totalTip.toStringAsFixed(2)}', style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                  Slider(
-                    value: _tipPercentage,
-                    min: 0,
-                    max: 30,
-                    divisions: 6,
-                    activeColor: Colors.amber,
-                    onChanged: (v) => setState(() => _tipPercentage = v),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Split Between ($_peopleCount People):', style: const TextStyle(color: Colors.white70)),
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.remove_circle_outline, color: Colors.white70),
-                            onPressed: _peopleCount > 1 ? () => setState(() => _peopleCount--) : null,
-                          ),
-                          Text('$_peopleCount', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-                          IconButton(
-                            icon: const Icon(Icons.add_circle_outline, color: Colors.white70),
-                            onPressed: () => setState(() => _peopleCount++),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const Divider(color: Colors.white70, height: 24),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.indigo.shade900,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Each Person Pays:',
-                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-                        ),
-                        Text(
-                          '\$${perPerson.toStringAsFixed(2)}',
-                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.greenAccent),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ============================================================================
-// TAB 3: MICRO-DECISION WHEEL
-// ============================================================================
-class DecisionWheelTab extends StatefulWidget {
-  const DecisionWheelTab({super.key});
-
-  @override
-  State<DecisionWheelTab> createState() => _DecisionWheelTabState();
-}
-
-class _DecisionWheelTabState extends State<DecisionWheelTab> with SingleTickerProviderStateMixin {
-  final List<String> _options = ['Pizza 🍕', 'Burgers 🍔', 'Sushi 🍣', 'Tacos 🌮', 'Cook Home 🍳'];
-  final TextEditingController _optionController = TextEditingController();
-  late AnimationController _animController;
-  late Animation<double> _animation;
-  double _currentAngle = 0;
-  String? _selectedOption;
-
-  final List<Color> _sliceColors = [
-    Colors.indigo,
-    Colors.teal,
-    Colors.amber.shade800,
-    Colors.purple,
-    Colors.deepOrange,
-    Colors.blueGrey,
-  ];
+  final List<Widget> _pages = [];
 
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 3),
-    );
+    _pages.addAll([
+      const SmartReplyGeneratorPage(),
+      const InteractiveRoleplayPage(),
+      const DilemmaVaultPage(),
+      const SettingsAndPermissionsPage(),
+    ]);
+  }
 
-    _animation = CurvedAnimation(parent: _animController, curve: Curves.decelerate);
-    _animController.addListener(() {
-      setState(() {
-        _currentAngle = _animation.value;
-      });
+  void _triggerHudQuickAlert(String message) {
+    setState(() {
+      _activeHudText = message;
+      _isFloatingHudEnabled = true;
     });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('HUD Updated: $message'),
+        duration: const Duration(seconds: 2),
+        backgroundColor: Colors.deepPurple,
+      ),
+    );
+  }
 
-    _animController.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        _determineWinner();
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Column(
+              children: [
+                Expanded(
+                  child: IndexedStack(
+                    index: _currentIndex,
+                    children: _pages,
+                  ),
+                ),
+              ],
+            ),
+            if (_isFloatingHudEnabled)
+              Positioned(
+                top: 12,
+                left: 16,
+                right: 16,
+                child: Material(
+                  elevation: 8,
+                  borderRadius: BorderRadius.circular(30),
+                  color: Colors.indigo.shade900,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(color: Colors.tealAccent.withOpacity(0.5), width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.teal.withOpacity(0.2),
+                          blurRadius: 10,
+                          spreadRadius: 2,
+                        )
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.flash_on, color: Colors.amber, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _activeHudText,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white70, size: 18),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: () {
+                            setState(() {
+                              _isFloatingHudEnabled = false;
+                            });
+                          },
+                        )
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: const Color(0xFF1A1A24),
+        selectedItemColor: Colors.tealAccent,
+        unselectedItemColor: Colors.grey,
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+        unselectedLabelStyle: const TextStyle(fontSize: 10),
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.psychology),
+            label: 'Reply Generator',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.sports_esports),
+            label: 'Simulator',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.auto_stories),
+            label: 'Dilemmas',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.widgets),
+            label: 'Overlay & Permissions',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class SmartReplyGeneratorPage extends StatefulWidget {
+  const SmartReplyGeneratorPage({super.key});
+
+  @override
+  State<SmartReplyGeneratorPage> createState() => _SmartReplyGeneratorPageState();
+}
+
+class _SmartReplyGeneratorPageState extends State<SmartReplyGeneratorPage> {
+  final TextEditingController _inputController = TextEditingController();
+  String _selectedTone = 'Polite Decline';
+  String _selectedRelationship = 'Boss / Manager';
+  List<String> _generatedOptions = [];
+
+  final List<String> _tones = [
+    'Polite Decline',
+    'Tactful Delay',
+    'Professional Firm',
+    'Witty & Sarcastic',
+    'Warm & Caring',
+    'Emergency Excuse'
+  ];
+
+  final List<String> _relationships = [
+    'Boss / Manager',
+    'Colleague',
+    'Partner / Spouse',
+    'Friend',
+    'Acquaintance / Relative',
+  ];
+
+  final List<Map<String, String>> _presetScenarios = [
+    {
+      'label': 'Work Late Tonight?',
+      'text': 'Can you stay back for 3 extra hours tonight to finish this deck?',
+    },
+    {
+      'label': 'Borrow Money (\$100)',
+      'text': 'Hey, can you lend me \$100 until next month? I really need it.',
+    },
+    {
+      'label': 'Unwanted Weekend Party',
+      'text': 'You are coming to the party this Saturday right? Everyone expects you!',
+    },
+    {
+      'label': 'Late Meeting Response',
+      'text': 'Why didn\'t you answer my call 10 minutes ago?',
+    },
+  ];
+
+  void _generateReplies() {
+    final text = _inputController.text.trim();
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter or select a scenario first!')),
+      );
+      return;
+    }
+
+    setState(() {
+      if (_selectedTone == 'Polite Decline') {
+        _generatedOptions = [
+          'Thank you for thinking of me! Unfortunately, I already have prior commitments tonight so I won\'t be able to make it work. Appreciate your understanding!',
+          'I\'d love to help, but my schedule is completely maxed out right now. Let\'s reconnect on this early next week!',
+          'I won\'t be able to take this on right now, but I wanted to respond quickly so you can make other plans.'
+        ];
+      } else if (_selectedTone == 'Tactful Delay') {
+        _generatedOptions = [
+          'Thanks for letting me know. Let me double-check my schedule and get back to you in about 20 minutes!',
+          'I am currently in the middle of something urgent. I\'ll review this thoroughly and message you shortly.',
+          'Let me check my priorities for today and see how I can accommodate this. Will update you soon!'
+        ];
+      } else if (_selectedTone == 'Professional Firm') {
+        _generatedOptions = [
+          'I understand the urgency, but I am currently at full capacity with existing priority deliverables.',
+          'To ensure the highest quality on my current targets, I cannot commit to additional requests today.',
+          'I am unable to fulfill this request at short notice. Let\'s schedule a dedicated time to review.'
+        ];
+      } else if (_selectedTone == 'Witty & Sarcastic') {
+        _generatedOptions = [
+          'If I had a superpower to clone myself, you\'d be the first to get the clone! But right now I\'m out of commission.',
+          'My battery is officially at 1% and charging night mode has been engaged!',
+          'I would say yes, but my therapist and my calendar have formed a non-negotiable alliance against it.'
+        ];
+      } else if (_selectedTone == 'Warm & Caring') {
+        _generatedOptions = [
+          'I really care about this and wish I could step in right now! Sending you lots of love and support from afar.',
+          'I know how important this is to you! I am swamped right now, but please keep me updated on how it goes.',
+          'Thinking of you! Wish I could be there to support you today. Big hugs!'
+        ];
+      } else {
+        _generatedOptions = [
+          'I just ran into a sudden unexpected family obligation and won\'t be available for the rest of the evening.',
+          'My phone lost signal/battery unexpectedly while I was in transit. Just seeing this now!',
+          'An urgent home maintenance emergency popped up that I have to deal with immediately.'
+        ];
       }
     });
   }
 
   @override
-  void dispose() {
-    _animController.dispose();
-    _optionController.dispose();
-    super.dispose();
-  }
-
-  void _spinWheel() {
-    if (_animController.isAnimating || _options.isEmpty) return;
-
-    setState(() {
-      _selectedOption = null;
-    });
-
-    final randomRounds = 4 + math.Random().nextInt(4);
-    final randomOffset = math.Random().nextDouble() * math.pi * 2;
-    final endAngle = _currentAngle + (randomRounds * math.pi * 2) + randomOffset;
-
-    _animation = Tween<double>(begin: _currentAngle, end: endAngle).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.decelerate),
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(top: 60, left: 16, right: 16, bottom: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.teal.shade800,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.psychology, color: Colors.tealAccent, size: 28),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Smart Reply Generator',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                    Text(
+                      'Instant context-aware responses for awkward texts',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Quick Presets (Tap to use):',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.tealAccent),
+          ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: _presetScenarios.map((preset) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: ActionChip(
+                    backgroundColor: const Color(0xFF222230),
+                    side: const BorderSide(color: Colors.deepPurple),
+                    label: Text(preset['label']!, style: const TextStyle(fontSize: 12, color: Colors.white)),
+                    onPressed: () {
+                      setState(() {
+                        _inputController.text = preset['text']!;
+                      });
+                    },
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _inputController,
+            maxLines: 3,
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+            decoration: InputDecoration(
+              hintText: 'Paste or type the awkward message you received here...',
+              hintStyle: const TextStyle(color: Colors.grey, fontSize: 13),
+              filled: true,
+              fillColor: const Color(0xFF1E1E2A),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.grey),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Target Audience:', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E1E2A),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade800),
+                      ),
+                      child: DropdownButton<String>(
+                        value: _selectedRelationship,
+                        isExpanded: true,
+                        underline: const SizedBox(),
+                        dropdownColor: const Color(0xFF1E1E2A),
+                        items: _relationships.map((rel) {
+                          return DropdownMenuItem(
+                            value: rel,
+                            child: Text(rel, style: const TextStyle(fontSize: 12, color: Colors.white)),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) setState(() => _selectedRelationship = val);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Desired Tone:', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E1E2A),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade800),
+                      ),
+                      child: DropdownButton<String>(
+                        value: _selectedTone,
+                        isExpanded: true,
+                        underline: const SizedBox(),
+                        dropdownColor: const Color(0xFF1E1E2A),
+                        items: _tones.map((tone) {
+                          return DropdownMenuItem(
+                            value: tone,
+                            child: Text(tone, style: const TextStyle(fontSize: 12, color: Colors.white)),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) setState(() => _selectedTone = val);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.deepPurple,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.bolt, color: Colors.amber),
+              label: const Text(
+                'Generate Smart Replies',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
+              ),
+              onPressed: _generateReplies,
+            ),
+          ),
+          const SizedBox(height: 24),
+          if (_generatedOptions.isNotEmpty) ...[
+            const Text(
+              'Select & Copy Ideal Reply:',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.tealAccent),
+            ),
+            const SizedBox(height: 12),
+            ..._generatedOptions.map((reply) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E1E2A),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.deepPurple.shade700),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      reply,
+                      style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.4),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.tealAccent),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          ),
+                          icon: const Icon(Icons.content_copy, size: 14, color: Colors.tealAccent),
+                          label: const Text('Copy to Clipboard', style: TextStyle(fontSize: 11, color: Colors.tealAccent)),
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Copied response to clipboard! Ready to paste.'),
+                                backgroundColor: Colors.teal,
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    )
+                  ],
+                ),
+              );
+            }).toList(),
+          ]
+        ],
+      ),
     );
-
-    _animController.forward(from: 0);
   }
+}
 
-  void _determineWinner() {
-    if (_options.isEmpty) return;
-    final normalizedAngle = (_currentAngle % (math.pi * 2));
-    final sliceAngle = (math.pi * 2) / _options.length;
-    // Top pointer is at -pi/2 angle
-    int index = ((math.pi * 2 - normalizedAngle) / sliceAngle).floor() % _options.length;
+class InteractiveRoleplayPage extends StatefulWidget {
+  const InteractiveRoleplayPage({super.key});
+
+  @override
+  State<InteractiveRoleplayPage> createState() => _InteractiveRoleplayPageState();
+}
+
+class _InteractiveRoleplayPageState extends State<InteractiveRoleplayPage> {
+  String _selectedPersona = 'Strict Boss';
+  final TextEditingController _chatController = TextEditingController();
+
+  int _awkwardScore = 20;
+  int _persuasionScore = 80;
+
+  final List<Map<String, String>> _messages = [
+    {
+      'sender': 'bot',
+      'text': 'I noticed you left the office early yesterday without sending your daily report. What happened?'
+    }
+  ];
+
+  void _switchPersona(String persona) {
     setState(() {
-      _selectedOption = _options[index];
+      _selectedPersona = persona;
+      _messages.clear();
+      if (persona == 'Strict Boss') {
+        _messages.add({
+          'sender': 'bot',
+          'text': 'I noticed you left the office early yesterday without sending your daily report. What happened?'
+        });
+      } else if (persona == 'Angry Partner') {
+        _messages.add({
+          'sender': 'bot',
+          'text': 'You completely forgot about our dinner plans last night. Do you even check your calendar?'
+        });
+      } else if (persona == 'Persistent Lender') {
+        _messages.add({
+          'sender': 'bot',
+          'text': 'Hey! You promised you would pay back the \$50 by yesterday afternoon. Is everything okay?'
+        });
+      } else {
+        _messages.add({
+          'sender': 'bot',
+          'text': 'Can you host 6 of my friends at your apartment this entire weekend?'
+        });
+      }
+      _awkwardScore = 25;
+      _persuasionScore = 75;
     });
   }
 
-  void _addOption() {
-    if (_optionController.text.trim().isNotEmpty) {
-      setState(() {
-        _options.add(_optionController.text.trim());
-        _optionController.clear();
-      });
-    }
+  void _sendMessage() {
+    final text = _chatController.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() {
+      _messages.add({'sender': 'user', 'text': text});
+      _chatController.clear();
+
+      // Dynamic feedback calculation based on reply length & terms
+      if (text.length < 15) {
+        _awkwardScore = (_awkwardScore + 15).clamp(0, 100);
+        _persuasionScore = (_persuasionScore - 10).clamp(0, 100);
+        _messages.add({
+          'sender': 'bot',
+          'text': 'That answer feels a bit dismissive. Can you elaborate or give me a clear reason?'
+        });
+      } else if (text.toLowerCase().contains('sorry') || text.toLowerCase().contains('apologize')) {
+        _awkwardScore = (_awkwardScore - 10).clamp(0, 100);
+        _persuasionScore = (_persuasionScore + 15).clamp(0, 100);
+        _messages.add({
+          'sender': 'bot',
+          'text': 'I appreciate your honesty. Let us make sure this is handled smoothly going forward.'
+        });
+      } else {
+        _awkwardScore = (_awkwardScore - 5).clamp(0, 100);
+        _persuasionScore = (_persuasionScore + 10).clamp(0, 100);
+        _messages.add({
+          'sender': 'bot',
+          'text': 'I hear your side. Let us figure out the best workaround together.'
+        });
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.only(top: 60, left: 16, right: 16, bottom: 24),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Micro-Decision Wheel',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.indigo.shade800,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.sports_esports, color: Colors.tealAccent, size: 28),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Live Response Simulator',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                    Text(
+                      'Practice delicate conversations before sending in real life!',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 4),
-          const Text(
-            'Can\'t decide what to eat or do? Spin the wheel!',
-            style: TextStyle(color: Colors.white70, fontSize: 13),
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            height: 240,
-            width: 240,
-            child: Stack(
-              alignment: Alignment.center,
+          const SizedBox(height: 16),
+          const Text('Select Simulator Persona:', style: TextStyle(fontSize: 12, color: Colors.grey)),
+          const SizedBox(height: 6),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
               children: [
-                Transform.rotate(
-                  angle: _currentAngle,
-                  child: CustomPaint(
-                    size: const Size(220, 220),
-                    painter: WheelPainter(options: _options, colors: _sliceColors),
+                'Strict Boss',
+                'Angry Partner',
+                'Persistent Lender',
+                'Overbearing Friend'
+              ].map((p) {
+                final isSelected = p == _selectedPersona;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: ChoiceChip(
+                    label: Text(p, style: TextStyle(fontSize: 11, color: isSelected ? Colors.black : Colors.white)),
+                    selected: isSelected,
+                    selectedColor: Colors.tealAccent,
+                    backgroundColor: const Color(0xFF1E1E2A),
+                    onSelected: (val) {
+                      if (val) _switchPersona(p);
+                    },
                   ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A1A26),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade800),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                Column(
+                  children: [
+                    const Text('Awkwardness Risk', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                    const SizedBox(height: 4),
+                    Text('$_awkwardScore%', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _awkwardScore > 50 ? Colors.redAccent : Colors.greenAccent)),
+                  ],
                 ),
-                // Top Indicator Pointer
-                Positioned(
-                  top: 0,
-                  child: Icon(Icons.arrow_drop_down, size: 40, color: Colors.cyan.shade300),
-                ),
-                // Center Spin Button
-                GestureDetector(
-                  onTap: _spinWheel,
-                  child: Container(
-                    width: 54,
-                    height: 54,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0F172A),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.cyan, width: 2),
-                      boxShadow: const [BoxShadow(color: Colors.black87, blurRadius: 8)],
-                    ),
-                    child: const Center(
-                      child: Text(
-                        'SPIN',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.cyan),
-                      ),
-                    ),
-                  ),
+                Container(height: 25, width: 1, color: Colors.grey.shade800),
+                Column(
+                  children: [
+                    const Text('Persuasion Rating', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                    const SizedBox(height: 4),
+                    Text('$_persuasionScore%', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.tealAccent)),
+                  ],
                 ),
               ],
             ),
           ),
           const SizedBox(height: 16),
-          if (_selectedOption != null) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.amber.shade900.withOpacity(0.4),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.amber, width: 1.5),
-              ),
-              child: Text(
-                'Winner: $_selectedOption!',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.amberAccent),
-              ),
+          Container(
+            height: 260,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF161622),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade800),
             ),
-            const SizedBox(height: 16),
-          ],
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _optionController,
-                          style: const TextStyle(color: Colors.white, fontSize: 14),
-                          decoration: const InputDecoration(
-                            hintText: 'Add custom choice...',
-                            hintStyle: TextStyle(color: Colors.white70),
-                            isDense: true,
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.cyan),
-                        onPressed: _addOption,
-                        child: const Text('Add', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-                      ),
-                    ],
+            child: ListView.builder(
+              itemCount: _messages.length,
+              itemBuilder: (context, index) {
+                final msg = _messages[index];
+                final isUser = msg['sender'] == 'user';
+                return Align(
+                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isUser ? Colors.deepPurple : const Color(0xFF262636),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      msg['text']!,
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: _options.asMap().entries.map((entry) {
-                      return Chip(
-                        label: Text(entry.value, style: const TextStyle(color: Colors.white, fontSize: 12)),
-                        backgroundColor: const Color(0xFF0F172A),
-                        deleteIcon: const Icon(Icons.close, size: 14, color: Colors.white70),
-                        onDeleted: _options.length > 2
-                            ? () {
-                                setState(() {
-                                  _options.removeAt(entry.key);
-                                });
-                              }
-                            : null,
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ),
+                );
+              },
             ),
           ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _chatController,
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: 'Type your response to test persona reaction...',
+                    hintStyle: const TextStyle(color: Colors.grey, fontSize: 12),
+                    filled: true,
+                    fillColor: const Color(0xFF1E1E2A),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Colors.grey),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filled(
+                style: IconButton.styleFrom(backgroundColor: Colors.tealAccent),
+                icon: const Icon(Icons.send, color: Colors.black, size: 20),
+                onPressed: _sendMessage,
+              )
+            ],
+          )
         ],
       ),
     );
   }
 }
 
-class WheelPainter extends CustomPainter {
-  final List<String> options;
-  final List<Color> colors;
-
-  WheelPainter({required this.options, required this.colors});
+class DilemmaVaultPage extends StatefulWidget {
+  const DilemmaVaultPage({super.key});
 
   @override
-  void paint(Canvas canvas, Size size) {
-    if (options.isEmpty) return;
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2;
-    final sweepAngle = (math.pi * 2) / options.length;
-
-    final paint = Paint()..style = PaintingStyle.fill;
-
-    for (int i = 0; i < options.length; i++) {
-      paint.color = colors[i % colors.length];
-      final startAngle = i * sweepAngle - (math.pi / 2);
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        startAngle,
-        sweepAngle,
-        true,
-        paint,
-      );
-
-      // Draw Text Label
-      final textAngle = startAngle + (sweepAngle / 2);
-      final textX = center.dx + (radius * 0.65) * math.cos(textAngle);
-      final textY = center.dy + (radius * 0.65) * math.sin(textAngle);
-
-      final textPainter = TextPainter(
-        text: TextSpan(
-          text: options[i],
-          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-        ),
-        textDirection: TextDirection.ltr,
-      );
-      textPainter.layout();
-
-      canvas.save();
-      canvas.translate(textX, textY);
-      canvas.rotate(textAngle + math.pi / 2);
-      textPainter.paint(canvas, Offset(-textPainter.width / 2, -textPainter.height / 2));
-      canvas.restore();
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  State<DilemmaVaultPage> createState() => _DilemmaVaultPageState();
 }
 
-// ============================================================================
-// TAB 4: AMBIENT DESK COMPANION
-// ============================================================================
-class DeskCompanionTab extends StatefulWidget {
-  const DeskCompanionTab({super.key});
+class _DilemmaVaultPageState extends State<DilemmaVaultPage> {
+  String _searchQuery = '';
 
-  @override
-  State<DeskCompanionTab> createState() => _DeskCompanionTabState();
-}
-
-class _DeskCompanionTabState extends State<DeskCompanionTab> with SingleTickerProviderStateMixin {
-  late AnimationController _waveController;
-  bool _isSoundRain = false;
-  bool _isSoundCafe = false;
-  bool _isSoundWaves = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _waveController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _waveController.dispose();
-    super.dispose();
-  }
+  final List<Map<String, String>> _dilemmas = [
+    {
+      'title': 'Splitting a Restaurant Bill Fairly',
+      'category': 'Finance / Social',
+      'solution': 'Say upfront before ordering: "Hey guys, I am on a strict budget tonight so I\'ll just order my item and settle my portion directly!"'
+    },
+    {
+      'title': 'Declining Unwanted Loan / Money Requests',
+      'category': 'Finance',
+      'solution': 'Use rule of thumb: "I have a strict personal rule never to mix finances with close personal relationships so we never risk our bond."'
+    },
+    {
+      'title': 'Graceful Exit from Awkward Party / Event',
+      'category': 'Social Exits',
+      'solution': 'Set a timer in advance. Walk up to host with phone in hand: "I have an early start tomorrow morning for a family obligation, so I must slip out now!"'
+    },
+    {
+      'title': 'Stopping Unsolicited Advice from Relatives',
+      'category': 'Family',
+      'solution': 'Smile warmly and state: "That is an interesting perspective! I\'ll definitely take that into consideration as I work through this."'
+    },
+    {
+      'title': 'Dodging Last-Minute Work Requests on Friday',
+      'category': 'Work / Boundaries',
+      'solution': 'Reply: "I am offline for the weekend starting now. I have slotted this as my top priority first thing Monday morning at 9 AM."'
+    },
+  ];
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final timeStr = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
-    final dateStr = "${_monthName(now.month)} ${now.day}, ${now.year}";
+    final filtered = _dilemmas.where((d) {
+      return d['title']!.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          d['category']!.toLowerCase().contains(_searchQuery.toLowerCase());
+    }).toList();
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.only(top: 60, left: 16, right: 16, bottom: 24),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Text(
-                'Desk Companion Dock',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade900,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.auto_stories, color: Colors.amberAccent, size: 28),
               ),
-              Chip(
-                avatar: Icon(Icons.bolt, size: 14, color: Colors.greenAccent),
-                label: Text('Active Desk Mode', style: TextStyle(fontSize: 11, color: Colors.white)),
-                backgroundColor: Color(0xFF1E293B),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Micro-Dilemma Vault',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                    Text(
+                      'Tested cheat-codes for awkward life moments',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          // Massive Desk Clock Display
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.indigo.shade900, const Color(0xFF1E293B)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          const SizedBox(height: 16),
+          TextField(
+            onChanged: (val) {
+              setState(() => _searchQuery = val);
+            },
+            style: const TextStyle(color: Colors.white, fontSize: 13),
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search, color: Colors.grey, size: 20),
+              hintText: 'Search dilemma (e.g., bill, party, work, loan)...',
+              hintStyle: const TextStyle(color: Colors.grey, fontSize: 12),
+              filled: true,
+              fillColor: const Color(0xFF1E1E2A),
+              contentPadding: const EdgeInsets.symmetric(vertical: 10),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.grey),
               ),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.indigo.shade400.withOpacity(0.4)),
-              boxShadow: const [
-                BoxShadow(color: Colors.black87, blurRadius: 10, offset: Offset(0, 4)),
-              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          ...filtered.map((item) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E1E2A),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade800),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Chip(
+                        label: Text(item['category']!, style: const TextStyle(fontSize: 10, color: Colors.tealAccent)),
+                        backgroundColor: const Color(0xFF12121A),
+                        padding: EdgeInsets.zero,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.share, size: 18, color: Colors.grey),
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Dilemma tactic ready to share!')),
+                          );
+                        },
+                      )
+                    ],
+                  ),
+                  Text(
+                    item['title']!,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    item['solution']!,
+                    style: const TextStyle(fontSize: 12, color: Colors.white70, height: 1.4),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ],
+      ),
+    );
+  }
+}
+
+class SettingsAndPermissionsPage extends StatefulWidget {
+  const SettingsAndPermissionsPage({super.key});
+
+  @override
+  State<SettingsAndPermissionsPage> createState() => _SettingsAndPermissionsPageState();
+}
+
+class _SettingsAndPermissionsPageState extends State<SettingsAndPermissionsPage> {
+  bool _drawOverAppsPermitted = true;
+  bool _floatingNotificationActive = true;
+  bool _autoCopyEnabled = false;
+  double _hudOpacity = 0.9;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(top: 60, left: 16, right: 16, bottom: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.teal.shade900,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.widgets, color: Colors.tealAccent, size: 28),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Overlay & Permissions',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                    Text(
+                      'Configure always-on floating widget & system tools',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E1E2A),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade800),
             ),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  timeStr,
-                  style: const TextStyle(
-                    fontSize: 56,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.cyanAccent,
-                    letterSpacing: 2,
-                  ),
+                const Text(
+                  'System Permission Controls',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.tealAccent),
                 ),
-                Text(
-                  dateStr,
-                  style: const TextStyle(fontSize: 15, color: Colors.white70, letterSpacing: 1),
+                const SizedBox(height: 12),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Display Above Other Apps', style: TextStyle(fontSize: 13, color: Colors.white)),
+                  subtitle: const Text('Allows floating HUD bubble to appear over messaging apps.', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                  value: _drawOverAppsPermitted,
+                  activeColor: Colors.tealAccent,
+                  onChanged: (val) {
+                    setState(() => _drawOverAppsPermitted = val);
+                  },
                 ),
-                const SizedBox(height: 16),
-                // Animated Audio Visualizer Bars
-                AnimatedBuilder(
-                  animation: _waveController,
-                  builder: (context, child) {
-                    return Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(12, (index) {
-                        final height = 10.0 + math.sin((_waveController.value * math.pi * 2) + index) * 12 + 10;
-                        final active = _isSoundRain || _isSoundCafe || _isSoundWaves;
-                        return Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 3),
-                          width: 4,
-                          height: active ? height : 6,
-                          decoration: BoxDecoration(
-                            color: active ? Colors.cyan : Colors.white70,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        );
-                      }),
-                    );
+                const Divider(color: Colors.grey, height: 1),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Smart Active Notification', style: TextStyle(fontSize: 13, color: Colors.white)),
+                  subtitle: const Text('Persistent notification drawer shortcut for 1-tap responses.', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                  value: _floatingNotificationActive,
+                  activeColor: Colors.tealAccent,
+                  onChanged: (val) {
+                    setState(() => _floatingNotificationActive = val);
+                  },
+                ),
+                const Divider(color: Colors.grey, height: 1),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Auto-Copy Selected Reply', style: TextStyle(fontSize: 13, color: Colors.white)),
+                  subtitle: const Text('Automatically copies reply text when generated.', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                  value: _autoCopyEnabled,
+                  activeColor: Colors.tealAccent,
+                  onChanged: (val) {
+                    setState(() => _autoCopyEnabled = val);
                   },
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 20),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Ambient Desk Sound Generator',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E1E2A),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade800),
             ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _buildSoundTile(
-                  title: 'Rain Ambient',
-                  icon: Icons.grain,
-                  isActive: _isSoundRain,
-                  color: Colors.blue,
-                  onTap: () => setState(() => _isSoundRain = !_isSoundRain),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'HUD Transparency & Appearance',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.tealAccent),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildSoundTile(
-                  title: 'Cafe Buzz',
-                  icon: Icons.coffee,
-                  isActive: _isSoundCafe,
-                  color: Colors.amber,
-                  onTap: () => setState(() => _isSoundCafe = !_isSoundCafe),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildSoundTile(
-                  title: 'Ocean Waves',
-                  icon: Icons.waves,
-                  isActive: _isSoundWaves,
-                  color: Colors.teal,
-                  onTap: () => setState(() => _isSoundWaves = !_isSoundWaves),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: const [
-                      Icon(Icons.lightbulb_outline, color: Colors.amber, size: 20),
-                      SizedBox(width: 8),
-                      Text(
-                        'Daily Focus Quote',
-                        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Text('Opacity:', style: TextStyle(fontSize: 12, color: Colors.white)),
+                    Expanded(
+                      child: Slider(
+                        value: _hudOpacity,
+                        min: 0.3,
+                        max: 1.0,
+                        activeColor: Colors.tealAccent,
+                        onChanged: (val) {
+                          setState(() => _hudOpacity = val);
+                        },
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    '"Simplicity is about subtracting the obvious and adding the meaningful."',
-                    style: TextStyle(fontStyle: FontStyle.italic, color: Colors.white70, fontSize: 13),
-                  ),
-                ],
-              ),
+                    ),
+                    Text('${(_hudOpacity * 100).toInt()}%', style: const TextStyle(fontSize: 12, color: Colors.white)),
+                  ],
+                )
+              ],
             ),
           ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            height: 46,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.tealAccent),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.refresh, color: Colors.tealAccent),
+              label: const Text('Test System Overlay Banner', style: TextStyle(color: Colors.tealAccent, fontWeight: FontWeight.bold)),
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Simulating System Floating Bubble Launch... Active!'),
+                    backgroundColor: Colors.deepPurple,
+                  ),
+                );
+              },
+            ),
+          )
         ],
       ),
     );
-  }
-
-  Widget _buildSoundTile({
-    required String title,
-    required IconData icon,
-    required bool isActive,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-        decoration: BoxDecoration(
-          color: isActive ? color.withOpacity(0.2) : const Color(0xFF1E293B),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isActive ? color : Colors.transparent,
-            width: 1.5,
-          ),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: isActive ? color : Colors.white70, size: 24),
-            const SizedBox(height: 6),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                color: isActive ? Colors.white : Colors.white70,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _monthName(int month) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return months[month - 1];
   }
 }
