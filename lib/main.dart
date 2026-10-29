@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 void main() {
-  runApp(const ContextPilotApp());
+  runApp(const FloatHubApp());
 }
 
-class ContextPilotApp extends StatelessWidget {
-  const ContextPilotApp({super.key});
+class FloatHubApp extends StatelessWidget {
+  const FloatHubApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext meContext) {
     return MaterialApp(
-      title: 'ContextPilot',
+      title: 'FloatHub',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
@@ -18,828 +19,524 @@ class ContextPilotApp extends StatelessWidget {
           seedColor: Colors.deepPurple,
           brightness: Brightness.dark,
         ),
-        scaffoldBackgroundColor: const Color(0xFF121218),
+        scaffoldBackgroundColor: const Color(0xFF12121A),
       ),
-      home: const MainNavigationScreen(),
+      home: const MainDeskScreen(),
     );
   }
 }
 
-class MainNavigationScreen extends StatefulWidget {
-  const MainNavigationScreen({super.key});
+class MainDeskScreen extends StatefulWidget {
+  const MainDeskScreen({super.key});
 
   @override
-  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
+  State<MainDeskScreen> createState() => _MainDeskScreenState();
 }
 
-class _MainNavigationScreenState extends State<MainNavigationScreen> {
-  int _currentIndex = 0;
-  bool _isFloatingHudEnabled = true;
-  String _activeHudText = "ContextPilot HUD Ready: Tap for Quick Replies";
+class _MainDeskScreenState extends State<MainDeskScreen>
+    with SingleTickerProviderStateMixin {
+  int _currentTab = 0;
 
-  final List<Widget> _pages = [];
+  // Floating Overlay Bubble Position
+  double _floatX = 25.0;
+  double _floatY = 180.0;
+  bool _isFloatExpanded = false;
+  bool _isOverlayPermissionGranted = true;
+
+  // Clipboard & Text Vault Data
+  final List<String> _clipboardVault = [
+    'https://example.com/item?utm_source=social&utm_medium=click_ref_9921',
+    'Contact team at support@floathub.app or call +1 800 555 0199 for help.',
+    'Quick meeting notes: Review M3 UI layout, finalize overlay notifications, push code.',
+  ];
+  final TextEditingController _textTransformerController =
+      TextEditingController();
+
+  // Floating Notification Hub
+  final List<Map<String, String>> _pinnedNotifications = [
+    {
+      'title': '⚡ Quick Clipboard Active',
+      'body': 'Tap float bubble to auto-format text',
+      'tag': 'SYSTEM',
+    },
+    {
+      'title': '📌 Daily Focus Target',
+      'body': 'Complete app architecture & publish update',
+      'tag': 'MEMO',
+    },
+  ];
+  final TextEditingController _newNotifTitleController =
+      TextEditingController();
+  final TextEditingController _newNotifBodyController =
+      TextEditingController();
+
+  // Ambient Lounge State (Keeps user active in app)
+  bool _isSoundPlaying = false;
+  String _activeSound = '🌧️ Midnight Rain';
+  double _soundVolume = 0.7;
+  late AnimationController _animController;
+
+  // Utility Converters
+  final TextEditingController _aspectWidthController =
+      TextEditingController(text: '1920');
+  final TextEditingController _aspectHeightController =
+      TextEditingController(text: '1080');
+  String _aspectRatioResult = '16:9 (Widescreen HD)';
 
   @override
   void initState() {
     super.initState();
-    _pages.addAll([
-      const SmartReplyGeneratorPage(),
-      const InteractiveRoleplayPage(),
-      const DilemmaVaultPage(),
-      const SettingsAndPermissionsPage(),
-    ]);
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
   }
 
-  void _triggerHudQuickAlert(String message) {
-    setState(() {
-      _activeHudText = message;
-      _isFloatingHudEnabled = true;
-    });
+  @override
+  void dispose() {
+    _animController.dispose();
+    _textTransformerController.dispose();
+    _newNotifTitleController.dispose();
+    _newNotifBodyController.dispose();
+    _aspectWidthController.dispose();
+    _aspectHeightController.dispose();
+    super.dispose();
+  }
+
+  void _showSnackBar(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('HUD Updated: $message'),
-        duration: const Duration(seconds: 2),
+        content: Text(msg, style: const TextStyle(color: Colors.white)),
         backgroundColor: Colors.deepPurple,
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }
 
+  // --- Utility Actions ---
+  void _cleanTrackingUrls() {
+    String text = _textTransformerController.text;
+    if (text.isEmpty) return;
+    Uri? uri = Uri.tryParse(text);
+    if (uri != null && uri.hasQuery) {
+      String cleanUrl = '${uri.scheme}://${uri.host}${uri.path}';
+      setState(() {
+        _textTransformerController.text = cleanUrl;
+      });
+      _showSnackBar('Tracking parameters stripped!');
+    } else {
+      // Remove query params manually with regex if needed
+      String cleaned = text.replaceAll(RegExp(r'\?utm_[^&\s]+'), '');
+      setState(() {
+        _textTransformerController.text = cleaned;
+      });
+      _showSnackBar('Cleaned text parameters!');
+    }
+  }
+
+  void _extractEmailsAndPhones() {
+    String text = _textTransformerController.text;
+    final emailRegExp = RegExp(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}');
+    final phoneRegExp = RegExp(r'\+?[0-9\s\-\(\)]{8,}');
+
+    final emails = emailRegExp.allMatches(text).map((m) => m.group(0)).toList();
+    final phones = phoneRegExp.allMatches(text).map((m) => m.group(0)).toList();
+
+    StringBuffer sb = StringBuffer();
+    if (emails.isNotEmpty) {
+      sb.writeln('--- Extracted Emails ---');
+      for (var e in emails) {
+        sb.writeln(e);
+      }
+    }
+    if (phones.isNotEmpty) {
+      sb.writeln('--- Extracted Numbers ---');
+      for (var p in phones) {
+        sb.writeln(p);
+      }
+    }
+
+    if (sb.isEmpty) {
+      _showSnackBar('No emails or phones detected.');
+    } else {
+      setState(() {
+        _textTransformerController.text = sb.toString().trim();
+      });
+      _showSnackBar('Data extracted!');
+    }
+  }
+
+  void _calculateAspectRatio() {
+    double w = double.tryParse(_aspectWidthController.text) ?? 0;
+    double h = double.tryParse(_aspectHeightController.text) ?? 0;
+    if (w <= 0 || h <= 0) {
+      setState(() {
+        _aspectRatioResult = 'Please enter valid dimension numbers';
+      });
+      return;
+    }
+    double ratio = w / h;
+    int gcd(int a, int b) => b == 0 ? a : gcd(b, a % b);
+    int common = gcd(w.toInt(), h.toInt());
+    int simplifiedW = w.toInt() ~/ common;
+    int simplifiedH = h.toInt() ~/ common;
+
+    setState(() {
+      _aspectRatioResult =
+          'Ratio: $simplifiedW:$simplifiedH (Factor: ${ratio.toStringAsFixed(2)})';
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+
     return Scaffold(
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
+      body: Stack(
+        children: [
+          // Main Body Screens
+          SafeArea(
+            child: Column(
               children: [
+                _buildHeaderBar(),
                 Expanded(
                   child: IndexedStack(
-                    index: _currentIndex,
-                    children: _pages,
+                    index: _currentTab,
+                    children: [
+                      _buildClipboardVaultTab(),
+                      _buildNotificationShadeTab(),
+                      _buildAmbientLoungeTab(),
+                      _buildMicroToolboxTab(),
+                    ],
                   ),
                 ),
               ],
             ),
-            if (_isFloatingHudEnabled)
-              Positioned(
-                top: 12,
-                left: 16,
-                right: 16,
-                child: Material(
-                  elevation: 8,
-                  borderRadius: BorderRadius.circular(30),
-                  color: Colors.indigo.shade900,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(color: Colors.tealAccent.withOpacity(0.5), width: 1.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.teal.withOpacity(0.2),
-                          blurRadius: 10,
-                          spreadRadius: 2,
-                        )
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.flash_on, color: Colors.amber, size: 20),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _activeHudText,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close, color: Colors.white70, size: 18),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          onPressed: () {
-                            setState(() {
-                              _isFloatingHudEnabled = false;
-                            });
-                          },
-                        )
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+          ),
+
+          // Interactive Floating Bubble Simulation Overlay
+          Positioned(
+            left: _floatX,
+            top: _floatY,
+            child: GestureDetector(
+              onPanUpdate: (details) {
+                setState(() {
+                  _floatX += details.delta.dx;
+                  _floatY += details.delta.dy;
+                  // Keep bubble on screen
+                  if (_floatX < 10) _floatX = 10;
+                  if (_floatX > screenSize.width - 70) {
+                    _floatX = screenSize.width - 70;
+                  }
+                  if (_floatY < 50) _floatY = 50;
+                  if (_floatY > screenSize.height - 120) {
+                    _floatY = screenSize.height - 120;
+                  }
+                });
+              },
+              child: _buildDraggableFloatingBubble(),
+            ),
+          ),
+        ],
+      ),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          border: Border(top: BorderSide(color: Colors.white70, width: 1)),
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _currentTab,
+          onTap: (idx) => setState(() => _currentTab = idx),
+          backgroundColor: const Color(0xFF1A1A26),
+          selectedItemColor: Colors.deepPurpleAccent,
+          unselectedItemColor: Colors.grey,
+          type: BottomNavigationBarType.fixed,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.assignment),
+              label: 'Clip Vault',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.layers),
+              label: 'Floating Hub',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.graphic_eq),
+              label: 'Sound Lounge',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.widgets),
+              label: 'Toolbox',
+            ),
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: const Color(0xFF1A1A24),
-        selectedItemColor: Colors.tealAccent,
-        unselectedItemColor: Colors.grey,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
-        unselectedLabelStyle: const TextStyle(fontSize: 10),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.psychology),
-            label: 'Reply Generator',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.sports_esports),
-            label: 'Simulator',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.auto_stories),
-            label: 'Dilemmas',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.widgets),
-            label: 'Overlay & Permissions',
-          ),
-        ],
-      ),
     );
   }
-}
 
-class SmartReplyGeneratorPage extends StatefulWidget {
-  const SmartReplyGeneratorPage({super.key});
-
-  @override
-  State<SmartReplyGeneratorPage> createState() => _SmartReplyGeneratorPageState();
-}
-
-class _SmartReplyGeneratorPageState extends State<SmartReplyGeneratorPage> {
-  final TextEditingController _inputController = TextEditingController();
-  String _selectedTone = 'Polite Decline';
-  String _selectedRelationship = 'Boss / Manager';
-  List<String> _generatedOptions = [];
-
-  final List<String> _tones = [
-    'Polite Decline',
-    'Tactful Delay',
-    'Professional Firm',
-    'Witty & Sarcastic',
-    'Warm & Caring',
-    'Emergency Excuse'
-  ];
-
-  final List<String> _relationships = [
-    'Boss / Manager',
-    'Colleague',
-    'Partner / Spouse',
-    'Friend',
-    'Acquaintance / Relative',
-  ];
-
-  final List<Map<String, String>> _presetScenarios = [
-    {
-      'label': 'Work Late Tonight?',
-      'text': 'Can you stay back for 3 extra hours tonight to finish this deck?',
-    },
-    {
-      'label': 'Borrow Money (\$100)',
-      'text': 'Hey, can you lend me \$100 until next month? I really need it.',
-    },
-    {
-      'label': 'Unwanted Weekend Party',
-      'text': 'You are coming to the party this Saturday right? Everyone expects you!',
-    },
-    {
-      'label': 'Late Meeting Response',
-      'text': 'Why didn\'t you answer my call 10 minutes ago?',
-    },
-  ];
-
-  void _generateReplies() {
-    final text = _inputController.text.trim();
-    if (text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter or select a scenario first!')),
-      );
-      return;
-    }
-
-    setState(() {
-      if (_selectedTone == 'Polite Decline') {
-        _generatedOptions = [
-          'Thank you for thinking of me! Unfortunately, I already have prior commitments tonight so I won\'t be able to make it work. Appreciate your understanding!',
-          'I\'d love to help, but my schedule is completely maxed out right now. Let\'s reconnect on this early next week!',
-          'I won\'t be able to take this on right now, but I wanted to respond quickly so you can make other plans.'
-        ];
-      } else if (_selectedTone == 'Tactful Delay') {
-        _generatedOptions = [
-          'Thanks for letting me know. Let me double-check my schedule and get back to you in about 20 minutes!',
-          'I am currently in the middle of something urgent. I\'ll review this thoroughly and message you shortly.',
-          'Let me check my priorities for today and see how I can accommodate this. Will update you soon!'
-        ];
-      } else if (_selectedTone == 'Professional Firm') {
-        _generatedOptions = [
-          'I understand the urgency, but I am currently at full capacity with existing priority deliverables.',
-          'To ensure the highest quality on my current targets, I cannot commit to additional requests today.',
-          'I am unable to fulfill this request at short notice. Let\'s schedule a dedicated time to review.'
-        ];
-      } else if (_selectedTone == 'Witty & Sarcastic') {
-        _generatedOptions = [
-          'If I had a superpower to clone myself, you\'d be the first to get the clone! But right now I\'m out of commission.',
-          'My battery is officially at 1% and charging night mode has been engaged!',
-          'I would say yes, but my therapist and my calendar have formed a non-negotiable alliance against it.'
-        ];
-      } else if (_selectedTone == 'Warm & Caring') {
-        _generatedOptions = [
-          'I really care about this and wish I could step in right now! Sending you lots of love and support from afar.',
-          'I know how important this is to you! I am swamped right now, but please keep me updated on how it goes.',
-          'Thinking of you! Wish I could be there to support you today. Big hugs!'
-        ];
-      } else {
-        _generatedOptions = [
-          'I just ran into a sudden unexpected family obligation and won\'t be available for the rest of the evening.',
-          'My phone lost signal/battery unexpectedly while I was in transit. Just seeing this now!',
-          'An urgent home maintenance emergency popped up that I have to deal with immediately.'
-        ];
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.only(top: 60, left: 16, right: 16, bottom: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  // --- Header ---
+  Widget _buildHeaderBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      color: const Color(0xFF181824),
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.teal.shade800,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.psychology, color: Colors.tealAccent, size: 28),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'Smart Reply Generator',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-                    Text(
-                      'Instant context-aware responses for awkward texts',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            'Quick Presets (Tap to use):',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.tealAccent),
-          ),
-          const SizedBox(height: 8),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: _presetScenarios.map((preset) {
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: ActionChip(
-                    backgroundColor: const Color(0xFF222230),
-                    side: const BorderSide(color: Colors.deepPurple),
-                    label: Text(preset['label']!, style: const TextStyle(fontSize: 12, color: Colors.white)),
-                    onPressed: () {
-                      setState(() {
-                        _inputController.text = preset['text']!;
-                      });
-                    },
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _inputController,
-            maxLines: 3,
-            style: const TextStyle(color: Colors.white, fontSize: 14),
-            decoration: InputDecoration(
-              hintText: 'Paste or type the awkward message you received here...',
-              hintStyle: const TextStyle(color: Colors.grey, fontSize: 13),
-              filled: true,
-              fillColor: const Color(0xFF1E1E2A),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.grey),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Target Audience:', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1E1E2A),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey.shade800),
-                      ),
-                      child: DropdownButton<String>(
-                        value: _selectedRelationship,
-                        isExpanded: true,
-                        underline: const SizedBox(),
-                        dropdownColor: const Color(0xFF1E1E2A),
-                        items: _relationships.map((rel) {
-                          return DropdownMenuItem(
-                            value: rel,
-                            child: Text(rel, style: const TextStyle(fontSize: 12, color: Colors.white)),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          if (val != null) setState(() => _selectedRelationship = val);
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Desired Tone:', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1E1E2A),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey.shade800),
-                      ),
-                      child: DropdownButton<String>(
-                        value: _selectedTone,
-                        isExpanded: true,
-                        underline: const SizedBox(),
-                        dropdownColor: const Color(0xFF1E1E2A),
-                        items: _tones.map((tone) {
-                          return DropdownMenuItem(
-                            value: tone,
-                            child: Text(tone, style: const TextStyle(fontSize: 12, color: Colors.white)),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          if (val != null) setState(() => _selectedTone = val);
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.deepPurple,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              icon: const Icon(Icons.bolt, color: Colors.amber),
-              label: const Text(
-                'Generate Smart Replies',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
-              ),
-              onPressed: _generateReplies,
-            ),
-          ),
-          const SizedBox(height: 24),
-          if (_generatedOptions.isNotEmpty) ...[
-            const Text(
-              'Select & Copy Ideal Reply:',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.tealAccent),
-            ),
-            const SizedBox(height: 12),
-            ..._generatedOptions.map((reply) {
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E2A),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.deepPurple.shade700),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      reply,
-                      style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.4),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Colors.tealAccent),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          ),
-                          icon: const Icon(Icons.content_copy, size: 14, color: Colors.tealAccent),
-                          label: const Text('Copy to Clipboard', style: TextStyle(fontSize: 11, color: Colors.tealAccent)),
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Copied response to clipboard! Ready to paste.'),
-                                backgroundColor: Colors.teal,
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    )
-                  ],
-                ),
-              );
-            }).toList(),
-          ]
-        ],
-      ),
-    );
-  }
-}
-
-class InteractiveRoleplayPage extends StatefulWidget {
-  const InteractiveRoleplayPage({super.key});
-
-  @override
-  State<InteractiveRoleplayPage> createState() => _InteractiveRoleplayPageState();
-}
-
-class _InteractiveRoleplayPageState extends State<InteractiveRoleplayPage> {
-  String _selectedPersona = 'Strict Boss';
-  final TextEditingController _chatController = TextEditingController();
-
-  int _awkwardScore = 20;
-  int _persuasionScore = 80;
-
-  final List<Map<String, String>> _messages = [
-    {
-      'sender': 'bot',
-      'text': 'I noticed you left the office early yesterday without sending your daily report. What happened?'
-    }
-  ];
-
-  void _switchPersona(String persona) {
-    setState(() {
-      _selectedPersona = persona;
-      _messages.clear();
-      if (persona == 'Strict Boss') {
-        _messages.add({
-          'sender': 'bot',
-          'text': 'I noticed you left the office early yesterday without sending your daily report. What happened?'
-        });
-      } else if (persona == 'Angry Partner') {
-        _messages.add({
-          'sender': 'bot',
-          'text': 'You completely forgot about our dinner plans last night. Do you even check your calendar?'
-        });
-      } else if (persona == 'Persistent Lender') {
-        _messages.add({
-          'sender': 'bot',
-          'text': 'Hey! You promised you would pay back the \$50 by yesterday afternoon. Is everything okay?'
-        });
-      } else {
-        _messages.add({
-          'sender': 'bot',
-          'text': 'Can you host 6 of my friends at your apartment this entire weekend?'
-        });
-      }
-      _awkwardScore = 25;
-      _persuasionScore = 75;
-    });
-  }
-
-  void _sendMessage() {
-    final text = _chatController.text.trim();
-    if (text.isEmpty) return;
-
-    setState(() {
-      _messages.add({'sender': 'user', 'text': text});
-      _chatController.clear();
-
-      // Dynamic feedback calculation based on reply length & terms
-      if (text.length < 15) {
-        _awkwardScore = (_awkwardScore + 15).clamp(0, 100);
-        _persuasionScore = (_persuasionScore - 10).clamp(0, 100);
-        _messages.add({
-          'sender': 'bot',
-          'text': 'That answer feels a bit dismissive. Can you elaborate or give me a clear reason?'
-        });
-      } else if (text.toLowerCase().contains('sorry') || text.toLowerCase().contains('apologize')) {
-        _awkwardScore = (_awkwardScore - 10).clamp(0, 100);
-        _persuasionScore = (_persuasionScore + 15).clamp(0, 100);
-        _messages.add({
-          'sender': 'bot',
-          'text': 'I appreciate your honesty. Let us make sure this is handled smoothly going forward.'
-        });
-      } else {
-        _awkwardScore = (_awkwardScore - 5).clamp(0, 100);
-        _persuasionScore = (_persuasionScore + 10).clamp(0, 100);
-        _messages.add({
-          'sender': 'bot',
-          'text': 'I hear your side. Let us figure out the best workaround together.'
-        });
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.only(top: 60, left: 16, right: 16, bottom: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.indigo.shade800,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.sports_esports, color: Colors.tealAccent, size: 28),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'Live Response Simulator',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-                    Text(
-                      'Practice delicate conversations before sending in real life!',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Text('Select Simulator Persona:', style: TextStyle(fontSize: 12, color: Colors.grey)),
-          const SizedBox(height: 6),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                'Strict Boss',
-                'Angry Partner',
-                'Persistent Lender',
-                'Overbearing Friend'
-              ].map((p) {
-                final isSelected = p == _selectedPersona;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: ChoiceChip(
-                    label: Text(p, style: TextStyle(fontSize: 11, color: isSelected ? Colors.black : Colors.white)),
-                    selected: isSelected,
-                    selectedColor: Colors.tealAccent,
-                    backgroundColor: const Color(0xFF1E1E2A),
-                    onSelected: (val) {
-                      if (val) _switchPersona(p);
-                    },
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          const SizedBox(height: 16),
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFF1A1A26),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade800),
+              color: Colors.deepPurple.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+            child: const Icon(Icons.auto_awesome, color: Colors.deepPurpleAccent),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Column(
-                  children: [
-                    const Text('Awkwardness Risk', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                    const SizedBox(height: 4),
-                    Text('$_awkwardScore%', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _awkwardScore > 50 ? Colors.redAccent : Colors.greenAccent)),
-                  ],
+                Text(
+                  'FloatHub Engine',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-                Container(height: 25, width: 1, color: Colors.grey.shade800),
-                Column(
-                  children: [
-                    const Text('Persuasion Rating', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                    const SizedBox(height: 4),
-                    Text('$_persuasionScore%', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.tealAccent)),
-                  ],
+                Text(
+                  'Floating Utility & Desk Assistant',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
           Container(
-            height: 260,
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFF161622),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade800),
+              color: _isOverlayPermissionGranted
+                  ? Colors.green.withOpacity(0.2)
+                  : Colors.amber.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: _isOverlayPermissionGranted
+                    ? Colors.green
+                    : Colors.amber,
+              ),
             ),
-            child: ListView.builder(
-              itemCount: _messages.length,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  _isOverlayPermissionGranted
+                      ? Icons.check_circle
+                      : Icons.warning_amber,
+                  size: 14,
+                  color: _isOverlayPermissionGranted
+                      ? Colors.green
+                      : Colors.amber,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  _isOverlayPermissionGranted ? 'FLOAT ACTIVE' : 'GRANT OVERLAY',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: _isOverlayPermissionGranted
+                        ? Colors.green
+                        : Colors.amber,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- TAB 1: Clipboard & Smart Vault ---
+  Widget _buildClipboardVaultTab() {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader(
+              'Contextual Text Transformer',
+              'Paste text to clean URLs, format, or extract contact details instantly.',
+              Icons.cleaning_services,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _textTransformerController,
+              maxLines: 4,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Paste messy text, links, or articles here...',
+                hintStyle: const TextStyle(color: Colors.grey),
+                filled: true,
+                fillColor: const Color(0xFF1E1E2C),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.white70),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.deepPurpleAccent),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAxisAlignment.center,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    ClipboardData? data = await Clipboard.getData('text/plain');
+                    if (data != null && data.text != null) {
+                      setState(() {
+                        _textTransformerController.text = data.text!;
+                      });
+                      _showSnackBar('Pasted from device clipboard!');
+                    }
+                  },
+                  icon: const Icon(Icons.content_paste, size: 16),
+                  label: const Text('Paste'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepPurple,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _cleanTrackingUrls,
+                  icon: const Icon(Icons.link_off, size: 16),
+                  label: const Text('Strip Tracking Links'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.tealAccent,
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _extractEmailsAndPhones,
+                  icon: const Icon(Icons.contacts, size: 16),
+                  label: const Text('Extract Contacts'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.amberAccent,
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    String text = _textTransformerController.text;
+                    if (text.isNotEmpty) {
+                      Clipboard.setData(ClipboardData(text: text));
+                      if (!_clipboardVault.contains(text)) {
+                        setState(() {
+                          _clipboardVault.insert(0, text);
+                        });
+                      }
+                      _showSnackBar('Copied to Clipboard Vault!');
+                    }
+                  },
+                  icon: const Icon(Icons.copy, size: 16),
+                  label: const Text('Copy & Save'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.greenAccent,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            _buildSectionHeader(
+              'Clipboard Vault History',
+              'Quick access to previously saved clips.',
+              Icons.history,
+            ),
+            const SizedBox(height: 12),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _clipboardVault.length,
               itemBuilder: (context, index) {
-                final msg = _messages[index];
-                final isUser = msg['sender'] == 'user';
-                return Align(
-                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: isUser ? Colors.deepPurple : const Color(0xFF262636),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      msg['text']!,
-                      style: const TextStyle(color: Colors.white, fontSize: 13),
-                    ),
+                final item = _clipboardVault[index];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E1E2C),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white70),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.notes, color: Colors.grey, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          item,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy,
+                            color: Colors.deepPurpleAccent, size: 18),
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: item));
+                          _showSnackBar('Copied snippet!');
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline,
+                            color: Colors.redAccent, size: 18),
+                        onPressed: () {
+                          setState(() {
+                            _clipboardVault.removeAt(index);
+                          });
+                        },
+                      ),
+                    ],
                   ),
                 );
               },
             ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _chatController,
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
-                  decoration: InputDecoration(
-                    hintText: 'Type your response to test persona reaction...',
-                    hintStyle: const TextStyle(color: Colors.grey, fontSize: 12),
-                    filled: true,
-                    fillColor: const Color(0xFF1E1E2A),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: Colors.grey),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton.filled(
-                style: IconButton.styleFrom(backgroundColor: Colors.tealAccent),
-                icon: const Icon(Icons.send, color: Colors.black, size: 20),
-                onPressed: _sendMessage,
-              )
-            ],
-          )
-        ],
+          ],
+        ),
       ),
     );
   }
-}
 
-class DilemmaVaultPage extends StatefulWidget {
-  const DilemmaVaultPage({super.key});
-
-  @override
-  State<DilemmaVaultPage> createState() => _DilemmaVaultPageState();
-}
-
-class _DilemmaVaultPageState extends State<DilemmaVaultPage> {
-  String _searchQuery = '';
-
-  final List<Map<String, String>> _dilemmas = [
-    {
-      'title': 'Splitting a Restaurant Bill Fairly',
-      'category': 'Finance / Social',
-      'solution': 'Say upfront before ordering: "Hey guys, I am on a strict budget tonight so I\'ll just order my item and settle my portion directly!"'
-    },
-    {
-      'title': 'Declining Unwanted Loan / Money Requests',
-      'category': 'Finance',
-      'solution': 'Use rule of thumb: "I have a strict personal rule never to mix finances with close personal relationships so we never risk our bond."'
-    },
-    {
-      'title': 'Graceful Exit from Awkward Party / Event',
-      'category': 'Social Exits',
-      'solution': 'Set a timer in advance. Walk up to host with phone in hand: "I have an early start tomorrow morning for a family obligation, so I must slip out now!"'
-    },
-    {
-      'title': 'Stopping Unsolicited Advice from Relatives',
-      'category': 'Family',
-      'solution': 'Smile warmly and state: "That is an interesting perspective! I\'ll definitely take that into consideration as I work through this."'
-    },
-    {
-      'title': 'Dodging Last-Minute Work Requests on Friday',
-      'category': 'Work / Boundaries',
-      'solution': 'Reply: "I am offline for the weekend starting now. I have slotted this as my top priority first thing Monday morning at 9 AM."'
-    },
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final filtered = _dilemmas.where((d) {
-      return d['title']!.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          d['category']!.toLowerCase().contains(_searchQuery.toLowerCase());
-    }).toList();
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.only(top: 60, left: 16, right: 16, bottom: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.amber.shade900,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.auto_stories, color: Colors.amberAccent, size: 28),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'Micro-Dilemma Vault',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-                    Text(
-                      'Tested cheat-codes for awkward life moments',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
+  // --- TAB 2: Floating Notification Hub ---
+  Widget _buildNotificationShadeTab() {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader(
+              'System Overlay & Shade Launcher',
+              'Pin live actionable widgets and custom notifications directly to your status shade.',
+              Icons.layers,
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.deepPurple.shade900.withOpacity(0.5),
+                    const Color(0xFF1E1E2C),
                   ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            onChanged: (val) {
-              setState(() => _searchQuery = val);
-            },
-            style: const TextStyle(color: Colors.white, fontSize: 13),
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.search, color: Colors.grey, size: 20),
-              hintText: 'Search dilemma (e.g., bill, party, work, loan)...',
-              hintStyle: const TextStyle(color: Colors.grey, fontSize: 12),
-              filled: true,
-              fillColor: const Color(0xFF1E1E2A),
-              contentPadding: const EdgeInsets.symmetric(vertical: 10),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.grey),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          ...filtered.map((item) {
-            return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E1E2A),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade800),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.deepPurpleAccent.withOpacity(0.3)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -847,199 +544,735 @@ class _DilemmaVaultPageState extends State<DilemmaVaultPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Chip(
-                        label: Text(item['category']!, style: const TextStyle(fontSize: 10, color: Colors.tealAccent)),
-                        backgroundColor: const Color(0xFF12121A),
-                        padding: EdgeInsets.zero,
-                        visualDensity: VisualDensity.compact,
+                      const Expanded(
+                        child: Text(
+                          'Display Above Apps Permission',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            fontSize: 15,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.share, size: 18, color: Colors.grey),
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Dilemma tactic ready to share!')),
+                      Switch(
+                        value: _isOverlayPermissionGranted,
+                        activeColor: Colors.deepPurpleAccent,
+                        onChanged: (val) {
+                          setState(() {
+                            _isOverlayPermissionGranted = val;
+                          });
+                          _showSnackBar(
+                            val
+                                ? 'Floating Overlay Service Active'
+                                : 'Overlay Disabled',
                           );
                         },
-                      )
+                      ),
                     ],
                   ),
-                  Text(
-                    item['title']!,
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    item['solution']!,
-                    style: const TextStyle(fontSize: 12, color: Colors.white70, height: 1.4),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Allows the FloatHub quick bubble to stay accessible over messaging, browser, and social apps.',
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                 ],
               ),
-            );
-          }).toList(),
-        ],
-      ),
-    );
-  }
-}
-
-class SettingsAndPermissionsPage extends StatefulWidget {
-  const SettingsAndPermissionsPage({super.key});
-
-  @override
-  State<SettingsAndPermissionsPage> createState() => _SettingsAndPermissionsPageState();
-}
-
-class _SettingsAndPermissionsPageState extends State<SettingsAndPermissionsPage> {
-  bool _drawOverAppsPermitted = true;
-  bool _floatingNotificationActive = true;
-  bool _autoCopyEnabled = false;
-  double _hudOpacity = 0.9;
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.only(top: 60, left: 16, right: 16, bottom: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.teal.shade900,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.widgets, color: Colors.tealAccent, size: 28),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'Overlay & Permissions',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-                    Text(
-                      'Configure always-on floating widget & system tools',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                  ],
+            ),
+            const SizedBox(height: 24),
+            _buildSectionHeader(
+              'Create Pinned Shade Banner',
+              'Add dynamic quick alerts to stay visible in system bar.',
+              Icons.add_alert,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _newNotifTitleController,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Banner Title (e.g. 🛒 Shopping List)',
+                hintStyle: const TextStyle(color: Colors.grey),
+                filled: true,
+                fillColor: const Color(0xFF1E1E2C),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Colors.white70),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E1E2A),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade800),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'System Permission Controls',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.tealAccent),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _newNotifBodyController,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Details / Quick Text...',
+                hintStyle: const TextStyle(color: Colors.grey),
+                filled: true,
+                fillColor: const Color(0xFF1E1E2C),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Colors.white70),
                 ),
-                const SizedBox(height: 12),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Display Above Other Apps', style: TextStyle(fontSize: 13, color: Colors.white)),
-                  subtitle: const Text('Allows floating HUD bubble to appear over messaging apps.', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                  value: _drawOverAppsPermitted,
-                  activeColor: Colors.tealAccent,
-                  onChanged: (val) {
-                    setState(() => _drawOverAppsPermitted = val);
-                  },
-                ),
-                const Divider(color: Colors.grey, height: 1),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Smart Active Notification', style: TextStyle(fontSize: 13, color: Colors.white)),
-                  subtitle: const Text('Persistent notification drawer shortcut for 1-tap responses.', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                  value: _floatingNotificationActive,
-                  activeColor: Colors.tealAccent,
-                  onChanged: (val) {
-                    setState(() => _floatingNotificationActive = val);
-                  },
-                ),
-                const Divider(color: Colors.grey, height: 1),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Auto-Copy Selected Reply', style: TextStyle(fontSize: 13, color: Colors.white)),
-                  subtitle: const Text('Automatically copies reply text when generated.', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                  value: _autoCopyEnabled,
-                  activeColor: Colors.tealAccent,
-                  onChanged: (val) {
-                    setState(() => _autoCopyEnabled = val);
-                  },
-                ),
-              ],
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E1E2A),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade800),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'HUD Transparency & Appearance',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.tealAccent),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  if (_newNotifTitleController.text.trim().isNotEmpty) {
+                    setState(() {
+                      _pinnedNotifications.add({
+                        'title': _newNotifTitleController.text.trim(),
+                        'body': _newNotifBodyController.text.trim(),
+                        'tag': 'CUSTOM',
+                      });
+                      _newNotifTitleController.clear();
+                      _newNotifBodyController.clear();
+                    });
+                    _showSnackBar('Pinned to Notification Shade preview!');
+                  }
+                },
+                icon: const Icon(Icons.push_pin, size: 18),
+                label: const Text('Pin Notification to Status Bar'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.deepPurpleAccent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Text('Opacity:', style: TextStyle(fontSize: 12, color: Colors.white)),
-                    Expanded(
-                      child: Slider(
-                        value: _hudOpacity,
-                        min: 0.3,
-                        max: 1.0,
-                        activeColor: Colors.tealAccent,
-                        onChanged: (val) {
-                          setState(() => _hudOpacity = val);
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Active Pinned Banners Preview',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _pinnedNotifications.length,
+              itemBuilder: (context, idx) {
+                final notif = _pinnedNotifications[idx];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E1E2C),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.deepPurple.withOpacity(0.4)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.notifications_active,
+                          color: Colors.amberAccent),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              notif['title'] ?? '',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              notif['body'] ?? '',
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 12),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.grey),
+                        onPressed: () {
+                          setState(() {
+                            _pinnedNotifications.removeAt(idx);
+                          });
                         },
                       ),
-                    ),
-                    Text('${(_hudOpacity * 100).toInt()}%', style: const TextStyle(fontSize: 12, color: Colors.white)),
-                  ],
-                )
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            height: 46,
-            child: OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Colors.tealAccent),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              icon: const Icon(Icons.refresh, color: Colors.tealAccent),
-              label: const Text('Test System Overlay Banner', style: TextStyle(color: Colors.tealAccent, fontWeight: FontWeight.bold)),
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Simulating System Floating Bubble Launch... Active!'),
-                    backgroundColor: Colors.deepPurple,
+                    ],
                   ),
                 );
               },
             ),
-          )
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- TAB 3: Ambient Sound Lounge (Session Retention Engine) ---
+  Widget _buildAmbientLoungeTab() {
+    final sounds = [
+      {'name': '🌧️ Midnight Rain', 'desc': 'Calming steady rainfall'},
+      {'name': '🌊 Deep Ocean Waves', 'desc': 'Rhythmic shore dynamics'},
+      {'name': '☕ Cozy Coffeehouse', 'desc': 'Warm background hum'},
+      {'name': '🔥 Campfire Glow', 'desc': 'Soothing wood crackle'},
+      {'name': '🌌 Space Drift', 'desc': 'Subtle deep binaural tone'},
+    ];
+
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader(
+              'Ambient Audio Desk & Retention Lounge',
+              'Keep FloatHub running seamlessly in the background while working or studying.',
+              Icons.graphic_eq,
+            ),
+            const SizedBox(height: 16),
+
+            // Sound Player Main Card
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.deepPurple.shade800,
+                    Colors.indigo.shade900,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.deepPurple.withOpacity(0.3),
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    _activeSound,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _isSoundPlaying
+                        ? 'Playing active soundscape in background...'
+                        : 'Audio soundscape paused',
+                    style: TextStyle(
+                      color: _isSoundPlaying ? Colors.greenAccent : Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Animated Visualizer Bars
+                  AnimatedBuilder(
+                    animation: _animController,
+                    builder: (context, child) {
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(9, (index) {
+                          double heightFactor = _isSoundPlaying
+                              ? (0.3 +
+                                  0.7 *
+                                      ((index % 3 == 0)
+                                          ? _animController.value
+                                          : (1 - _animController.value)))
+                              : 0.15;
+                          return Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            width: 8,
+                            height: 40 * heightFactor,
+                            decoration: BoxDecoration(
+                              color: Colors.tealAccent,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          );
+                        }),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Volume Controls
+                  Row(
+                    children: [
+                      const Icon(Icons.volume_down, color: Colors.white70),
+                      Expanded(
+                        child: Slider(
+                          value: _soundVolume,
+                          activeColor: Colors.tealAccent,
+                          inactiveColor: Colors.white70,
+                          onChanged: (val) {
+                            setState(() {
+                              _soundVolume = val;
+                            });
+                          },
+                        ),
+                      ),
+                      const Icon(Icons.volume_up, color: Colors.white70),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Toggle Play/Pause
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _isSoundPlaying = !_isSoundPlaying;
+                      });
+                      _showSnackBar(
+                        _isSoundPlaying
+                            ? 'Started ambient sound engine'
+                            : 'Paused sound',
+                      );
+                    },
+                    icon: Icon(
+                      _isSoundPlaying ? Icons.pause : Icons.play_arrow,
+                      size: 24,
+                    ),
+                    label: Text(_isSoundPlaying ? 'PAUSE AMBIENCE' : 'START AMBIENCE'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.tealAccent,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Select Soundscape Spectrum',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: sounds.length,
+              itemBuilder: (context, i) {
+                final s = sounds[i];
+                final isSelected = _activeSound == s['name'];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Colors.deepPurple.withOpacity(0.3)
+                        : const Color(0xFF1E1E2C),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected
+                          ? Colors.deepPurpleAccent
+                          : Colors.white70,
+                    ),
+                  ),
+                  child: ListTile(
+                    title: Text(
+                      s['name']!,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    subtitle: Text(
+                      s['desc']!,
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                    trailing: isSelected
+                        ? const Icon(Icons.check_circle,
+                            color: Colors.tealAccent)
+                        : const Icon(Icons.play_circle_outline,
+                            color: Colors.grey),
+                    onTap: () {
+                      setState(() {
+                        _activeSound = s['name']!;
+                        _isSoundPlaying = true;
+                      });
+                    },
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- TAB 4: Micro-Toolbox ---
+  Widget _buildMicroToolboxTab() {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader(
+              'Micro-Utility Desk',
+              'Instant high-demand micro tools for daily usage.',
+              Icons.widgets,
+            ),
+            const SizedBox(height: 16),
+
+            // Aspect Ratio Calculator Card
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E1E2C),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.white70),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.aspect_ratio, color: Colors.deepPurpleAccent),
+                      SizedBox(width: 8),
+                      Text(
+                        'Aspect Ratio & Dimension Helper',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _aspectWidthController,
+                          keyboardType: TextInputType.number,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            labelText: 'Width (px)',
+                            labelStyle: const TextStyle(color: Colors.grey),
+                            filled: true,
+                            fillColor: const Color(0xFF12121A),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                        style: TextStyle(color: Colors.white, fontSize: 18),
+                        child: Text('×'),
+                      ),
+                      Expanded(
+                        child: TextField(
+                          controller: _aspectHeightController,
+                          keyboardType: TextInputType.number,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            labelText: 'Height (px)',
+                            labelStyle: const TextStyle(color: Colors.grey),
+                            filled: true,
+                            fillColor: const Color(0xFF12121A),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      ElevatedButton(
+                        onPressed: _calculateAspectRatio,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.deepPurple,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('Calculate'),
+                      ),
+                      Flexible(
+                        child: Text(
+                          _aspectRatioResult,
+                          style: const TextStyle(
+                            color: Colors.tealAccent,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Quick QR & Text Quick-Share Action
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E1E2C),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.white70),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.qr_code_2, color: Colors.amberAccent),
+                      SizedBox(width: 8),
+                      Text(
+                        'Instant Text-to-QR Generator',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Generate quick visible QR grid patterns for instant screen scanning without extra apps.',
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                  const SizedBox(height: 12),
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          const Icon(
+                            Icons.qr_code,
+                            size: 100,
+                            color: Colors.black,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'FloatHub Instant Matrix',
+                            style: TextStyle(
+                              color: Colors.grey.shade800,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- Draggable Floating Bubble Overlay Component ---
+  Widget _buildDraggableFloatingBubble() {
+    return Material(
+      color: Colors.transparent,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (_isFloatExpanded)
+            Container(
+              width: 210,
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1F1F2E),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.deepPurpleAccent, width: 1.5),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black87,
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '⚡ Float QuickDesk',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                      Icon(Icons.touch_app, color: Colors.tealAccent, size: 14),
+                    ],
+                  ),
+                  const Divider(color: Colors.white70, height: 12),
+                  _buildFloatActionItem(
+                    icon: Icons.content_paste_go,
+                    label: 'Quick Paste Vault',
+                    onTap: () async {
+                      ClipboardData? data =
+                          await Clipboard.getData('text/plain');
+                      if (data != null && data.text != null) {
+                        _showSnackBar('Quick Copied: ${data.text}');
+                      }
+                    },
+                  ),
+                  _buildFloatActionItem(
+                    icon: _isSoundPlaying ? Icons.pause : Icons.play_arrow,
+                    label: _isSoundPlaying ? 'Pause Ambience' : 'Start Ambience',
+                    onTap: () {
+                      setState(() {
+                        _isSoundPlaying = !_isSoundPlaying;
+                      });
+                    },
+                  ),
+                  _buildFloatActionItem(
+                    icon: Icons.cleaning_services,
+                    label: 'Clean Text Link',
+                    onTap: () {
+                      _cleanTrackingUrls();
+                    },
+                  ),
+                ],
+              ),
+            ),
+
+          // Main Floating Trigger Icon
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _isFloatExpanded = !_isFloatExpanded;
+              });
+            },
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  colors: [Colors.deepPurpleAccent, Colors.tealAccent],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.deepPurpleAccent.withOpacity(0.5),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Icon(
+                _isFloatExpanded ? Icons.close : Icons.widgets,
+                color: Colors.black,
+                size: 26,
+              ),
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildFloatActionItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: () {
+        onTap();
+        setState(() {
+          _isFloatExpanded = false;
+        });
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.deepPurpleAccent, size: 16),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Helper Section Header
+  Widget _buildSectionHeader(String title, String subtitle, IconData icon) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, color: Colors.deepPurpleAccent, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(
+          subtitle,
+          style: const TextStyle(fontSize: 12, color: Colors.grey),
+        ),
+      ],
     );
   }
 }
