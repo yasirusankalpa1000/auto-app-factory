@@ -1,1182 +1,1205 @@
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(const DockBuddyApp());
+  runApp(const FloatingCockpitApp());
 }
 
-class DockBuddyApp extends StatelessWidget {
-  const DockBuddyApp({super.key});
+class FloatingCockpitApp extends StatelessWidget {
+  const FloatingCockpitApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'DockBuddy',
+      title: 'FloatingCockpit',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
-          brightness: Brightness.light,
-        ),
-      ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
+          seedColor: Colors.teal,
           brightness: Brightness.dark,
         ),
+        scaffoldBackgroundColor: const Color(0xFF121418),
       ),
-      themeMode: ThemeMode.system,
-      home: const MainHomeScreen(),
+      home: const DashboardScreen(),
     );
   }
 }
 
-class MainHomeScreen extends StatefulWidget {
-  const MainHomeScreen({super.key});
+class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({super.key});
 
   @override
-  State<MainHomeScreen> createState() => _MainHomeScreenState();
+  State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _MainHomeScreenState extends State<MainHomeScreen> {
-  int _currentIndex = 0;
+class _DashboardScreenState extends State<DashboardScreen> {
+  int _currentTab = 0;
+
+  // Floating Overlay Service State
   bool _isOverlayEnabled = true;
-  bool _isCompactMode = false;
-  Offset _bubblePosition = const Offset(20, 150);
+  bool _showFloatingBubble = true;
 
-  // Clipboard items state
-  final List<String> _pinnedClips = [
-    "Address: 742 Evergreen Terrace, Springfield",
-    "Promo Code: DISPATCH2025",
-    "WiFi Pass: SuperFastNet#99",
+  // Privacy Shield State
+  bool _privacyShieldActive = true;
+  double _privacyOpacity = 0.85;
+  double _privacyHeight = 160.0;
+  double _privacyYPosition = 220.0;
+  Color _shieldColor = Colors.black;
+
+  // Ambient Soundscape State
+  bool _isPlayingSounds = false;
+  double _volRain = 0.6;
+  double _volWaves = 0.3;
+  double _volCafe = 0.0;
+  double _volFire = 0.4;
+
+  // Quick Clipboard Vault State
+  final List<Map<String, String>> _clipboardVault = [
+    {
+      'title': 'Work Email Signature',
+      'content': 'Best regards,\nAlex Silva | Senior Project Lead\nalex@techcorp.io'
+    },
+    {
+      'title': 'Bank Account Swift Info',
+      'content': 'Account: 9876-5432-1002\nBank: Metro Capital Bank\nSWIFT: METROUS33'
+    },
+    {
+      'title': 'Home Address Quick Share',
+      'content': ' Apt 4B, 742 Evergreen Terrace, Springfield, OR 97477'
+    },
+    {
+      'title': 'Standard Meeting RSVP',
+      'content': 'Thanks for the invite! I will be joining the meeting on time.'
+    },
   ];
 
-  // Shopping deal calculator state
-  double _itemPrice = 49.99;
-  double _discountPercent = 20.0;
-  double _taxPercent = 8.0;
-  int _splitCount = 1;
-
-  // Decision resolver state
-  final List<String> _dilemmaOptions = [
-    "Pizza",
-    "Sushi",
-    "Burgers",
-    "Tacos",
-    "Salad",
+  // Floating Quick Notes State
+  final List<String> _quickNotes = [
+    'Buy coffee beans on the way home',
+    'Review quarterly budget report by 4 PM',
+    'Call doctor for prescription update',
   ];
-  String _selectedDecision = "Tap Spin to decide!";
-  bool _isSpinning = false;
 
-  // Floating notification text
-  String _activeNote = "Tap floating bubble to open quick dock";
+  final TextEditingController _noteController = TextEditingController();
+  final TextEditingController _clipTitleController = TextEditingController();
+  final TextEditingController _clipContentController = TextEditingController();
 
-  void _addClip(String text) {
-    if (text.trim().isNotEmpty) {
-      setState(() {
-        _pinnedClips.insert(0, text.trim());
-      });
-    }
+  @override
+  void dispose() {
+    _noteController.dispose();
+    _clipTitleController.dispose();
+    _clipContentController.dispose();
+    super.dispose();
   }
 
-  void _removeClip(int index) {
-    setState(() {
-      _pinnedClips.removeAt(index);
-    });
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+        backgroundColor: Colors.teal,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
-  void _spinDecision() {
-    if (_dilemmaOptions.isEmpty) return;
-    setState(() {
-      _isSpinning = true;
-    });
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Stack(
+        children: [
+          // Main Body Screens
+          SafeArea(
+            child: Column(
+              children: [
+                _buildHeader(),
+                Expanded(
+                  child: IndexedStack(
+                    index: _currentTab,
+                    children: [
+                      _buildCockpitTab(),
+                      _buildPrivacyShieldTab(),
+                      _buildAmbientSoundTab(),
+                      _buildClipboardVaultTab(),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
 
-    Future.delayed(const Duration(milliseconds: 600), () {
-      setState(() {
-        _dilemmaOptions.shuffle();
-        _selectedDecision = _dilemmaOptions.first;
-        _isSpinning = false;
-      });
-    });
+          // Simulated Floating Privacy Shield Screen Overlay
+          if (_privacyShieldActive)
+            Positioned(
+              top: _privacyYPosition,
+              left: 0,
+              right: 0,
+              height: _privacyHeight,
+              child: GestureDetector(
+                onVerticalDragUpdate: (details) {
+                  setState(() {
+                    _privacyYPosition = (_privacyYPosition + details.delta.dy)
+                        .clamp(80.0, MediaQuery.of(context).size.height - 200.0);
+                  });
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: _shieldColor.withOpacity(_privacyOpacity),
+                    border: Border.symmetric(
+                      horizontal: BorderSide(
+                        color: Colors.teal.withOpacity(0.8),
+                        width: 2,
+                      ),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.5),
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: const [
+                              Icon(Icons.shield, color: Colors.teal, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                "PRIVACY SHIELD ACTIVE (Drag Up/Down)",
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                            ],
+                          ),
+                          InkWell(
+                            onTap: () {
+                              setState(() {
+                                _privacyShieldActive = false;
+                              });
+                              _showSnackBar("Privacy Shield Hidden");
+                            },
+                            child: const Icon(Icons.visibility_off,
+                                color: Colors.white70, size: 20),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // Simulated Floating Action Bubble Dock
+          if (_isOverlayEnabled && _showFloatingBubble)
+            Positioned(
+              right: 16,
+              bottom: 90,
+              child: Material(
+                elevation: 8,
+                borderRadius: BorderRadius.circular(30),
+                color: Colors.teal,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          _privacyShieldActive
+                              ? Icons.shield
+                              : Icons.security_outlined,
+                          color: Colors.white,
+                        ),
+                        tooltip: "Toggle Privacy Shield",
+                        onPressed: () {
+                          setState(() {
+                            _privacyShieldActive = !_privacyShieldActive;
+                          });
+                          _showSnackBar(_privacyShieldActive
+                              ? "Privacy Shield Activated"
+                              : "Privacy Shield Deactivated");
+                        },
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          _isPlayingSounds ? Icons.volume_up : Icons.volume_off,
+                          color: Colors.white,
+                        ),
+                        tooltip: "Toggle Ambient Sounds",
+                        onPressed: () {
+                          setState(() {
+                            _isPlayingSounds = !_isPlayingSounds;
+                          });
+                          _showSnackBar(_isPlayingSounds
+                              ? "Ambient Sounds Playing"
+                              : "Ambient Sounds Muted");
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.content_copy, color: Colors.white),
+                        tooltip: "Quick Copy Vault",
+                        onPressed: () {
+                          setState(() {
+                            _currentTab = 3;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          border: Border(top: BorderSide(color: Colors.white70, width: 1)),
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _currentTab,
+          onTap: (index) {
+            setState(() {
+              _currentTab = index;
+            });
+          },
+          backgroundColor: const Color(0xFF181B20),
+          selectedItemColor: Colors.teal,
+          unselectedItemColor: Colors.grey,
+          type: BottomNavigationBarType.fixed,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.dashboard),
+              label: 'Cockpit',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.shield),
+              label: 'Privacy Shield',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.waves),
+              label: 'Ambient Sound',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.content_copy),
+              label: 'Clipboard',
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
-  void _showAddClipDialog() {
-    final TextEditingController controller = TextEditingController();
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: const BoxDecoration(
+        color: Color(0xFF181B20),
+        border: Border(bottom: BorderSide(color: Colors.white70, width: 1)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.teal.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.apps, color: Colors.teal, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    "FloatingCockpit",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    "System Floating Utility Hub",
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              const Text(
+                "Overlay",
+                style: TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+              Switch(
+                value: _isOverlayEnabled,
+                activeColor: Colors.teal,
+                onChanged: (val) {
+                  setState(() {
+                    _isOverlayEnabled = val;
+                    if (!val) {
+                      _privacyShieldActive = false;
+                      _showFloatingBubble = false;
+                    } else {
+                      _showFloatingBubble = true;
+                    }
+                  });
+                  _showSnackBar(val
+                      ? "Floating Dock Enabled"
+                      : "Floating Dock Service Stopped");
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // TAB 1: COCKPIT OVERVIEW
+  Widget _buildCockpitTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Active System Status Card
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.teal.withOpacity(0.2),
+                  Colors.blueGrey.withOpacity(0.1),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.teal.withOpacity(0.3)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: const [
+                        Icon(Icons.circle, color: Colors.green, size: 12),
+                        SizedBox(width: 8),
+                        Text(
+                          "SYSTEM OVERLAY ACTIVE",
+                          style: TextStyle(
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Chip(
+                      label: const Text(
+                        "Draw Over Apps Ready",
+                        style: TextStyle(fontSize: 10, color: Colors.white),
+                      ),
+                      backgroundColor: Colors.teal.withOpacity(0.4),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  "Keep FloatingCockpit accessible while using WhatsApp, banking apps, social media, or e-readers.",
+                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          const Text(
+            "Quick Controls",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Quick Toggle Grid
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 1.4,
+            children: [
+              _buildControlTile(
+                title: "Privacy Shield",
+                subtitle: _privacyShieldActive ? "ACTIVE" : "OFF",
+                icon: Icons.shield,
+                isActive: _privacyShieldActive,
+                onTap: () {
+                  setState(() {
+                    _privacyShieldActive = !_privacyShieldActive;
+                  });
+                },
+              ),
+              _buildControlTile(
+                title: "Ambient Mixer",
+                subtitle: _isPlayingSounds ? "PLAYING" : "MUTED",
+                icon: Icons.waves,
+                isActive: _isPlayingSounds,
+                onTap: () {
+                  setState(() {
+                    _isPlayingSounds = !_isPlayingSounds;
+                  });
+                },
+              ),
+              _buildControlTile(
+                title: "Floating Dock",
+                subtitle: _showFloatingBubble ? "VISIBLE" : "HIDDEN",
+                icon: Icons.widgets,
+                isActive: _showFloatingBubble,
+                onTap: () {
+                  setState(() {
+                    _showFloatingBubble = !_showFloatingBubble;
+                  });
+                },
+              ),
+              _buildControlTile(
+                title: "Saved Snippets",
+                subtitle: "${_clipboardVault.length} Items",
+                icon: Icons.content_copy,
+                isActive: true,
+                onTap: () {
+                  setState(() {
+                    _currentTab = 3;
+                  });
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Quick Scratchpad / Notes Section
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                "Floating Quick Notes",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.add, color: Colors.teal),
+                onPressed: () => _showAddNoteDialog(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _quickNotes.length,
+            itemBuilder: (context, index) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E2228),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.white70),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.edit_note, color: Colors.teal, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _quickNotes[index],
+                        style: const TextStyle(color: Colors.white, fontSize: 13),
+                        softWrap: true,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.grey, size: 18),
+                      onPressed: () {
+                        setState(() {
+                          _quickNotes.removeAt(index);
+                        });
+                        _showSnackBar("Note removed");
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildControlTile({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isActive ? Colors.teal.withOpacity(0.15) : const Color(0xFF1E2228),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isActive ? Colors.teal : Colors.white70,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Icon(icon, color: isActive ? Colors.teal : Colors.grey, size: 26),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: isActive ? Colors.teal : Colors.grey,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // TAB 2: PRIVACY PEEP SHIELD CUSTOMIZER
+  Widget _buildPrivacyShieldTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E2228),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white70),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: const [
+                        Icon(Icons.shield, color: Colors.teal),
+                        SizedBox(width: 8),
+                        Text(
+                          "Peep Shield Overlay",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Switch(
+                      value: _privacyShieldActive,
+                      activeColor: Colors.teal,
+                      onChanged: (val) {
+                        setState(() {
+                          _privacyShieldActive = val;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "Blocks side-viewers on public transport, cafes, or offices from reading your private chat screen or banking details.",
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          const Text(
+            "Shield Parameters",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Opacity Slider
+          _buildSliderRow(
+            label: "Shield Darkness Opacity",
+            value: _privacyOpacity,
+            min: 0.2,
+            max: 0.98,
+            displayValue: "${(_privacyOpacity * 100).toInt()}%",
+            onChanged: (val) {
+              setState(() {
+                _privacyOpacity = val;
+              });
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // Height Slider
+          _buildSliderRow(
+            label: "Shield Band Height",
+            value: _privacyHeight,
+            min: 80.0,
+            max: 400.0,
+            displayValue: "${_privacyHeight.toInt()} px",
+            onChanged: (val) {
+              setState(() {
+                _privacyHeight = val;
+              });
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // Y Position Slider
+          _buildSliderRow(
+            label: "Vertical Screen Position",
+            value: _privacyYPosition,
+            min: 60.0,
+            max: 500.0,
+            displayValue: "${_privacyYPosition.toInt()} Y",
+            onChanged: (val) {
+              setState(() {
+                _privacyYPosition = val;
+              });
+            },
+          ),
+          const SizedBox(height: 24),
+
+          const Text(
+            "Shield Tint Color",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          Wrap(
+            spacing: 12,
+            children: [
+              _buildColorOption(Colors.black, "Pitch Black"),
+              _buildColorOption(const Color(0xFF0F172A), "Midnight Blue"),
+              _buildColorOption(const Color(0xFF18181B), "Dark Charcoal"),
+              _buildColorOption(const Color(0xFF022C22), "Deep Forest"),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSliderRow({
+    required String label,
+    required double value,
+    required double min,
+    required double max,
+    required String displayValue,
+    required ValueChanged<double> onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E2228),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+              ),
+              Text(
+                displayValue,
+                style: const TextStyle(
+                  color: Colors.teal,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+          Slider(
+            value: value,
+            min: min,
+            max: max,
+            activeColor: Colors.teal,
+            inactiveColor: Colors.grey.shade800,
+            onChanged: onChanged,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildColorOption(Color color, String name) {
+    bool isSelected = _shieldColor == color;
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _shieldColor = color;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? Colors.teal : Colors.white70,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isSelected) ...[
+              const Icon(Icons.check, color: Colors.teal, size: 14),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              name,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // TAB 3: AMBIENT SOUNDSCAPE MIXER
+  Widget _buildAmbientSoundTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E2228),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white70),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.waves,
+                          color: _isPlayingSounds ? Colors.teal : Colors.grey,
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          "Ambient Audio Engine",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _isPlayingSounds
+                          ? "Mixer active in background"
+                          : "Background sound engine paused",
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                  ],
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _isPlayingSounds = !_isPlayingSounds;
+                    });
+                  },
+                  icon: Icon(_isPlayingSounds ? Icons.pause : Icons.play_arrow),
+                  label: Text(_isPlayingSounds ? "Pause" : "Play All"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          const Text(
+            "Soundscape Multi-Track Sliders",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          _buildSoundTrack(
+            name: "Soft Rainfall",
+            icon: Icons.water_drop,
+            volume: _volRain,
+            onChanged: (v) => setState(() => _volRain = v),
+          ),
+          _buildSoundTrack(
+            name: "Ocean Waves",
+            icon: Icons.waves,
+            volume: _volWaves,
+            onChanged: (v) => setState(() => _volWaves = v),
+          ),
+          _buildSoundTrack(
+            name: "Cozy Fireplace",
+            icon: Icons.local_fire_department,
+            volume: _volFire,
+            onChanged: (v) => setState(() => _volFire = v),
+          ),
+          _buildSoundTrack(
+            name: "Coffee Shop Ambience",
+            icon: Icons.coffee,
+            volume: _volCafe,
+            onChanged: (v) => setState(() => _volCafe = v),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSoundTrack({
+    required String name,
+    required IconData icon,
+    required double volume,
+    required ValueChanged<double> onChanged,
+  }) {
+    bool isActive = volume > 0 && _isPlayingSounds;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E2228),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isActive ? Colors.teal.withOpacity(0.5) : Colors.white70,
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: isActive ? Colors.teal : Colors.grey, size: 22),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  name,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              ),
+              Text(
+                "${(volume * 100).toInt()}%",
+                style: TextStyle(
+                  color: isActive ? Colors.teal : Colors.grey,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+          Slider(
+            value: volume,
+            min: 0.0,
+            max: 1.0,
+            activeColor: Colors.teal,
+            inactiveColor: Colors.grey.shade800,
+            onChanged: onChanged,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // TAB 4: QUICK CLIPBOARD VAULT
+  Widget _buildClipboardVaultTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    "Quick Clipboard Vault",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    "1-Tap paste templates for emails, banking, & messages",
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                ],
+              ),
+              ElevatedButton(
+                onPressed: _showAddSnippetDialog,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text("+ Add"),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _clipboardVault.length,
+            itemBuilder: (context, index) {
+              final item = _clipboardVault[index];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E2228),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white70),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          item['title'] ?? '',
+                          style: const TextStyle(
+                            color: Colors.teal,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.content_copy,
+                                  color: Colors.white70, size: 18),
+                              onPressed: () {
+                                _showSnackBar("Copied '${item['title']}' to Clipboard!");
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete,
+                                  color: Colors.grey, size: 18),
+                              onPressed: () {
+                                setState(() {
+                                  _clipboardVault.removeAt(index);
+                                });
+                                _showSnackBar("Snippet deleted");
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      item['content'] ?? '',
+                      style: const TextStyle(color: Colors.white70, fontSize: 13),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddNoteDialog() {
+    _noteController.clear();
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text("Pin New Snippet"),
+          backgroundColor: const Color(0xFF1E2228),
+          title: const Text("Add Quick Floating Note",
+              style: TextStyle(color: Colors.white)),
           content: TextField(
-            controller: controller,
-            maxLines: 3,
+            controller: _noteController,
+            style: const TextStyle(color: Colors.white),
             decoration: const InputDecoration(
-              hintText: "Enter address, code, or phone number...",
+              hintText: "Enter note text...",
+              hintStyle: TextStyle(color: Colors.grey),
               border: OutlineInputBorder(),
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel"),
+              child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
             ),
             ElevatedButton(
               onPressed: () {
-                _addClip(controller.text);
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Snippet pinned to floating shelf!")),
-                );
-              },
-              child: const Text("Save & Pin"),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            const Icon(Icons.widgets, color: Colors.deepPurple),
-            const SizedBox(width: 8),
-            const Flexible(
-              child: Text(
-                "DockBuddy",
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              _isOverlayEnabled ? Icons.layers : Icons.layers_clear,
-              color: _isOverlayEnabled ? Colors.green : Colors.grey,
-            ),
-            tooltip: "Toggle Floating Assistant Overlay",
-            onPressed: () {
-              setState(() {
-                _isOverlayEnabled = !_isOverlayEnabled;
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    _isOverlayEnabled
-                        ? "Floating Overlay Activated! Drag bubble anywhere."
-                        : "Floating Overlay Deactivated.",
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            IndexedStack(
-              index: _currentIndex,
-              children: [
-                _buildFloatingShelfTab(theme),
-                _buildShoppingDealTab(theme),
-                _buildDecisionResolverTab(theme),
-                _buildScreenRulerTab(theme),
-                _buildSettingsTab(theme),
-              ],
-            ),
-            if (_isOverlayEnabled) _buildSimulatedFloatingBubble(theme),
-          ],
-        ),
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.content_paste),
-            selectedIcon: Icon(Icons.content_paste_go, color: Colors.deepPurple),
-            label: "Shelf",
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.shopping_bag_outlined),
-            selectedIcon: Icon(Icons.shopping_bag, color: Colors.deepPurple),
-            label: "Deals",
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.shuffle),
-            selectedIcon: Icon(Icons.shuffle_on, color: Colors.deepPurple),
-            label: "Decide",
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.straighten),
-            selectedIcon: Icon(Icons.straighten, color: Colors.deepPurple),
-            label: "Ruler",
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.tune),
-            selectedIcon: Icon(Icons.tune, color: Colors.deepPurple),
-            label: "Dock Control",
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Floating Overlay Bubble Simulator Widget
-  Widget _buildSimulatedFloatingBubble(ThemeData theme) {
-    return Positioned(
-      left: _bubblePosition.dx,
-      top: _bubblePosition.dy,
-      child: GestureDetector(
-        onPanUpdate: (details) {
-          setState(() {
-            _bubblePosition += details.delta;
-          });
-        },
-        child: Material(
-          elevation: 8,
-          borderRadius: BorderRadius.circular(30),
-          color: Colors.deepPurple,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(30),
-            onTap: () {
-              _showQuickDockBottomSheet();
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: Colors.white, width: 1.5),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.bolt, color: Colors.amber, size: 20),
-                  const SizedBox(width: 6),
-                  Text(
-                    _isCompactMode ? "Dock" : "DockBuddy Live",
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showQuickDockBottomSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        return SafeArea(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.bolt, color: Colors.amber),
-                          SizedBox(width: 8),
-                          Text(
-                            "Floating Quick Shelf",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(context),
-                      )
-                    ],
-                  ),
-                  const Divider(),
-                  const SizedBox(height: 8),
-                  const Text(
-                    "QUICK PINNED CLIPS",
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  if (_pinnedClips.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      child: Text("No pinned clips yet."),
-                    )
-                  else
-                    ..._pinnedClips.take(3).map((clip) => Card(
-                          margin: const EdgeInsets.only(bottom: 6),
-                          child: ListTile(
-                            dense: true,
-                            leading: const Icon(Icons.copy, size: 18),
-                            title: Text(
-                              clip,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.check, size: 16),
-                              onPressed: () {
-                                Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content: Text("Copied to clipboard!")),
-                                );
-                              },
-                            ),
-                          ),
-                        )),
-                  const SizedBox(height: 12),
-                  const Text(
-                    "INSTANT TOOLS",
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    crossAxisAlignment: WrapCrossAxisAlignment.center,
-                    children: [
-                      ActionChip(
-                        avatar: const Icon(Icons.add, size: 16),
-                        label: const Text("New Clip"),
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _showAddClipDialog();
-                        },
-                      ),
-                      ActionChip(
-                        avatar: const Icon(Icons.shuffle, size: 16),
-                        label: const Text("Pick Dinner"),
-                        onPressed: () {
-                          Navigator.pop(context);
-                          setState(() {
-                            _currentIndex = 2;
-                          });
-                          _spinDecision();
-                        },
-                      ),
-                      ActionChip(
-                        avatar: const Icon(Icons.calculate, size: 16),
-                        label: const Text("20% Off Calc"),
-                        onPressed: () {
-                          Navigator.pop(context);
-                          setState(() {
-                            _currentIndex = 1;
-                            _discountPercent = 20;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  // TAB 1: Floating Shelf & Clipboard Pinboard
-  Widget _buildFloatingShelfTab(ThemeData theme) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Card(
-            color: Colors.deepPurple.shade50,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  const Icon(Icons.lightbulb, color: Colors.deepPurple, size: 32),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Floating Clipboard Shelf",
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          "Keep addresses, serial numbers, and snippet clips pinned for instant access anywhere on screen.",
-                          style: TextStyle(fontSize: 12, color: Colors.black87),
-                          softWrap: true,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "Pinned Snippets (${_pinnedClips.length})",
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              ElevatedButton.icon(
-                onPressed: _showAddClipDialog,
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text("Add Clip"),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (_pinnedClips.isEmpty)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32.0),
-                child: Column(
-                  children: [
-                    Icon(Icons.content_paste_off, size: 48, color: Colors.grey.shade400),
-                    const SizedBox(height: 8),
-                    const Text(
-                      "No snippets pinned yet.\nTap 'Add Clip' to save quick context items!",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _pinnedClips.length,
-              itemBuilder: (context, index) {
-                final item = _pinnedClips[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    leading: const CircleAvatar(
-                      backgroundColor: Colors.deepPurple,
-                      child: Icon(Icons.pin_drop, color: Colors.white, size: 18),
-                    ),
-                    title: Text(
-                      item,
-                      softWrap: true,
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.copy, color: Colors.blue),
-                          tooltip: "Copy Snippet",
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text("Copied to clipboard: \"$item\""),
-                              ),
-                            );
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          tooltip: "Delete Snippet",
-                          onPressed: () => _removeClip(index),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-        ],
-      ),
-    );
-  }
-
-  // TAB 2: Shopping Deal & Discount Visualizer
-  Widget _buildShoppingDealTab(ThemeData theme) {
-    final double discountAmount = _itemPrice * (_discountPercent / 100.0);
-    final double priceAfterDiscount = _itemPrice - discountAmount;
-    final double taxAmount = priceAfterDiscount * (_taxPercent / 100.0);
-    final double finalPrice = priceAfterDiscount + taxAmount;
-    final double splitPrice = finalPrice / (_splitCount > 0 ? _splitCount : 1);
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Card(
-            color: Colors.teal.shade50,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  const Icon(Icons.shopping_bag, color: Colors.teal, size: 32),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Smart Shopping Discount Visualizer",
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          "Never get tricked by online sales. Calculate final checkout cost, tax, and group splits instantly.",
-                          style: TextStyle(fontSize: 12, color: Colors.black87),
-                          softWrap: true,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            elevation: 2,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Original Tag Price (\$) ",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(
-                      prefixText: "\$ ",
-                      border: OutlineInputBorder(),
-                      hintText: "49.99",
-                    ),
-                    onChanged: (val) {
-                      setState(() {
-                        _itemPrice = double.tryParse(val) ?? 0.0;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    "Quick Discount Buttons",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    crossAxisAlignment: WrapCrossAxisAlignment.center,
-                    children: [10, 15, 20, 25, 30, 50, 70].map((pct) {
-                      final bool isSelected = _discountPercent == pct.toDouble();
-                      return ChoiceChip(
-                        label: Text("$pct% OFF"),
-                        selected: isSelected,
-                        onSelected: (selected) {
-                          if (selected) {
-                            setState(() {
-                              _discountPercent = pct.toDouble();
-                            });
-                          }
-                        },
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text("Discount: ${_discountPercent.toStringAsFixed(0)}%"),
-                            Slider(
-                              value: _discountPercent,
-                              min: 0,
-                              max: 90,
-                              divisions: 18,
-                              onChanged: (v) {
-                                setState(() {
-                                  _discountPercent = v;
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text("Tax: ${_taxPercent.toStringAsFixed(1)}%"),
-                            Slider(
-                              value: _taxPercent,
-                              min: 0,
-                              max: 25,
-                              divisions: 50,
-                              onChanged: (v) {
-                                setState(() {
-                                  _taxPercent = v;
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text("Split with friends:"),
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.remove_circle_outline),
-                            onPressed: _splitCount > 1
-                                ? () {
-                                    setState(() {
-                                      _splitCount--;
-                                    });
-                                  }
-                                : null,
-                          ),
-                          Text(
-                            "$_splitCount ${_splitCount == 1 ? 'person' : 'people'}",
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.add_circle_outline),
-                            onPressed: () {
-                              setState(() {
-                                _splitCount++;
-                              });
-                            },
-                          ),
-                        ],
-                      )
-                    ],
-                  )
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            color: Colors.teal.shade700,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text("You Save:",
-                          style: TextStyle(color: Colors.white70, fontSize: 14)),
-                      Text(
-                        "\$${discountAmount.toStringAsFixed(2)}",
-                        style: const TextStyle(
-                          color: Colors.amber,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Divider(color: Colors.white70),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text("Estimated Tax:",
-                          style: TextStyle(color: Colors.white70, fontSize: 14)),
-                      Text(
-                        "\$${taxAmount.toStringAsFixed(2)}",
-                        style: const TextStyle(color: Colors.white, fontSize: 14),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text("Final Net Price:",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          )),
-                      Text(
-                        "\$${finalPrice.toStringAsFixed(2)}",
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 24,
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (_splitCount > 1) ...[
-                    const Divider(color: Colors.white70),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text("Each Person Pays ($_splitCount):",
-                            style: const TextStyle(
-                                color: Colors.amberAccent, fontWeight: FontWeight.w600)),
-                        Text(
-                          "\$${splitPrice.toStringAsFixed(2)}",
-                          style: const TextStyle(
-                            color: Colors.amberAccent,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 20,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ]
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // TAB 3: Micro-Decision Dilemma Resolver
-  Widget _buildDecisionResolverTab(ThemeData theme) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Card(
-            color: Colors.orange.shade50,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  const Icon(Icons.shuffle, color: Colors.orange, size: 32),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Micro-Decision Dilemma Resolver",
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          "Stuck deciding what to eat, watch, or do next? Let DockBuddy make micro-decisions effortlessly.",
-                          style: TextStyle(fontSize: 12, color: Colors.black87),
-                          softWrap: true,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Center(
-            child: Card(
-              elevation: 4,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  children: [
-                    const Text(
-                      "RECOMMENDED DECISION",
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.shade100,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        _isSpinning ? Icons.refresh : Icons.stars,
-                        size: 48,
-                        color: Colors.orange.shade800,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _selectedDecision,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: _isSpinning ? Colors.grey : Colors.deepPurple,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange.shade700,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 12),
-                      ),
-                      onPressed: _isSpinning ? null : _spinDecision,
-                      icon: const Icon(Icons.play_arrow),
-                      label: Text(_isSpinning ? "Spinning..." : "Resolve Choice Now"),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                "Current Options Pool",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              IconButton(
-                icon: const Icon(Icons.add_circle, color: Colors.deepPurple),
-                onPressed: () {
-                  final controller = TextEditingController();
-                  showDialog(
-                    context: context,
-                    builder: (c) => AlertDialog(
-                      title: const Text("Add Option"),
-                      content: TextField(
-                        controller: controller,
-                        decoration: const InputDecoration(
-                          hintText: "e.g. Watch Movie, Order Burger...",
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(c),
-                          child: const Text("Cancel"),
-                        ),
-                        ElevatedButton(
-                          onPressed: () {
-                            if (controller.text.trim().isNotEmpty) {
-                              setState(() {
-                                _dilemmaOptions.add(controller.text.trim());
-                              });
-                            }
-                            Navigator.pop(c);
-                          },
-                          child: const Text("Add"),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAxisAlignment.center,
-            children: _dilemmaOptions.map((opt) {
-              return Chip(
-                label: Text(opt),
-                deleteIcon: const Icon(Icons.close, size: 16),
-                onDeleted: () {
+                if (_noteController.text.isNotEmpty) {
                   setState(() {
-                    _dilemmaOptions.remove(opt);
+                    _quickNotes.add(_noteController.text);
                   });
-                },
-              );
-            }).toList(),
-          ),
-        ],
-      ),
+                  Navigator.pop(context);
+                  _showSnackBar("Quick Note Saved");
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+              child: const Text("Save", style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
     );
   }
 
-  // TAB 4: Visual On-Screen Ruler
-  Widget _buildScreenRulerTab(ThemeData theme) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Card(
-            color: Colors.blue.shade50,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  const Icon(Icons.straighten, color: Colors.blue, size: 32),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Precision On-Screen Ruler",
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          "Place physical micro-objects (coins, screws, keys, cards) directly on the screen to measure rapidly.",
-                          style: TextStyle(fontSize: 12, color: Colors.black87),
-                          softWrap: true,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+  void _showAddSnippetDialog() {
+    _clipTitleController.clear();
+    _clipContentController.clear();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E2228),
+          title: const Text("Add Clipboard Vault Item",
+              style: TextStyle(color: Colors.white)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _clipTitleController,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: "Title (e.g. My Phone Number)",
+                  labelStyle: TextStyle(color: Colors.grey),
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Container(
-            height: 220,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade900,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.blue, width: 2),
-            ),
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(Icons.touch_app, color: Colors.white70, size: 36),
-                        SizedBox(height: 8),
-                        Text(
-                          "Place object against ruler edge below",
-                          style: TextStyle(color: Colors.white70, fontSize: 13),
-                        ),
-                      ],
-                    ),
-                  ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _clipContentController,
+                maxLines: 3,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: "Snippet Text",
+                  labelStyle: TextStyle(color: Colors.grey),
+                  border: OutlineInputBorder(),
                 ),
-                // Simulated Ruler Tick Marks
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    height: 60,
-                    color: Colors.amber.shade700,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: List.generate(12, (index) {
-                        final bool isMajor = index % 3 == 0;
-                        return Column(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            Container(
-                              width: isMajor ? 2.5 : 1.0,
-                              height: isMajor ? 28 : 14,
-                              color: Colors.black,
-                            ),
-                            const SizedBox(height: 2),
-                            if (isMajor)
-                              Text(
-                                "${index ~/ 3} cm",
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
-                                ),
-                              ),
-                          ],
-                        );
-                      }),
-                    ),
-                  ),
-                ),
-              ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
             ),
-          ),
-          const SizedBox(height: 16),
-          const Center(
-            child: Text(
-              "Calibrated for standard mobile PPI scale.",
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // TAB 5: Dock Control & Overlay Settings
-  Widget _buildSettingsTab(ThemeData theme) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Floating Assistant Settings",
-            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          SwitchListTile(
-            title: const Text("Enable Floating Bubble Overlay"),
-            subtitle: const Text("Shows floating HUD shortcut on screen"),
-            value: _isOverlayEnabled,
-            onChanged: (val) {
-              setState(() {
-                _isOverlayEnabled = val;
-              });
-            },
-          ),
-          const Divider(),
-          SwitchListTile(
-            title: const Text("Compact Floating Mode"),
-            subtitle: const Text("Reduces floating bubble width for less distraction"),
-            value: _isCompactMode,
-            onChanged: _isOverlayEnabled
-                ? (val) {
-                    setState(() {
-                      _isCompactMode = val;
+            ElevatedButton(
+              onPressed: () {
+                if (_clipTitleController.text.isNotEmpty &&
+                    _clipContentController.text.isNotEmpty) {
+                  setState(() {
+                    _clipboardVault.add({
+                      'title': _clipTitleController.text,
+                      'content': _clipContentController.text,
                     });
-                  }
-                : null,
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.notifications_active, color: Colors.deepPurple),
-            title: const Text("Custom Floating Notification Text"),
-            subtitle: Text(_activeNote),
-            trailing: const Icon(Icons.edit),
-            onTap: () {
-              final controller = TextEditingController(text: _activeNote);
-              showDialog(
-                context: context,
-                builder: (c) => AlertDialog(
-                  title: const Text("Edit Notification Badge"),
-                  content: TextField(
-                    controller: controller,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(c),
-                      child: const Text("Cancel"),
-                    ),
-                    ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          _activeNote = controller.text;
-                        });
-                        Navigator.pop(c);
-                      },
-                      child: const Text("Save"),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 24),
-          Card(
-            color: Colors.deepPurple.shade900,
-            child: const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.star, color: Colors.amber),
-                      SizedBox(width: 8),
-                      Text(
-                        "DockBuddy Pro Status",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    "All floating utilities active & ready for high-frequency daily usage.",
-                    style: TextStyle(color: Colors.white70, fontSize: 13),
-                  ),
-                ],
-              ),
+                  });
+                  Navigator.pop(context);
+                  _showSnackBar("Snippet Added to Vault");
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+              child: const Text("Save", style: TextStyle(color: Colors.white)),
             ),
-          ),
-        ],
-      ),
+          ],
+        );
+      },
     );
   }
 }
