@@ -1,24 +1,22 @@
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(const ContextMateApp());
+  runApp(const OverlayHUDApp());
 }
 
-class ContextMateApp extends StatelessWidget {
-  const ContextMateApp({Key? key}) : super(key: key);
+class OverlayHUDApp extends StatelessWidget {
+  const OverlayHUDApp({super.key});
 
   @override
-  Widget build(BuildContext meContext) {
+  Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'ContextMate',
+      title: 'OverlayHUD',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.indigo,
-          brightness: Brightness.dark,
-        ),
-        scaffoldBackgroundColor: const Color(0xFF121420),
+        colorSchemeSeed: Colors.indigo,
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF0F172A),
       ),
       home: const MainHomeScreen(),
     );
@@ -26,7 +24,7 @@ class ContextMateApp extends StatelessWidget {
 }
 
 class MainHomeScreen extends StatefulWidget {
-  const MainHomeScreen({Key? key}) : super(key: key);
+  const MainHomeScreen({super.key});
 
   @override
   State<MainHomeScreen> createState() => _MainHomeScreenState();
@@ -34,148 +32,473 @@ class MainHomeScreen extends StatefulWidget {
 
 class _MainHomeScreenState extends State<MainHomeScreen> {
   int _currentIndex = 0;
-  bool _overlayEnabled = true;
-  bool _notificationEnabled = true;
-  String _activeSnippet = "Copied: Quick Reply #1";
 
-  // Dynamic status snackbar alert helper
-  void _showNotice(String message) {
+  final List<Widget> _pages = const [
+    HUDStudioTab(),
+    ShoppingHUDTab(),
+    ClipboardVaultTab(),
+    CustomizerTab(),
+    EngagementStatsTab(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: IndexedStack(
+          index: _currentIndex,
+          children: _pages,
+        ),
+      ),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          border: Border(
+            top: BorderSide(color: Colors.blueGrey, width: 0.5),
+          ),
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+          },
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: const Color(0xFF1E293B),
+          selectedItemColor: Colors.tealAccent,
+          unselectedItemColor: Colors.grey,
+          selectedFontSize: 12,
+          unselectedFontSize: 10,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.widgets),
+              label: 'HUD Studio',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.shopping_cart),
+              label: 'Shopping',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.content_copy),
+              label: 'Vault',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.tune),
+              label: 'Widget Hub',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.bolt),
+              label: 'Activity',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// -------------------------------------------------------------
+// TAB 1: HUD Studio (Interactive Drag Preview & Controls)
+// -------------------------------------------------------------
+class HUDStudioTab extends StatefulWidget {
+  const HUDStudioTab({super.key});
+
+  @override
+  State<HUDStudioTab> createState() => _HUDStudioTabState();
+}
+
+class _HUDStudioTabState extends State<HUDStudioTab> {
+  bool _overlayServiceEnabled = true;
+  bool _floatingNotificationActive = true;
+  String _activeWidgetMode = 'Shopping Helper';
+  Offset _bubblePosition = const Offset(140, 160);
+  bool _isBubbleExpanded = false;
+
+  void _showToast(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: const TextStyle(color: Colors.white)),
-        backgroundColor: Colors.indigo,
-        behavior: SnackBarBehavior.floating,
+        content: Text(message),
         duration: const Duration(seconds: 2),
+        backgroundColor: Colors.indigo,
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Floating Overlay Status Simulation Banner
-            if (_overlayEnabled)
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.indigo.shade900.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.indigoAccent.withOpacity(0.4)),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black87,
-                      blurRadius: 8,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Card
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Colors.indigo, Colors.teal],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                const CircleAvatar(
+                  backgroundColor: Colors.white70,
+                  radius: 26,
+                  child: Icon(Icons.layers, color: Colors.white, size: 28),
                 ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: const BoxDecoration(
-                        color: Colors.indigo,
-                        shape: BoxShape.circle,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'OverlayHUD Active',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                      child: const Icon(Icons.bolt, color: Colors.white, size: 18),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Floating micro-widgets over all apps',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.85),
+                          fontSize: 12,
+                        ),
+                        softWrap: true,
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: _overlayServiceEnabled,
+                  activeColor: Colors.tealAccent,
+                  onChanged: (val) {
+                    setState(() {
+                      _overlayServiceEnabled = val;
+                    });
+                    _showToast(
+                      val
+                          ? 'Floating Overlay Service Activated'
+                          : 'Overlay Service Paused',
+                    );
+                  },
+                )
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Quick Preset Selector Chips
+          const Text(
+            'Active Floating Utility Preset',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              'Shopping Helper',
+              'Quick Clipboard',
+              'Speed Calculator',
+              'Address Vault'
+            ].map((preset) {
+              final isSelected = _activeWidgetMode == preset;
+              return ChoiceChip(
+                label: Text(preset),
+                selected: isSelected,
+                selectedColor: Colors.teal,
+                backgroundColor: const Color(0xFF1E293B),
+                labelStyle: TextStyle(
+                  color: isSelected ? Colors.white : Colors.grey,
+                  fontWeight:
+                      isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+                onSelected: (selected) {
+                  if (selected) {
+                    setState(() {
+                      _activeWidgetMode = preset;
+                    });
+                  }
+                },
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 20),
+
+          // Interactive Screen Preview Sandbox
+          const Text(
+            'Interactive Sandbox Preview',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Drag the floating bubble around the phone mockup below to test floating interaction!',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          const SizedBox(height: 12),
+
+          Container(
+            height: 320,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E293B),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.teal.withOpacity(0.4), width: 2),
+            ),
+            child: Stack(
+              children: [
+                // Simulated Background App UI
+                Positioned.fill(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Container(
+                              height: 14,
+                              width: 100,
+                              decoration: BoxDecoration(
+                                color: Colors.white70,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                            const Icon(Icons.wifi,
+                                color: Colors.white70, size: 16),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          height: 70,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              'Simulated Dynamic Background App',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Container(
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text(
-                            "ContextMate Floating Dock Active",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                          Text(
-                            _activeSnippet,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 11,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
+                  ),
+                ),
+
+                // Draggable Floating Bubble Simulation
+                Positioned(
+                  left: _bubblePosition.dx,
+                  top: _bubblePosition.dy,
+                  child: GestureDetect(
+                    onDragUpdate: (details) {
+                      setState(() {
+                        double newX = _bubblePosition.dx + details.delta.dx;
+                        double newY = _bubblePosition.dy + details.delta.dy;
+                        newX = newX.clamp(10.0, 260.0);
+                        newY = newY.clamp(10.0, 240.0);
+                        _bubblePosition = Offset(newX, newY);
+                      });
+                    },
+                    onTap: () {
+                      setState(() {
+                        _isBubbleExpanded = !_isBubbleExpanded;
+                      });
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: _isBubbleExpanded ? 200 : 64,
+                      height: _isBubbleExpanded ? 130 : 64,
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: _overlayServiceEnabled
+                            ? Colors.teal
+                            : Colors.grey,
+                        borderRadius:
+                            BorderRadius.circular(_isBubbleExpanded ? 16 : 32),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.teal.withOpacity(0.5),
+                            blurRadius: 12,
+                            spreadRadius: 2,
+                          )
                         ],
                       ),
+                      child: _isBubbleExpanded
+                          ? SingleChildScrollView(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        _activeWidgetMode,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      const Icon(Icons.close,
+                                          size: 14, color: Colors.white),
+                                    ],
+                                  ),
+                                  const Divider(color: Colors.white70),
+                                  Text(
+                                    _activeWidgetMode == 'Shopping Helper'
+                                        ? 'Quick Discount: \$49.99 (-20% = \$39.99)'
+                                        : _activeWidgetMode == 'Quick Clipboard'
+                                            ? 'Pinned OTP: 849201'
+                                            : 'Floating Math Tool Ready',
+                                    style: const TextStyle(
+                                        fontSize: 11, color: Colors.white),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  _activeWidgetMode == 'Shopping Helper'
+                                      ? Icons.shopping_bag
+                                      : _activeWidgetMode == 'Quick Clipboard'
+                                          ? Icons.copy
+                                          : Icons.calculate,
+                                  color: Colors.white,
+                                  size: 26,
+                                ),
+                                const SizedBox(height: 2),
+                                const Text(
+                                  'Tap HUD',
+                                  style: TextStyle(
+                                      fontSize: 8,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white70, size: 18),
-                      onPressed: () {
-                        setState(() {
-                          _overlayEnabled = false;
-                        });
-                      },
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
 
-            // Tab View Body
-            Expanded(
-              child: IndexedStack(
-                index: _currentIndex,
+          // System Permission Status Card
+          Card(
+            color: const Color(0xFF1E293B),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: Padding(
+              padding: const EdgeInsets.all(14.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SmartTextRewriterTab(onCopy: (txt) {
-                    setState(() => _activeSnippet = "Ready: $txt");
-                    _showNotice("Text copied & synced to floating dock!");
-                  }),
-                  const ImpulseBuyCalculatorTab(),
-                  SocialRescueTab(onTriggerCall: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (c) => const FakeIncomingCallScreen(),
+                  const Text(
+                    'System Permissions & Overlay Status',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Display Over Other Apps Permission',
+                          style: TextStyle(fontSize: 13, color: Colors.grey),
+                        ),
                       ),
-                    );
-                  }),
-                  ClipboardAndOverlayTab(
-                    overlayEnabled: _overlayEnabled,
-                    notificationEnabled: _notificationEnabled,
-                    onToggleOverlay: (v) => setState(() => _overlayEnabled = v),
-                    onToggleNotification: (v) => setState(() => _notificationEnabled = v),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'GRANTED',
+                          style: TextStyle(
+                            color: Colors.greenAccent,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Floating Notification Banner',
+                          style: TextStyle(fontSize: 13, color: Colors.grey),
+                        ),
+                      ),
+                      Switch(
+                        value: _floatingNotificationActive,
+                        activeColor: Colors.tealAccent,
+                        onChanged: (val) {
+                          setState(() {
+                            _floatingNotificationActive = val;
+                          });
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (idx) => setState(() => _currentIndex = idx),
-        backgroundColor: const Color(0xFF1B1E2F),
-        indicatorColor: Colors.indigoAccent,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.psychology, color: Colors.white70),
-            selectedIcon: Icon(Icons.psychology, color: Colors.white),
-            label: "Smart Text",
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.shopping_bag, color: Colors.white70),
-            selectedIcon: Icon(Icons.shopping_bag, color: Colors.white),
-            label: "Impulse Check",
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.phone_callback, color: Colors.white70),
-            selectedIcon: Icon(Icons.phone_callback, color: Colors.white),
-            label: "Social Rescue",
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.layers, color: Colors.white70),
-            selectedIcon: Icon(Icons.layers, color: Colors.white),
-            label: "Dock & Snippets",
           ),
         ],
       ),
@@ -183,475 +506,198 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
   }
 }
 
-// -----------------------------------------------------------------------------
-// TAB 1: SMART TEXT & RESPONSE REWRITER
-// -----------------------------------------------------------------------------
-class SmartTextRewriterTab extends StatefulWidget {
-  final Function(String) onCopy;
-  const SmartTextRewriterTab({Key? key, required me, required this.onCopy}) : super(key: key);
+// Wrapper for gesture recognizer without conflict
+class GestureDetect extends StatelessWidget {
+  final Widget child;
+  final Function(DragUpdateDetails) onDragUpdate;
+  final VoidCallback onTap;
 
-  @override
-  State<SmartTextRewriterTab> createState() => _SmartTextRewriterTabState();
-}
-
-class _SmartTextRewriterTabState extends State<SmartTextRewriterTab> {
-  final TextEditingController _inputController = TextEditingController();
-  String _selectedTone = "Polite Refusal";
-  String _generatedOutput = "";
-
-  final List<String> _tones = [
-    "Polite Refusal",
-    "Professional",
-    "Witty Excuse",
-    "Direct & Firm",
-    "Apologetic",
-  ];
-
-  final Map<String, List<String>> _quickTemplates = {
-    "Polite Refusal": [
-      "I won't be able to make it this time, but thanks so much for thinking of me!",
-      "I'm currently at max capacity, so I'll have to pass on this for now.",
-      "Unfortunately, I have prior commitments, but let's connect another time!"
-    ],
-    "Professional": [
-      "Thank you for reaching out. I have reviewed the details and will follow up shortly.",
-      "Per my previous email, please let me know if you need further clarification.",
-      "I appreciate the update and will make sure this is addressed by EOD."
-    ],
-    "Witty Excuse": [
-      "My social battery is currently at 1% and charging slow. Next time for sure!",
-      "I checked with my inner cat, and we decided staying home is mandatory today.",
-      "I promised my couch I wouldn't cheat on it tonight!"
-    ],
-    "Direct & Firm": [
-      "No, I cannot lend money right now. Please do not ask again.",
-      "I'm not interested, but thanks for asking.",
-      "That deadline is impossible without reducing scope. Let's fix the timeline."
-    ],
-    "Apologetic": [
-      "I am so sorry for the delay! Running 15 minutes late due to traffic.",
-      "Sincere apologies for missing that detail in the earlier draft.",
-      "I completely messed up the timing. So sorry for causing any trouble!"
-    ],
-  };
-
-  void _generateText() {
-    FocusScope.of(context).unfocus();
-    final text = _inputController.text.trim();
-    if (text.isEmpty) {
-      final samples = _quickTemplates[_selectedTone] ?? ["Sample response generated!"];
-      setState(() {
-        _generatedOutput = samples[DateTime.now().second % samples.length];
-      });
-      return;
-    }
-
-    if (_selectedTone == "Polite Refusal") {
-      _generatedOutput = "Regarding '$text': Thank you so much for bringing this up! However, I won't be able to commit to this right now. Hope you understand!";
-    } else if (_selectedTone == "Professional") {
-      _generatedOutput = "Dear Team/Name, regarding '$text', I have noted the details and am taking appropriate steps. I will update you once finalized.";
-    } else if (_selectedTone == "Witty Excuse") {
-      _generatedOutput = "I'd love to help with '$text', but my calendar just started crying. Let's touch base when things settle!";
-    } else if (_selectedTone == "Direct & Firm") {
-      _generatedOutput = "I need to be clear about '$text': I cannot proceed with this under current conditions. Let's adjust parameters first.";
-    } else {
-      _generatedOutput = "I deeply apologize regarding '$text'. I am taking immediate action to rectify this right away.";
-    }
-    setState(() {});
-  }
+  const GestureDetect({
+    super.key,
+    required this.child,
+    required this.onDragUpdate,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.psychology, color: Colors.indigoAccent, size: 28),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    "Smart Response & Polisher",
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              "Draft awkward messages, refusals, or work emails instantly with perfect tone.",
-              style: TextStyle(color: Colors.white70, fontSize: 13),
-            ),
-            const SizedBox(height: 16),
-
-            // Tone Selection Badges
-            const Text(
-              "Select Desired Tone:",
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _tones.map((tone) {
-                final isSelected = tone == _selectedTone;
-                return ChoiceChip(
-                  label: Text(tone),
-                  selected: isSelected,
-                  selectedColor: Colors.indigoAccent,
-                  backgroundColor: const Color(0xFF23273B),
-                  labelStyle: TextStyle(
-                    color: isSelected ? Colors.white : Colors.white70,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  ),
-                  onSelected: (val) {
-                    if (val) setState(() => _selectedTone = tone);
-                  },
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 16),
-
-            // Input Field
-            TextField(
-              controller: _inputController,
-              maxLines: 3,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                hintText: "Type raw thought (e.g., 'I can't go to party tonight' or 'Give me raise')...",
-                hintStyle: TextStyle(color: Colors.white70, fontSize: 13),
-                filled: true,
-                fillColor: Color(0xFF1B1E2F),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(12)),
-                  borderSide: BorderSide(color: Colors.indigo),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.indigoAccent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: _generateText,
-                icon: const Icon(Icons.bolt, color: Colors.white),
-                label: const Text(
-                  "Polish & Generate Response",
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Quick Preset Suggestions
-            const Text(
-              "Instant Quick Presets:",
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: (_quickTemplates[_selectedTone] ?? []).map((preset) {
-                  return Container(
-                    width: 220,
-                    margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1B1E2F),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.indigo.shade800),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          preset,
-                          style: const TextStyle(color: Colors.white70, fontSize: 12),
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 8),
-                        InkWell(
-                          onTap: () => widget.onCopy(preset),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.copy, color: Colors.indigoAccent, size: 14),
-                              SizedBox(width: 4),
-                              Text(
-                                "Copy",
-                                style: TextStyle(
-                                  color: Colors.indigoAccent,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-
-            if (_generatedOutput.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E2238),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.indigoAccent),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          "Generated Result",
-                          style: TextStyle(
-                            color: Colors.indigoAccent,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.copy, color: Colors.white, size: 20),
-                          onPressed: () => widget.onCopy(_generatedOutput),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _generatedOutput,
-                      style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.4),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
+    return GestureDetector(
+      onPanUpdate: onDragUpdate,
+      onTap: onTap,
+      child: child,
     );
   }
 }
 
-// -----------------------------------------------------------------------------
-// TAB 2: IMPULSE BUY REALITY CHECK CALCULATOR
-// -----------------------------------------------------------------------------
-class ImpulseBuyCalculatorTab extends StatefulWidget {
-  const ImpulseBuyCalculatorTab({Key? key}) : super(key: key);
+// -------------------------------------------------------------
+// TAB 2: Shopping & Dynamic Discount Micro-HUD
+// -------------------------------------------------------------
+class ShoppingHUDTab extends StatefulWidget {
+  const ShoppingHUDTab({super.key});
 
   @override
-  State<ImpulseBuyCalculatorTab> createState() => _ImpulseBuyCalculatorTabState();
+  State<ShoppingHUDTab> createState() => _ShoppingHUDTabState();
 }
 
-class _ImpulseBuyCalculatorTabState extends State<ImpulseBuyCalculatorTab> {
-  final TextEditingController _incomeController = TextEditingController(text: "3200");
-  final TextEditingController _hoursController = TextEditingController(text: "40");
-  final TextEditingController _itemNameController = TextEditingController(text: "Wireless Earbuds");
-  final TextEditingController _itemPriceController = TextEditingController(text: "180");
+class _ShoppingHUDTabState extends State<ShoppingHUDTab> {
+  final TextEditingController _priceController = TextEditingController();
+  final TextEditingController _discountController = TextEditingController();
+  final TextEditingController _taxController = TextEditingController();
 
-  double _hourlyRate = 0;
-  double _hoursNeeded = 0;
-  double _financialRegretScore = 0;
-  String _verdictText = "";
+  double _originalPrice = 0.0;
+  double _discountPercent = 0.0;
+  double _taxPercent = 0.0;
+  double _finalPrice = 0.0;
+  double _savedAmount = 0.0;
 
-  @override
-  void initState() {
-    super.initState();
-    _calculateReality();
+  final List<Map<String, String>> _shoppingCartHistory = [
+    {'title': 'Wireless Headphones', 'price': '\$79.99', 'saved': '\$16.00'},
+    {'title': 'Running Shoes', 'price': '\$119.50', 'saved': '\$23.90'},
+  ];
+
+  void _calculate() {
+    setState(() {
+      _originalPrice = double.tryParse(_priceController.text) ?? 0.0;
+      _discountPercent = double.tryParse(_discountController.text) ?? 0.0;
+      _taxPercent = double.tryParse(_taxController.text) ?? 0.0;
+
+      double discountVal = _originalPrice * (_discountPercent / 100.0);
+      double priceAfterDiscount = _originalPrice - discountVal;
+      double taxVal = priceAfterDiscount * (_taxPercent / 100.0);
+
+      _finalPrice = priceAfterDiscount + taxVal;
+      _savedAmount = discountVal;
+    });
   }
 
-  void _calculateReality() {
-    final double income = double.tryParse(_incomeController.text) ?? 1;
-    final double weeklyHours = double.tryParse(_hoursController.text) ?? 1;
-    final double price = double.tryParse(_itemPriceController.text) ?? 0;
-
-    // Monthly hours = weekly hours * 4.33
-    final monthlyHours = weeklyHours * 4.33;
-    final hourlyWage = income / (monthlyHours <= 0 ? 1 : monthlyHours);
-    final hoursToEarn = price / (hourlyWage <= 0 ? 1 : hourlyWage);
-
-    // Regret score calculated based on income ratio
-    final ratio = (price / (income <= 0 ? 1 : income)) * 100;
-    double regret = (ratio * 2.5).clamp(5, 99);
-
-    String advice = "";
-    if (hoursToEarn > 40) {
-      advice = "⚠️ HIGH IMPULSE RISK: Requires more than a FULL WEEK of continuous hard labor!";
-    } else if (hoursToEarn > 15) {
-      advice = "⚡ MODERATE RISK: You must trade nearly 2 full workdays for this single item.";
-    } else {
-      advice = "✅ LOW FINANCIAL STRESS: Requires less than a day of work. Safe if needed!";
+  void _saveToCart() {
+    if (_originalPrice > 0) {
+      setState(() {
+        _shoppingCartHistory.insert(0, {
+          'title': 'Item @ \$${_originalPrice.toStringAsFixed(2)}',
+          'price': '\$${_finalPrice.toStringAsFixed(2)}',
+          'saved': '\$${_savedAmount.toStringAsFixed(2)}',
+        });
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Calculated Item Saved to Floating Cart'),
+          backgroundColor: Colors.teal,
+        ),
+      );
     }
-
-    setState(() {
-      _hourlyRate = hourlyWage;
-      _hoursNeeded = hoursToEarn;
-      _financialRegretScore = regret;
-      _verdictText = advice;
-    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.shopping_bag, color: Colors.deepOrangeAccent, size: 28),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    "Impulse Buy Reality Check",
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.shopping_bag, color: Colors.tealAccent, size: 28),
+              SizedBox(width: 10),
+              Text(
+                'Shopping & Discount HUD',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              "Convert price tags into exact hours of work you must trade from your life.",
-              style: TextStyle(color: Colors.white70, fontSize: 13),
-            ),
-            const SizedBox(height: 16),
-
-            // Form Fields
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _incomeController,
-                    keyboardType: TextInputType.number,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(
-                      labelText: "Monthly Income (\$)",
-                      labelStyle: TextStyle(color: Colors.white70, fontSize: 12),
-                      filled: true,
-                      fillColor: Color(0xFF1B1E2F),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(10)),
-                      ),
-                    ),
-                    onChanged: (_) => _calculateReality(),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _hoursController,
-                    keyboardType: TextInputType.number,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(
-                      labelText: "Hours / Week",
-                      labelStyle: TextStyle(color: Colors.white70, fontSize: 12),
-                      filled: true,
-                      fillColor: Color(0xFF1B1E2F),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(10)),
-                      ),
-                    ),
-                    onChanged: (_) => _calculateReality(),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _itemNameController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(
-                      labelText: "Item Name",
-                      labelStyle: TextStyle(color: Colors.white70, fontSize: 12),
-                      filled: true,
-                      fillColor: Color(0xFF1B1E2F),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(10)),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _itemPriceController,
-                    keyboardType: TextInputType.number,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(
-                      labelText: "Price (\$)",
-                      labelStyle: TextStyle(color: Colors.white70, fontSize: 12),
-                      filled: true,
-                      fillColor: Color(0xFF1B1E2F),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(10)),
-                      ),
-                    ),
-                    onChanged: (_) => _calculateReality(),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Reality Score Display Box
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1B1E2F),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.deepOrangeAccent.withOpacity(0.5)),
               ),
-              child: Column(
-                children: [
-                  Row(
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Calculate live discounts and taxes instantly while browsing store apps.',
+            style: TextStyle(color: Colors.grey, fontSize: 13),
+          ),
+          const SizedBox(height: 16),
+
+          // Calculator Input Form Card
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E293B),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.blueGrey.withOpacity(0.3)),
+            ),
+            child: Column(
+              children: [
+                TextField(
+                  controller: _priceController,
+                  keyboardType: TextInputType.number,
+                  onChanged: (_) => _calculate(),
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: 'Original Price (\$)',
+                    labelStyle: TextStyle(color: Colors.tealAccent),
+                    prefixIcon:
+                        Icon(Icons.monetization_on, color: Colors.tealAccent),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _discountController,
+                        keyboardType: TextInputType.number,
+                        onChanged: (_) => _calculate(),
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          labelText: 'Discount %',
+                          labelStyle: TextStyle(color: Colors.orangeAccent),
+                          prefixIcon: Icon(Icons.percent,
+                              color: Colors.orangeAccent),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextField(
+                        controller: _taxController,
+                        keyboardType: TextInputType.number,
+                        onChanged: (_) => _calculate(),
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          labelText: 'Sales Tax %',
+                          labelStyle: TextStyle(color: Colors.lightBlueAccent),
+                          prefixIcon: Icon(Icons.account_balance_wallet,
+                              color: Colors.lightBlueAccent),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F172A),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            "Net Hourly Wage",
-                            style: TextStyle(color: Colors.white70, fontSize: 12),
+                            'Final Price',
+                            style: TextStyle(color: Colors.grey, fontSize: 12),
                           ),
                           Text(
-                            "\$${_hourlyRate.toStringAsFixed(2)} / hr",
+                            '\$${_finalPrice.toStringAsFixed(2)}',
                             style: const TextStyle(
-                              color: Colors.white,
+                              fontSize: 22,
                               fontWeight: FontWeight.bold,
-                              fontSize: 18,
+                              color: Colors.tealAccent,
                             ),
                           ),
                         ],
@@ -660,343 +706,126 @@ class _ImpulseBuyCalculatorTabState extends State<ImpulseBuyCalculatorTab> {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           const Text(
-                            "Work Hours Required",
-                            style: TextStyle(color: Colors.white70, fontSize: 12),
+                            'You Save',
+                            style: TextStyle(color: Colors.grey, fontSize: 12),
                           ),
                           Text(
-                            "${_hoursNeeded.toStringAsFixed(1)} Hours",
+                            '\$${_savedAmount.toStringAsFixed(2)}',
                             style: const TextStyle(
-                              color: Colors.deepOrangeAccent,
+                              fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              fontSize: 20,
+                              color: Colors.orangeAccent,
                             ),
                           ),
                         ],
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  const Divider(color: Colors.white70),
-                  const SizedBox(height: 8),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        "Financial Stress Index:",
-                        style: TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _saveToCart,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      Text(
-                        "${_financialRegretScore.toStringAsFixed(0)}%",
-                        style: TextStyle(
-                          color: _financialRegretScore > 50 ? Colors.redAccent : Colors.greenAccent,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  LinearProgressIndicator(
-                    value: (_financialRegretScore / 100).clamp(0.0, 1.0),
-                    backgroundColor: Colors.white70,
-                    color: _financialRegretScore > 50 ? Colors.redAccent : Colors.greenAccent,
-                    minHeight: 8,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  const SizedBox(height: 14),
-
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.black87,
-                      borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text(
-                      _verdictText,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      textAlign: TextAlign.center,
+                    icon: const Icon(Icons.add_shopping_cart,
+                        color: Colors.white),
+                    label: const Text(
+                      'Pin to Quick Shopping List',
+                      style: TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold),
                     ),
-                  )
-                ],
-              ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 20),
+
+          // Floating Cart History Section
+          const Text(
+            'Pinned Shopping Items',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 10),
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _shoppingCartHistory.length,
+            itemBuilder: (context, index) {
+              final item = _shoppingCartHistory[index];
+              return Card(
+                color: const Color(0xFF1E293B),
+                margin: const EdgeInsets.only(bottom: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: ListTile,
+              );
+            },
+          ),
+        ],
       ),
     );
   }
 }
 
-// -----------------------------------------------------------------------------
-// TAB 3: SOCIAL RESCUE & FAKE CALL SIMULATOR
-// -----------------------------------------------------------------------------
-class SocialRescueTab extends StatefulWidget {
-  final VoidCallback onTriggerCall;
-  const SocialRescueTab({Key? key, required this.onTriggerCall}) : super(key: key);
-
-  @override
-  State<SocialRescueTab> createState() => _SocialRescueTabState();
-}
-
-class _SocialRescueTabState extends State<SocialRescueTab> {
-  String _selectedCaller = "Urgent Work Call";
-  int _delaySeconds = 3;
-  bool _isCountdownActive = false;
-  int _currentCountdown = 0;
-
-  final List<String> _callerPresets = [
-    "Urgent Work Call",
-    "Landlord Inspection",
-    "Doctor Appointment",
-    "Family Emergency",
-    "Delivery Driver",
-  ];
-
-  void _startTimerAndTrigger() async {
-    setState(() {
-      _isCountdownActive = true;
-      _currentCountdown = _delaySeconds;
-    });
-
-    for (int i = _delaySeconds; i > 0; i--) {
-      await Future.delayed(const Duration(seconds: 1));
-      if (!mounted) return;
-      setState(() {
-        _currentCountdown = i - 1;
-      });
-    }
-
-    if (mounted) {
-      setState(() {
-        _isCountdownActive = false;
-      });
-      widget.onTriggerCall();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+// Helper Widget extension to keep ListTile concise & clean
+extension CustomListTile on ListTile {
+  static Widget buildItem(
+      Map<String, String> item, VoidCallback onDelete) {
+    return Card(
+      color: const Color(0xFF1E293B),
+      margin: const EdgeInsets.only(bottom: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Row(
           children: [
-            Row(
-              children: [
-                const Icon(Icons.phone_callback, color: Colors.greenAccent, size: 28),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    "Social Awkwardness Rescue",
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
+            const CircleAvatar(
+              backgroundColor: Colors.teal,
+              radius: 18,
+              child: Icon(Icons.check, color: Colors.white, size: 18),
             ),
-            const SizedBox(height: 4),
-            const Text(
-              "Trigger a realistic incoming emergency call to politely excuse yourself.",
-              style: TextStyle(color: Colors.white70, fontSize: 13),
-            ),
-            const SizedBox(height: 20),
-
-            const Text(
-              "Select Caller Identity:",
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-
-            Column(
-              children: _callerPresets.map((caller) {
-                final isSelected = caller == _selectedCaller;
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      side: BorderSide(
-                        color: isSelected ? Colors.greenAccent : Colors.white70,
-                      ),
-                    ),
-                    tileColor: const Color(0xFF1B1E2F),
-                    leading: Icon(
-                      Icons.person_pin,
-                      color: isSelected ? Colors.greenAccent : Colors.white70,
-                    ),
-                    title: Text(
-                      caller,
-                      style: const TextStyle(color: Colors.white, fontSize: 14),
-                    ),
-                    trailing: isSelected
-                        ? const Icon(Icons.check_circle, color: Colors.greenAccent)
-                        : null,
-                    onTap: () => setState(() => _selectedCaller = caller),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 16),
-
-            const Text(
-              "Trigger Delay:",
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [3, 5, 10, 30].map((sec) {
-                final isSelected = _delaySeconds == sec;
-                return ChoiceChip(
-                  label: Text("${sec}s Delay"),
-                  selected: isSelected,
-                  selectedColor: Colors.green,
-                  backgroundColor: const Color(0xFF23273B),
-                  labelStyle: TextStyle(
-                    color: isSelected ? Colors.white : Colors.white70,
-                  ),
-                  onSelected: (v) {
-                    if (v) setState(() => _delaySeconds = sec);
-                  },
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 24),
-
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _isCountdownActive ? Colors.orange : Colors.green,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: _isCountdownActive ? null : _startTimerAndTrigger,
-                icon: Icon(
-                  _isCountdownActive ? Icons.hourglass_top : Icons.ring_volume,
-                  color: Colors.white,
-                ),
-                label: Text(
-                  _isCountdownActive
-                      ? "Rescue incoming in $_currentCountdown seconds..."
-                      : "Trigger Fake Call Now",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// -----------------------------------------------------------------------------
-// FAKE INCOMING CALL OVERLAY SCREEN
-// -----------------------------------------------------------------------------
-class FakeIncomingCallScreen extends StatelessWidget {
-  const FakeIncomingCallScreen({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const SizedBox(height: 40),
-            Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.indigo.shade900,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.person, size: 64, color: Colors.white),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  "Urgent Work Call",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  "Incoming Rescue Call...",
-                  style: TextStyle(color: Colors.white70, fontSize: 14),
-                ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.all(40.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Decline Button
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.call_end, color: Colors.white, size: 32),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text("Decline", style: TextStyle(color: Colors.white70)),
-                      ],
+                  Text(
+                    item['title'] ?? '',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-
-                  // Accept Button
-                  GestureDetector(
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Call Answered! Take your exit opportunity now."),
-                        ),
-                      );
-                      Navigator.pop(context);
-                    },
-                    child: Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: const BoxDecoration(
-                            color: Colors.green,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.call, color: Colors.white, size: 32),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text("Accept", style: TextStyle(color: Colors.white70)),
-                      ],
+                  const SizedBox(height: 2),
+                  Text(
+                    'Saved: ${item['saved']}',
+                    style: const TextStyle(
+                      color: Colors.orangeAccent,
+                      fontSize: 12,
                     ),
                   ),
                 ],
+              ),
+            ),
+            Text(
+              item['price'] ?? '',
+              style: const TextStyle(
+                color: Colors.tealAccent,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
               ),
             ),
           ],
@@ -1006,183 +835,608 @@ class FakeIncomingCallScreen extends StatelessWidget {
   }
 }
 
-// -----------------------------------------------------------------------------
-// TAB 4: SYSTEM OVERLAY & CLIPBOARD HUB
-// -----------------------------------------------------------------------------
-class ClipboardAndOverlayTab extends StatefulWidget {
-  final bool overlayEnabled;
-  final bool notificationEnabled;
-  final ValueChanged<bool> onToggleOverlay;
-  final ValueChanged<bool> onToggleNotification;
-
-  const ClipboardAndOverlayTab({
-    Key? key,
-    required this.overlayEnabled,
-    required this.notificationEnabled,
-    required this.onToggleOverlay,
-    required this.onToggleNotification,
-  }) : super(key: key);
+// -------------------------------------------------------------
+// TAB 3: Clipboard Vault & Micro-Notes Floating Pin
+// -------------------------------------------------------------
+class ClipboardVaultTab extends StatefulWidget {
+  const ClipboardVaultTab({super.key});
 
   @override
-  State<ClipboardAndOverlayTab> createState() => _ClipboardAndOverlayTabState();
+  State<ClipboardVaultTab> createState() => _ClipboardVaultTabState();
 }
 
-class _ClipboardAndOverlayTabState extends State<ClipboardAndOverlayTab> {
-  final List<String> _pinnedSnippets = [
-    "My Address: 742 Evergreen Terrace, Springfield",
-    "Tax ID / SSN: XX-XXX-9821",
-    "IBAN/Account: US91 2281 9901 2231 09",
-    "WiFi Pass: SecureGuest2025!",
-  ];
-
+class _ClipboardVaultTabState extends State<ClipboardVaultTab> {
   final TextEditingController _snippetController = TextEditingController();
+
+  final List<Map<String, String>> _clipboardVault = [
+    {
+      'title': 'Delivery Address',
+      'content': '742 Evergreen Terrace, Springfield, OR'
+    },
+    {'title': 'Banking Verification Code', 'content': 'OTP: 948201'},
+    {'title': 'Support Email Template', 'content': 'hello@overlayhud.app'},
+  ];
 
   void _addSnippet() {
     if (_snippetController.text.trim().isNotEmpty) {
       setState(() {
-        _pinnedSnippets.add(_snippetController.text.trim());
+        _clipboardVault.insert(0, {
+          'title': 'Pinned Snippet #${_clipboardVault.length + 1}',
+          'content': _snippetController.text.trim(),
+        });
         _snippetController.clear();
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Snippet Pinned to Floating Vault'),
+          backgroundColor: Colors.indigo,
+        ),
+      );
     }
+  }
+
+  void _copyToClipboard(String content) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Copied: "$content"'),
+        backgroundColor: Colors.teal,
+        duration: const Duration(seconds: 1),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.content_paste, color: Colors.tealAccent, size: 28),
+              SizedBox(width: 10),
+              Text(
+                'Clipboard Vault & Pins',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Keep verification codes, addresses, and quick snippets floating for 1-tap paste anywhere.',
+            style: TextStyle(color: Colors.grey, fontSize: 13),
+          ),
+          const SizedBox(height: 16),
+
+          // Snippet Quick Add Card
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E293B),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
               children: [
-                const Icon(Icons.layers, color: Colors.amberAccent, size: 28),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    "Dock & System Settings",
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                    overflow: TextOverflow.ellipsis,
+                TextField(
+                  controller: _snippetController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    hintText:
+                        'Type or paste text/OTP to float over other apps...',
+                    hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.edit, color: Colors.tealAccent),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _addSnippet,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.indigo,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    icon: const Icon(Icons.pin_drop, color: Colors.white),
+                    label: const Text(
+                      'Pin Snippet to Floating HUD',
+                      style: TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            const Text(
-              "Manage persistent overlay controls and 1-tap fast pinned clipboard snippets.",
-              style: TextStyle(color: Colors.white70, fontSize: 13),
-            ),
-            const SizedBox(height: 16),
+          ),
+          const SizedBox(height: 20),
 
-            // Switches
-            Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF1B1E2F),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  SwitchListTile(
-                    title: const Text("Display Above Apps (Floating Banner)", style: TextStyle(color: Colors.white)),
-                    subtitle: const Text("Simulates floating active shortcut dynamic widget", style: TextStyle(color: Colors.white70, fontSize: 11)),
-                    value: widget.overlayEnabled,
-                    activeColor: Colors.amberAccent,
-                    onChanged: widget.onToggleOverlay,
+          // Saved Vault Items
+          const Text(
+            'Floating Quick-Copy Vault',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _clipboardVault.length,
+            itemBuilder: (context, index) {
+              final item = _clipboardVault[index];
+              return Card(
+                color: const Color(0xFF1E293B),
+                margin: const EdgeInsets.only(bottom: 10),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(14.0),
+                  child: Row(
+                    children: [
+                      const CircleAvatar(
+                        backgroundColor: Colors.indigo,
+                        child: Icon(Icons.note_alt,
+                            color: Colors.white, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item['title'] ?? '',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              item['content'] ?? '',
+                              style: const TextStyle(
+                                color: Colors.tealAccent,
+                                fontSize: 13,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 2,
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.content_copy,
+                            color: Colors.amberAccent),
+                        onPressed: () =>
+                            _copyToClipboard(item['content'] ?? ''),
+                      ),
+                    ],
                   ),
-                  const Divider(color: Colors.white70, height: 1),
-                  SwitchListTile(
-                    title: const Text("Floating Notifications Permission", style: TextStyle(color: Colors.white)),
-                    subtitle: const Text("Enable emergency alert triggers & quick actions", style: TextStyle(color: Colors.white70, fontSize: 11)),
-                    value: widget.notificationEnabled,
-                    activeColor: Colors.amberAccent,
-                    onChanged: widget.onToggleNotification,
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// -------------------------------------------------------------
+// TAB 4: Widget Hub & Overlay Customizer
+// -------------------------------------------------------------
+class CustomizerTab extends StatefulWidget {
+  const CustomizerTab({super.key});
+
+  @override
+  State<CustomizerTab> createState() => _CustomizerTabState();
+}
+
+class _CustomizerTabState extends State<CustomizerTab> {
+  double _bubbleOpacity = 0.85;
+  double _bubbleSize = 56.0;
+  bool _hapticFeedback = true;
+  bool _autoExpandOnCopy = true;
+  Color _selectedThemeColor = Colors.teal;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.tune, color: Colors.tealAccent, size: 28),
+              SizedBox(width: 10),
+              Text(
+                'HUD Customizer Studio',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Personalize transparency, size, and floating behavior.',
+            style: TextStyle(color: Colors.grey, fontSize: 13),
+          ),
+          const SizedBox(height: 16),
+
+          // Opacity Slider Card
+          Card(
+            color: const Color(0xFF1E293B),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Overlay Transparency / Opacity',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '${(_bubbleOpacity * 100).toInt()}%',
+                        style: const TextStyle(
+                          color: Colors.tealAccent,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Slider(
+                    value: _bubbleOpacity,
+                    min: 0.3,
+                    max: 1.0,
+                    activeColor: Colors.teal,
+                    inactiveColor: Colors.grey,
+                    onChanged: (val) {
+                      setState(() {
+                        _bubbleOpacity = val;
+                      });
+                    },
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+          ),
+          const SizedBox(height: 12),
 
-            const Text(
-              "Pinned Quick Snippets (1-Tap Copy):",
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          // Size Slider Card
+          Card(
+            color: const Color(0xFF1E293B),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
             ),
-            const SizedBox(height: 8),
-
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _snippetController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(
-                      hintText: "Add snippet (Address, Account #)...",
-                      hintStyle: TextStyle(color: Colors.white70, fontSize: 12),
-                      filled: true,
-                      fillColor: Color(0xFF1B1E2F),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(10)),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton.filled(
-                  style: IconButton.styleFrom(backgroundColor: Colors.amberAccent),
-                  icon: const Icon(Icons.add, color: Colors.black),
-                  onPressed: _addSnippet,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            Column(
-              children: _pinnedSnippets.asMap().entries.map((entry) {
-                final idx = entry.key;
-                final text = entry.value;
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1B1E2F),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Icon(Icons.pin_drop, color: Colors.amberAccent, size: 18),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          text,
-                          style: const TextStyle(color: Colors.white, fontSize: 13),
-                          overflow: TextOverflow.ellipsis,
+                      const Text(
+                        'Floating Bubble Size',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.copy, color: Colors.white70, size: 18),
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text("Copied snippet: $text")),
-                          );
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.redAccent, size: 18),
-                        onPressed: () {
-                          setState(() {
-                            _pinnedSnippets.removeAt(idx);
-                          });
-                        },
+                      Text(
+                        '${_bubbleSize.toInt()} px',
+                        style: const TextStyle(
+                          color: Colors.tealAccent,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
-                );
-              }).toList(),
+                  Slider(
+                    value: _bubbleSize,
+                    min: 40.0,
+                    max: 80.0,
+                    activeColor: Colors.indigoAccent,
+                    inactiveColor: Colors.grey,
+                    onChanged: (val) {
+                      setState(() {
+                        _bubbleSize = val;
+                      });
+                    },
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 16),
+
+          // Bubble Color Theme Picker
+          const Text(
+            'Bubble Theme Accent',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              Colors.teal,
+              Colors.indigo,
+              Colors.deepOrange,
+              Colors.purple,
+              Colors.blue
+            ].map((color) {
+              final isSelected = _selectedThemeColor == color;
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedThemeColor = color;
+                  });
+                },
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    border: isSelected
+                        ? Border.all(color: Colors.white, width: 3)
+                        : null,
+                  ),
+                  child: isSelected
+                      ? const Icon(Icons.check, color: Colors.white)
+                      : null,
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 20),
+
+          // Feature Toggles
+          Card(
+            color: const Color(0xFF1E293B),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: const Text(
+                    'Haptic Vibration Triggers',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  subtitle: const Text(
+                    'Vibrate slightly when tapping floating overlay',
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                  value: _hapticFeedback,
+                  activeColor: Colors.tealAccent,
+                  onChanged: (val) {
+                    setState(() {
+                      _hapticFeedback = val;
+                    });
+                  },
+                ),
+                const Divider(color: Colors.white70, height: 1),
+                SwitchListTile(
+                  title: const Text(
+                    'Auto Expand on Text Copy',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  subtitle: const Text(
+                    'Automatically open snippet vault when copying text',
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                  value: _autoExpandOnCopy,
+                  activeColor: Colors.tealAccent,
+                  onChanged: (val) {
+                    setState(() {
+                      _autoExpandOnCopy = val;
+                    });
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// -------------------------------------------------------------
+// TAB 5: Engagement Activity & Micro-Stats
+// -------------------------------------------------------------
+class EngagementStatsTab extends StatelessWidget {
+  const EngagementStatsTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.bolt, color: Colors.amberAccent, size: 28),
+              SizedBox(width: 10),
+              Text(
+                'Activity & Productivity Stats',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'See how much time OverlayHUD saved you today.',
+            style: TextStyle(color: Colors.grey, fontSize: 13),
+          ),
+          const SizedBox(height: 16),
+
+          // Summary Stats Cards Grid
+          GridView.count(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            childAspectRatio: 1.3,
+            children: [
+              _buildStatCard(
+                title: 'HUD Active Time',
+                value: '4h 12m',
+                subtitle: '+18% today',
+                icon: Icons.schedule,
+                color: Colors.teal,
+              ),
+              _buildStatCard(
+                title: 'App Switches Saved',
+                value: '64 Times',
+                subtitle: 'No back & forth',
+                icon: Icons.swap_horiz,
+                color: Colors.indigo,
+              ),
+              _buildStatCard(
+                title: 'Shopping Discounts',
+                value: '\$42.80',
+                subtitle: 'Saved this week',
+                icon: Icons.monetization_on,
+                color: Colors.green,
+              ),
+              _buildStatCard(
+                title: 'Snippets Pinned',
+                value: '29 Codes',
+                subtitle: 'Quick accessed',
+                icon: Icons.pin,
+                color: Colors.orange,
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // Daily Productivity Score Banner
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.amberAccent.withOpacity(0.5)),
+            ),
+            child: Row(
+              children: [
+                const CircleAvatar(
+                  backgroundColor: Colors.amber,
+                  radius: 24,
+                  child: Icon(Icons.star, color: Colors.black, size: 28),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        'Efficiency Score: 94%',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Top 5% OverlayHUD power user today!',
+                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard({
+    required String title,
+    required String value,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white70),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 20),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(color: Colors.grey, fontSize: 11),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: TextStyle(color: color, fontSize: 10),
+          ),
+        ],
       ),
     );
   }
