@@ -1,1093 +1,1043 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 void main() {
-  runApp(const QuickDockApp());
+  runApp(const ImpulseGuardApp());
 }
 
-class QuickDockApp extends StatelessWidget {
-  const QuickDockApp({super.key});
+class ImpulseGuardApp extends StatelessWidget {
+  const ImpulseGuardApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'QuickDock Studio',
+      title: 'ImpulseGuard',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
+        brightness: Brightness.dark,
+        primarySwatch: Colors.teal,
+        scaffoldBackgroundColor: const Color(0xFF12151E),
+        cardColor: const Color(0xFF1E2230),
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
-          brightness: Brightness.dark,
-        ),
-        scaffoldBackgroundColor: const Color(0xFF0F0E17),
       ),
-      home: const MainDockScreen(),
+      home: const MainHomeScreen(),
     );
   }
 }
 
-class MainDockScreen extends StatefulWidget {
-  const MainDockScreen({super.key});
+class SkippedItem {
+  final String name;
+  final double price;
+  final DateTime date;
 
-  @override
-  State<MainDockScreen> createState() => _MainDockScreenState();
+  SkippedItem({required this.name, required this.price, required this.date});
 }
 
-class _MainDockScreenState extends State<MainDockScreen>
-    with SingleTickerProviderStateMixin {
-  int _selectedTab = 0;
-  bool _overlayPermission = true;
-  bool _notificationPermission = true;
-  bool _isFloatingHudExpanded = false;
-  String _activeNotificationToast = '';
-  Offset _hudPosition = const Offset(20, 180);
-
-  // Stats for Engagement
-  int _cleanedLinksCount = 14;
-  int _styledTextCount = 38;
-  int _hoursSavedShopping = 12;
-
-  // Controllers
-  final TextEditingController _urlController = TextEditingController();
-  final TextEditingController _textStylerController = TextEditingController();
-  final TextEditingController _itemPriceController = TextEditingController();
-  final TextEditingController _hourlyWageController = TextEditingController();
-  final TextEditingController _itemNameController = TextEditingController();
-
-  // State Variables
-  String _cleanedUrlResult = '';
-  int _trackingParamsRemoved = 0;
-  String _calculatedWorkHours = '';
-  String _impulseAdvice = '';
-  Color _impulseAdviceColor = Colors.teal;
-
-  // Clipboard Snippets Data
-  final List<Map<String, String>> _snippets = [
-    {
-      'title': 'Home Address',
-      'content': 'No. 45, Palm Grove Avenue, High Street District',
-      'tag': 'Personal'
-    },
-    {
-      'title': 'Instagram Hashtag Pack',
-      'content': '#tech #flutter #productivity #tools #dailyhacks #design',
-      'tag': 'Social'
-    },
-    {
-      'title': 'Bank Account details',
-      'content': 'IBAN: US98 4400 1234 5678 9012 34 | Swift: DOCKUS33',
-      'tag': 'Finance'
-    },
-    {
-      'title': 'Quick Away Reply',
-      'content': 'Hey! In a deep focus session right now. Will reply shortly.',
-      'tag': 'Work'
-    },
-  ];
+class MainHomeScreen extends StatefulWidget {
+  const MainHomeScreen({super.key});
 
   @override
-  void initState() {
-    super.initState();
-    _urlController.text =
-        'https://example.com/product?id=99&utm_source=facebook&fbclid=IwAR231498172948&ref=ad_campaign';
-    _textStylerController.text = 'QuickDock Assistant';
-    _itemPriceController.text = '149.99';
-    _hourlyWageController.text = '18.50';
-    _itemNameController.text = 'Wireless Gaming Headset';
-    _calculateWorkHours();
+  State<MainHomeScreen> createState() => _MainHomeScreenState();
+}
+
+class _MainHomeScreenState extends State<MainHomeScreen> {
+  int _currentTabIndex = 0;
+
+  // Global Financial Data State
+  double _hourlyWage = 22.50;
+  double _itemPrice = 120.00;
+  String _itemName = "Smart Watch";
+
+  // Impulse Vault
+  final List<SkippedItem> _savedItems = [
+    SkippedItem(
+      name: "Designer Shoes",
+      price: 180.0,
+      date: DateTime.now().subtract(const Duration(days: 1)),
+    ),
+    SkippedItem(
+      name: "Late Night Fast Food",
+      price: 35.0,
+      date: DateTime.now().subtract(const Duration(days: 2)),
+    ),
+  ];
+
+  // System Floating Overlay State Simulation
+  bool _isFloatingOverlayActive = true;
+  bool _showMiniFloatingWindow = false;
+
+  // Decision Matrix State
+  int _q1NeedVsWant = 1; // 0: Need, 1: Want
+  int _q2Frequency = 1; // 0: Daily, 1: Weekly, 2: Rarely
+  bool _q3CanBuyTwice = false;
+  bool _q4Wait24Hours = false;
+
+  double get _totalMoneySaved =>
+      _savedItems.fold(0.0, (sum, item) => sum + item.price);
+
+  double get _hoursRequired =>
+      _hourlyWage > 0 ? (_itemPrice / _hourlyWage) : 0;
+
+  double get _daysOfWork => _hoursRequired / 8.0;
+
+  double get _futureValue5Yr => _itemPrice * 1.40; // ~7% annual return compound
+
+  int get _impulseScore {
+    int score = 100;
+    if (_q1NeedVsWant == 1) score -= 30;
+    if (_q2Frequency == 2) score -= 25;
+    if (!_q3CanBuyTwice) score -= 25;
+    if (!_q4Wait24Hours) score -= 20;
+    return score.clamp(0, 100);
   }
 
-  void _showNotification(String message) {
+  void _addSavedItem(String name, double price) {
     setState(() {
-      _activeNotificationToast = message;
-    });
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted && _activeNotificationToast == message) {
-        setState(() {
-          _activeNotificationToast = '';
-        });
-      }
-    });
-  }
-
-  void _sanitizeUrl() {
-    String input = _urlController.text.trim();
-    if (input.isEmpty) return;
-
-    try {
-      Uri uri = Uri.parse(input);
-      Map<String, String> originalParams = uri.queryParameters;
-      Map<String, String> cleanParams = Map.from(originalParams);
-
-      List<String> trackingKeys = [
-        'utm_source',
-        'utm_medium',
-        'utm_campaign',
-        'utm_term',
-        'utm_content',
-        'fbclid',
-        'gclid',
-        'ref',
-        'mc_eid',
-        'si'
-      ];
-
-      int removed = 0;
-      for (String key in trackingKeys) {
-        if (cleanParams.containsKey(key)) {
-          cleanParams.remove(key);
-          removed++;
-        }
-      }
-
-      Uri cleanedUri = Uri(
-        scheme: uri.scheme,
-        host: uri.host,
-        path: uri.path,
-        queryParameters: cleanParams.isEmpty ? null : cleanParams,
+      _savedItems.insert(
+        0,
+        SkippedItem(name: name, price: price, date: DateTime.now()),
       );
-
-      setState(() {
-        _cleanedUrlResult = cleanedUri.toString();
-        _trackingParamsRemoved = removed;
-        _cleanedLinksCount++;
-      });
-      _showNotification(
-          'Privacy Shield: Removed $removed tracking parameters!');
-    } catch (e) {
-      setState(() {
-        _cleanedUrlResult = input;
-        _trackingParamsRemoved = 0;
-      });
-    }
-  }
-
-  void _calculateWorkHours() {
-    double price = double.tryParse(_itemPriceController.text) ?? 0;
-    double wage = double.tryParse(_hourlyWageController.text) ?? 1;
-    if (wage <= 0) wage = 1;
-
-    double hours = price / wage;
-    setState(() {
-      _calculatedWorkHours = '${hours.toStringAsFixed(1)} Hours';
-      if (hours > 20) {
-        _impulseAdvice =
-            'HIGH IMPULSE RISK: Costs over half a working week! Sleep on it for 48 hours.';
-        _impulseAdviceColor = Colors.red;
-      } else if (hours > 8) {
-        _impulseAdvice =
-            'MODERATE VALUE: Requires a full 8-hour workday to earn this amount.';
-        _impulseAdviceColor = Colors.amber;
-      } else {
-        _impulseAdvice =
-            'REASONABLE COST: Less than a full workday. Enjoy your purchase!';
-        _impulseAdviceColor = Colors.teal;
-      }
     });
-  }
-
-  String _applyUnicodeStyle(String text, String style) {
-    if (text.isEmpty) return text;
-    StringBuffer buffer = StringBuffer();
-
-    for (int i = 0; i < text.length; i++) {
-      int code = text.codeUnitAt(i);
-      if (style == 'bold' && code >= 65 && code <= 90) {
-        buffer.write(String.fromCharCode(code + 119743));
-      } else if (style == 'bold' && code >= 97 && code <= 122) {
-        buffer.write(String.fromCharCode(code + 119737));
-      } else if (style == 'monospace' && code >= 65 && code <= 90) {
-        buffer.write(String.fromCharCode(code + 120367));
-      } else if (style == 'monospace' && code >= 97 && code <= 122) {
-        buffer.write(String.fromCharCode(code + 120361));
-      } else if (style == 'bubble' && code >= 65 && code <= 90) {
-        buffer.write(String.fromCharCode(code + 9333));
-      } else if (style == 'bubble' && code >= 97 && code <= 122) {
-        buffer.write(String.fromCharCode(code + 9327));
-      } else {
-        buffer.write(text[i]);
-      }
-    }
-    return buffer.toString();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.teal,
+        content: Text("🎉 Saved \$${price.toStringAsFixed(2)} into your Impulse Vault!"),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
+      body: Stack(
+        children: [
+          SafeArea(
+            child: IndexedStack(
+              index: _currentTabIndex,
               children: [
-                _buildHeaderBar(),
-                _buildPermissionStatusBanner(),
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildTabSelector(),
-                          const SizedBox(height: 16),
-                          if (_selectedTab == 0) _buildLinkSanitizerView(),
-                          if (_selectedTab == 1) _buildTextStylerView(),
-                          if (_selectedTab == 2) _buildImpulseShieldView(),
-                          if (_selectedTab == 3) _buildSnippetVaultView(),
-                          const SizedBox(height: 24),
-                          _buildEngagementFooter(),
-                          const SizedBox(height: 80), // Padding for floating HUD
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+                _buildLifeCostCalculatorTab(),
+                _buildDecisionEngineTab(),
+                _buildImpulseVaultTab(),
+                _buildFloatingSettingsTab(),
               ],
             ),
+          ),
 
-            // Top Floating Notification Toast
-            if (_activeNotificationToast.isNotEmpty)
-              Positioned(
-                top: 10,
-                left: 16,
-                right: 16,
-                child: Material(
-                  elevation: 8,
-                  borderRadius: BorderRadius.circular(12),
-                  color: Colors.teal.shade800,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    child: Row(
+          // Simulated Floating Overlay Assistant Bubble on Screen
+          if (_isFloatingOverlayActive)
+            Positioned(
+              right: 16,
+              bottom: 90,
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _showMiniFloatingWindow = !_showMiniFloatingWindow;
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.teal,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.teal.withOpacity(0.5),
+                        blurRadius: 12,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.widgets,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                ),
+              ),
+            ),
+
+          // Mini Floating Window Pop-Up Simulation
+          if (_showMiniFloatingWindow)
+            Positioned(
+              right: 20,
+              bottom: 150,
+              child: Container(
+                width: 280,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E2230),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.teal, width: 2),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black87,
+                      blurRadius: 20,
+                      spreadRadius: 5,
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Icon(Icons.bolt, color: Colors.amber),
-                        const SizedBox(width: 12),
-                        Expanded(
+                        const Expanded(
                           child: Text(
-                            _activeNotificationToast,
-                            style: const TextStyle(
+                            "Floating LifeCost Assistant",
+                            style: TextStyle(
                               color: Colors.white,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
                             ),
+                            overflow: TextOverflow.ellipsis,
                           ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _showMiniFloatingWindow = false;
+                            });
+                          },
+                          child: const Icon(Icons.close, color: Colors.grey, size: 18),
                         ),
                       ],
                     ),
-                  ),
-                ),
-              ),
-
-            // Interactive Floating Overlay HUD Dock
-            Positioned(
-              left: _hudPosition.dx,
-              top: _hudPosition.dy,
-              child: GestureDetector(
-                onPanUpdate: (details) {
-                  setState(() {
-                    _hudPosition += details.delta;
-                  });
-                },
-                child: Column(
-                  children: [
-                    if (_isFloatingHudExpanded)
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.deepPurple.shade900.withOpacity(0.95),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                              color: Colors.deepPurpleAccent, width: 1.5),
-                        ),
-                        child: Column(
-                          children: [
-                            _buildHudIconButton(Icons.link, 'Clean Link', 0),
-                            _buildHudIconButton(
-                                Icons.text_fields, 'Text Style', 1),
-                            _buildHudIconButton(
-                                Icons.calculate, 'Impulse Shield', 2),
-                            _buildHudIconButton(
-                                Icons.bookmark, 'Snippet Bank', 3),
-                          ],
-                        ),
+                    const Divider(color: Colors.white70, height: 16),
+                    Text(
+                      "Current: $_itemName (\$${_itemPrice.toStringAsFixed(0)})",
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.teal.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                    FloatingActionButton.extended(
-                      heroTag: 'hud_btn',
-                      backgroundColor: Colors.deepPurple,
-                      onPressed: () {
-                        setState(() {
-                          _isFloatingHudExpanded = !_isFloatingHudExpanded;
-                        });
-                      },
-                      icon: Icon(
-                        _isFloatingHudExpanded
-                            ? Icons.close
-                            : Icons.widgets,
-                        color: Colors.white,
+                      child: Row(
+                        children: [
+                          const Icon(Icons.schedule, color: Colors.teal, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              "Costs ${_hoursRequired.toStringAsFixed(1)} Work Hours",
+                              style: const TextStyle(
+                                color: Colors.tealAccent,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      label: const Text(
-                        'QuickDock HUD',
-                        style: TextStyle(
-                            color: Colors.white, FontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: () {
+                          _addSavedItem(_itemName, _itemPrice);
+                          setState(() {
+                            _showMiniFloatingWindow = false;
+                          });
+                        },
+                        child: const Text(
+                          "Skip & Save Money!",
+                          style: TextStyle(color: Colors.white, fontSize: 12),
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-          ],
-        ),
+        ],
       ),
-    );
-  }
-
-  Widget _buildHudIconButton(IconData icon, String label, int tabIndex) {
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _selectedTab = tabIndex;
-          _isFloatingHudExpanded = false;
-        });
-        _showNotification('Switched to $label mode');
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: Colors.tealAccent, size: 20),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeaderBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF161522),
-        border: Border(bottom: BorderSide(color: Colors.grey.shade800)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.deepPurple.shade700,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.widgets, color: Colors.tealAccent),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentTabIndex,
+        onTap: (index) {
+          setState(() {
+            _currentTabIndex = index;
+          });
+        },
+        selectedItemColor: Colors.tealAccent,
+        unselectedItemColor: Colors.grey,
+        backgroundColor: const Color(0xFF1E2230),
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calculate),
+            label: "Life Cost",
           ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'QuickDock Studio',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                Text(
-                  'Smart Floating Utility Dock',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
-                  ),
-                ),
-              ],
-            ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.stars),
+            label: "Decision Engine",
           ),
-          IconButton(
-            icon: const Icon(Icons.stars, color: Colors.amber),
-            onPressed: () {
-              _showNotification('Pro Floating Engine: Active & Ready');
-            },
+          BottomNavigationBarItem(
+            icon: Icon(Icons.monetization_on),
+            label: "Vault",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: "Floating HUD",
           ),
         ],
       ),
     );
   }
 
-  Widget _buildPermissionStatusBanner() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1D2B),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.teal.shade900),
-      ),
-      child: Row(
+  // --- TAB 1: LIFE COST CALCULATOR ---
+  Widget _buildLifeCostCalculatorTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.security, color: Colors.tealAccent, size: 20),
-          const SizedBox(width: 8),
-          const Expanded(
-            child: Text(
-              'Floating Dock Overlay Permissions',
-              style: TextStyle(fontSize: 13, color: Colors.white70),
-            ),
-          ),
-          Wrap(
-            spacing: 8,
+          // Header Widget
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              FilterChip(
-                selected: _overlayPermission,
-                label: const Text('Display Above Apps',
-                    style: TextStyle(fontSize: 11)),
-                onSelected: (val) {
-                  setState(() => _overlayPermission = val);
-                  _showNotification(
-                      val ? 'Overlay Activated' : 'Overlay Disabled');
-                },
-                selectedColor: Colors.deepPurple,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      "LifeCost Converter",
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      "Convert price tags into actual hours of labor",
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
               ),
-              FilterChip(
-                selected: _notificationPermission,
-                label: const Text('Floating Banner',
-                    style: TextStyle(fontSize: 11)),
-                onSelected: (val) {
-                  setState(() => _notificationPermission = val);
-                },
-                selectedColor: Colors.teal.shade700,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.teal.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.teal),
+                ),
+                child: Row(
+                  children: const [
+                    Icon(Icons.check, color: Colors.teal, size: 14),
+                    SizedBox(width: 4),
+                    Text(
+                      "Live Sync",
+                      style: TextStyle(color: Colors.teal, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
+          const SizedBox(height: 20),
 
-  Widget _buildTabSelector() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          _buildTabChip(0, 'Link Cleaner', Icons.link),
-          _buildTabChip(1, 'Font Styler', Icons.text_fields),
-          _buildTabChip(2, 'Impulse Shield', Icons.calculate),
-          _buildTabChip(3, 'Snippet Vault', Icons.bookmark),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabChip(int index, String label, IconData icon) {
-    bool isSelected = _selectedTab == index;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedTab = index),
-      child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.deepPurple : const Color(0xFF1E1D2B),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? Colors.tealAccent : Colors.grey.shade800,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(icon,
-                size: 16,
-                color: isSelected ? Colors.tealAccent : Colors.grey),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected ? Colors.white : Colors.grey,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // --- TAB 1: LINK SANITIZER ---
-  Widget _buildLinkSanitizerView() {
-    return Card(
-      color: const Color(0xFF1E1D2B),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.privacy_tip, color: Colors.tealAccent),
-                SizedBox(width: 8),
-                Text(
-                  'Privacy URL Cleaner & Tracker Stripper',
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Strips away utm_source, fbclid, affiliate tags, and tracking tokens from shared links.',
-              style: TextStyle(color: Colors.grey, fontSize: 13),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _urlController,
-              maxLines: 2,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
-              decoration: const InputDecoration(
-                labelText: 'Paste Link to Clean',
-                labelStyle: TextStyle(color: Colors.tealAccent),
-                border: OutlineInputBorder(),
-                filled: true,
-                fillColor: Color(0xFF161522),
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.teal.shade700,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                onPressed: _sanitizeUrl,
-                icon: const Icon(Icons.bolt, color: Colors.white),
-                label: const Text('Strip Trackers & Sanitize Link',
-                    style: TextStyle(
-                        color: Colors.white, FontWeight: FontWeight.bold)),
-              ),
-            ),
-            if (_cleanedUrlResult.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              const Divider(color: Colors.grey),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Icon(Icons.check_circle,
-                      color: Colors.greenAccent, size: 18),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Cleaned Link ($_trackingParamsRemoved Trackers Stripped):',
-                    style: const TextStyle(
-                        color: Colors.tealAccent, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF161522),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: SelectableText(
-                  _cleanedUrlResult,
-                  style: const TextStyle(color: Colors.white70, fontSize: 13),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        Clipboard.setData(
-                            ClipboardData(text: _cleanedUrlResult));
-                        _showNotification('Cleaned link copied to clipboard!');
-                      },
-                      icon: const Icon(Icons.content_copy, size: 16),
-                      label: const Text('Copy Clean URL'),
-                    ),
-                  ),
-                ],
-              ),
-            ]
-          ],
-        ),
-      ),
-    );
-  }
-
-  // --- TAB 2: UNICODE FONT STYLER ---
-  Widget _buildTextStylerView() {
-    return Card(
-      color: const Color(0xFF1E1D2B),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.text_fields, color: Colors.tealAccent),
-                SizedBox(width: 8),
-                Text(
-                  'Social Text Font Styler',
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Instantly format text for Instagram bios, WhatsApp messages, and TikTok captions.',
-              style: TextStyle(color: Colors.grey, fontSize: 13),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _textStylerController,
-              onChanged: (val) => setState(() {
-                _styledTextCount++;
-              }),
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                labelText: 'Enter Text to Style',
-                labelStyle: TextStyle(color: Colors.tealAccent),
-                border: OutlineInputBorder(),
-                filled: true,
-                fillColor: Color(0xFF161522),
-              ),
-            ),
-            const SizedBox(height: 16),
-            _buildFontCopyRow(
-                'Bold Format',
-                _applyUnicodeStyle(_textStylerController.text, 'bold')),
-            _buildFontCopyRow(
-                'Monospace Format',
-                _applyUnicodeStyle(_textStylerController.text, 'monospace')),
-            _buildFontCopyRow(
-                'Bubble Format',
-                _applyUnicodeStyle(_textStylerController.text, 'bubble')),
-            _buildFontCopyRow('UPPERCASE CLEAN',
-                _textStylerController.text.toUpperCase()),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFontCopyRow(String label, String formattedText) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF161522),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label,
-                    style: const TextStyle(color: Colors.grey, fontSize: 11)),
-                const SizedBox(height: 2),
-                Text(
-                  formattedText.isEmpty ? 'Sample Text' : formattedText,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600),
-                  softWrap: true,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.content_copy, color: Colors.tealAccent, size: 20),
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: formattedText));
-              _showNotification('Copied "$label" to clipboard!');
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- TAB 3: IMPULSE SHOPPING SHIELD ---
-  Widget _buildImpulseShieldView() {
-    return Card(
-      color: const Color(0xFF1E1D2B),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.calculate, color: Colors.tealAccent),
-                SizedBox(width: 8),
-                Text(
-                  'Impulse Purchase Work-Hour Shield',
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Before buying online, calculate how many hard work hours this item costs you.',
-              style: TextStyle(color: Colors.grey, fontSize: 13),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _itemNameController,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                labelText: 'Item Name',
-                labelStyle: TextStyle(color: Colors.tealAccent),
-                border: OutlineInputBorder(),
-                filled: true,
-                fillColor: Color(0xFF161522),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _itemPriceController,
-                    keyboardType: TextInputType.number,
-                    onChanged: (v) => _calculateWorkHours(),
-                    style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(
-                      labelText: 'Price (\$)',
-                      labelStyle: TextStyle(color: Colors.tealAccent),
-                      border: OutlineInputBorder(),
-                      filled: true,
-                      fillColor: Color(0xFF161522),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _hourlyWageController,
-                    keyboardType: TextInputType.number,
-                    onChanged: (v) => _calculateWorkHours(),
-                    style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(
-                      labelText: 'Hourly Wage (\$)',
-                      labelStyle: TextStyle(color: Colors.tealAccent),
-                      border: OutlineInputBorder(),
-                      filled: true,
-                      fillColor: Color(0xFF161522),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF161522),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _impulseAdviceColor),
-              ),
+          // User Income & Target Item Card
+          Card(
+            color: const Color(0xFF1E2230),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Real Cost in Work Labor:',
-                      style: TextStyle(color: Colors.grey, fontSize: 12)),
-                  const SizedBox(height: 4),
-                  Text(
-                    _calculatedWorkHours,
+                  const Text(
+                    "1. Item Details & Income Setup",
                     style: TextStyle(
-                      fontSize: 28,
+                      color: Colors.tealAccent,
                       fontWeight: FontWeight.bold,
-                      color: _impulseAdviceColor,
+                      fontSize: 14,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _impulseAdvice,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // --- TAB 4: SNIPPET VAULT ---
-  Widget _buildSnippetVaultView() {
-    return Card(
-      color: const Color(0xFF1E1D2B),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.bookmark, color: Colors.tealAccent),
-                    SizedBox(width: 8),
-                    Text(
-                      'Quick Clipboard Bank',
-                      style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white),
+                  const SizedBox(height: 12),
+                  TextField(
+                    decoration: const InputDecoration(
+                      labelText: "Item Name",
+                      prefixIcon: Icon(Icons.edit, color: Colors.teal),
+                      border: OutlineInputBorder(),
                     ),
-                  ],
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add, color: Colors.tealAccent),
-                  onPressed: () {
-                    _showAddSnippetDialog();
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'One-tap copy for your addresses, bank accounts, and hashtags.',
-              style: TextStyle(color: Colors.grey, fontSize: 13),
-            ),
-            const SizedBox(height: 12),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _snippets.length,
-              itemBuilder: (context, index) {
-                final item = _snippets[index];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF161522),
-                    borderRadius: BorderRadius.circular(10),
+                    onChanged: (val) {
+                      setState(() {
+                        _itemName = val.isEmpty ? "Target Purchase" : val;
+                      });
+                    },
                   ),
-                  child: Row(
+                  const SizedBox(height: 16),
+                  Row(
                     children: [
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.deepPurple.shade800,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    item['tag'] ?? 'General',
-                                    style: const TextStyle(
-                                        fontSize: 10, color: Colors.white),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  item['title'] ?? '',
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
                             Text(
-                              item['content'] ?? '',
-                              style: const TextStyle(
-                                  color: Colors.grey, fontSize: 12),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                              "Hourly Wage: \$${_hourlyWage.toStringAsFixed(2)}/hr",
+                              style: const TextStyle(color: Colors.white, fontSize: 13),
+                            ),
+                            Slider(
+                              value: _hourlyWage,
+                              min: 5.0,
+                              max: 150.0,
+                              divisions: 145,
+                              activeColor: Colors.teal,
+                              onChanged: (val) {
+                                setState(() {
+                                  _hourlyWage = val;
+                                });
+                              },
                             ),
                           ],
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.content_copy,
-                            color: Colors.tealAccent),
-                        onPressed: () {
-                          Clipboard.setData(
-                              ClipboardData(text: item['content'] ?? ''));
-                          _showNotification(
-                              'Copied "${item['title']}" to clipboard!');
-                        },
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Item Price: \$${_itemPrice.toStringAsFixed(0)}",
+                              style: const TextStyle(color: Colors.white, fontSize: 13),
+                            ),
+                            Slider(
+                              value: _itemPrice,
+                              min: 10.0,
+                              max: 2000.0,
+                              divisions: 199,
+                              activeColor: Colors.amber,
+                              onChanged: (val) {
+                                setState(() {
+                                  _itemPrice = val;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showAddSnippetDialog() {
-    TextEditingController titleCtrl = TextEditingController();
-    TextEditingController contentCtrl = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1D2B),
-        title: const Text('Add Quick Snippet',
-            style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleCtrl,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                labelText: 'Snippet Title',
-                labelStyle: TextStyle(color: Colors.tealAccent),
-                border: OutlineInputBorder(),
+                ],
               ),
             ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: contentCtrl,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                labelText: 'Text Content',
-                labelStyle: TextStyle(color: Colors.tealAccent),
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            child: const Text('Cancel'),
-            onPressed: () => Navigator.pop(context),
           ),
-          ElevatedButton(
-            backgroundColor: Colors.deepPurple,
-            child: const Text('Save Snippet',
-                style: TextStyle(color: Colors.white)),
-            onPressed: () {
-              if (titleCtrl.text.isNotEmpty && contentCtrl.text.isNotEmpty) {
-                setState(() {
-                  _snippets.add({
-                    'title': titleCtrl.text,
-                    'content': contentCtrl.text,
-                    'tag': 'Custom'
-                  });
-                });
-                Navigator.pop(context);
-                _showNotification('New snippet saved successfully!');
-              }
-            },
+          const SizedBox(height: 20),
+
+          // Real Life Impact Summary Cards
+          const Text(
+            "2. True Cost in Life Energy",
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          const SizedBox(height: 12),
+
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              _buildImpactMetricCard(
+                title: "Work Labor Needed",
+                value: "${_hoursRequired.toStringAsFixed(1)} Hours",
+                subtitle: "Equals ${_daysOfWork.toStringAsFixed(1)} full work days",
+                icon: Icons.schedule,
+                accentColor: Colors.amber,
+              ),
+              _buildImpactMetricCard(
+                title: "Opportunity Cost (5Y)",
+                value: "\$${_futureValue5Yr.toStringAsFixed(0)}",
+                subtitle: "Lost potential investment growth",
+                icon: Icons.monetization_on,
+                accentColor: Colors.redAccent,
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 20),
+
+          // Quick Action Bar
+          Card(
+            color: Colors.teal.withOpacity(0.15),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(color: Colors.teal),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.info, color: Colors.tealAccent),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          "Is buying '$_itemName' worth ${_hoursRequired.toStringAsFixed(1)} hours of your hard life?",
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.teal,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          onPressed: () => _addSavedItem(_itemName, _itemPrice),
+                          icon: const Icon(Icons.check, color: Colors.white),
+                          label: const Text(
+                            "I'll Pass & Save!",
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildEngagementFooter() {
+  Widget _buildImpactMetricCard({
+    required String title,
+    required String value,
+    required String subtitle,
+    required IconData icon,
+    required Color accentColor,
+  }) {
     return Container(
+      width: (MediaQuery.of(context).size.width / 2) - 22,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF161522),
+        color: const Color(0xFF1E2230),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade800),
+        border: Border.all(color: Colors.white70),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Today\'s Dock Productivity Insights',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13),
+          Icon(icon, color: accentColor, size: 28),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: const TextStyle(color: Colors.grey, fontSize: 11),
+          ),
+          const SizedBox(height: 4),
+          FittedBox(
+            child: Text(
+              value,
+              style: TextStyle(
+                color: accentColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
               ),
-              Icon(Icons.bolt, color: Colors.amber, size: 18),
-            ],
+            ),
           ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildStatItem('Clean Links', '$_cleanedLinksCount'),
-              _buildStatItem('Texts Styled', '$_styledTextCount'),
-              _buildStatItem('Hours Saved', '$_hoursSavedShopping h'),
-            ],
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: const TextStyle(color: Colors.white70, fontSize: 10),
+            softWrap: true,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 12),
-          // Simulated AdMob Banner Slot
+        ],
+      ),
+    );
+  }
+
+  // --- TAB 2: DECISION ENGINE ---
+  Widget _buildDecisionEngineTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Impulse Decision Matrix",
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            "Answer 4 quick micro-questions before tapping 'Buy'",
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          const SizedBox(height: 20),
+
+          // Dynamic Regret Gauge Card
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.black87,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.teal.shade900),
+              gradient: LinearGradient(
+                colors: _impulseScore > 60
+                    ? [Colors.teal.shade800, const Color(0xFF1E2230)]
+                    : [Colors.red.shade900, const Color(0xFF1E2230)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: _impulseScore > 60 ? Colors.teal : Colors.redAccent,
+              ),
             ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            child: Column(
               children: [
-                Icon(Icons.monetization_on, color: Colors.amber, size: 14),
-                SizedBox(width: 6),
+                const Text(
+                  "PURCHASE WISDOM SCORE",
+                  style: TextStyle(color: Colors.white70, fontSize: 11, letterSpacing: 1.2),
+                ),
+                const SizedBox(height: 8),
                 Text(
-                  'AdMob Placement: QuickDock Banner Active',
-                  style: TextStyle(color: Colors.grey, fontSize: 11),
+                  "$_impulseScore / 100",
+                  style: TextStyle(
+                    fontSize: 36,
+                    fontWeight: FontWeight.bold,
+                    color: _impulseScore > 60 ? Colors.tealAccent : Colors.redAccent,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _impulseScore > 60
+                      ? "✅ Safe Purchase: Low Regret Risk"
+                      : "⚠️ High Impulse Warning: Reconsider!",
+                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Question 1
+          _buildQuestionCard(
+            title: "1. Is this a Need or a Want?",
+            child: Row(
+              children: [
+                Expanded(
+                  child: ChoiceChip(
+                    label: const Text("Absolute Need"),
+                    selected: _q1NeedVsWant == 0,
+                    onSelected: (val) => setState(() => _q1NeedVsWant = 0),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ChoiceChip(
+                    label: const Text("Desire / Want"),
+                    selected: _q1NeedVsWant == 1,
+                    onSelected: (val) => setState(() => _q1NeedVsWant = 1),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Question 2
+          _buildQuestionCard(
+            title: "2. How often will you use this?",
+            child: Wrap(
+              spacing: 8,
+              children: [
+                ChoiceChip(
+                  label: const Text("Daily"),
+                  selected: _q2Frequency == 0,
+                  onSelected: (val) => setState(() => _q2Frequency = 0),
+                ),
+                ChoiceChip(
+                  label: const Text("Weekly"),
+                  selected: _q2Frequency == 1,
+                  onSelected: (val) => setState(() => _q2Frequency = 1),
+                ),
+                ChoiceChip(
+                  label: const Text("Rarely"),
+                  selected: _q2Frequency == 2,
+                  onSelected: (val) => setState(() => _q2Frequency = 2),
+                ),
+              ],
+            ),
+          ),
+
+          // Question 3
+          _buildQuestionCard(
+            title: "3. Can you buy this TWICE comfortably?",
+            child: SwitchListTile(
+              title: const Text("Yes, I have plenty of buffer.", style: TextStyle(fontSize: 13, color: Colors.white70)),
+              value: _q3CanBuyTwice,
+              activeColor: Colors.teal,
+              onChanged: (val) => setState(() => _q3CanBuyTwice = val),
+            ),
+          ),
+
+          // Question 4
+          _buildQuestionCard(
+            title: "4. Have you waited 24 hours?",
+            child: SwitchListTile(
+              title: const Text("Yes, cool-down period passed.", style: TextStyle(fontSize: 13, color: Colors.white70)),
+              value: _q4Wait24Hours,
+              activeColor: Colors.teal,
+              onChanged: (val) => setState(() => _q4Wait24Hours = val),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuestionCard({required String title, required Widget child}) {
+    return Card(
+      color: const Color(0xFF1E2230),
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(14.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- TAB 3: IMPULSE VAULT ---
+  Widget _buildImpulseVaultTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      "Impulse Saver Vault",
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      "Track money kept in your pocket",
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.add, color: Colors.tealAccent),
+                onPressed: () => _showAddCustomSavedDialog(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // Total Saved Hero Card
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF0F5A47), Color(0xFF1E2230)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.teal),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: const BoxDecoration(
+                    color: Colors.teal,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.monetization_on, color: Colors.white, size: 30),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "TOTAL SAVINGS PROTECTED",
+                        style: TextStyle(color: Colors.white70, fontSize: 11, letterSpacing: 1.1),
+                      ),
+                      const SizedBox(height: 4),
+                      FittedBox(
+                        child: Text(
+                          "\$${_totalMoneySaved.toStringAsFixed(2)}",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          const Text(
+            "Saved Purchases Log",
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+          ),
+          const SizedBox(height: 12),
+
+          if (_savedItems.isEmpty)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32.0),
+                child: Text(
+                  "No saved purchases yet! Skip an impulse buy to build your vault.",
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            )
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _savedItems.length,
+              itemBuilder: (context, index) {
+                final item = _savedItems[index];
+                return Card(
+                  color: const Color(0xFF1E2230),
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    leading: const CircleAvatar(
+                      backgroundColor: Colors.teal,
+                      child: Icon(Icons.check, color: Colors.white, size: 18),
+                    ),
+                    title: Text(
+                      item.name,
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    subtitle: Text(
+                      "${item.date.day}/${item.date.month}/${item.date.year}",
+                      style: const TextStyle(color: Colors.grey, fontSize: 11),
+                    ),
+                    trailing: Text(
+                      "+\$${item.price.toStringAsFixed(2)}",
+                      style: const TextStyle(
+                        color: Colors.tealAccent,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddCustomSavedDialog() {
+    String customName = "";
+    double customPrice = 0.0;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E2230),
+          title: const Text("Record Skipped Purchase", style: TextStyle(color: Colors.white)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                decoration: const InputDecoration(
+                  labelText: "Item Name",
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (val) => customName = val,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: "Price (\$) ",
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (val) => customPrice = double.tryParse(val) ?? 0.0,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+              onPressed: () {
+                if (customName.isNotEmpty && customPrice > 0) {
+                  _addSavedItem(customName, customPrice);
+                  Navigator.pop(context);
+                }
+              },
+              child: const Text("Save to Vault", style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // --- TAB 4: FLOATING HUD & SETTINGS ---
+  Widget _buildFloatingSettingsTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Floating Assistant HUD",
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            "Simulate floating overlay tools and floating quick-calculators",
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          const SizedBox(height: 20),
+
+          Card(
+            color: const Color(0xFF1E2230),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  SwitchListTile(
+                    title: const Text(
+                      "Display Floating Bubble Assistant",
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    subtitle: const Text(
+                      "Keep quick cost calculator accessible everywhere",
+                      style: TextStyle(color: Colors.grey, fontSize: 11),
+                    ),
+                    value: _isFloatingOverlayActive,
+                    activeColor: Colors.teal,
+                    onChanged: (val) {
+                      setState(() {
+                        _isFloatingOverlayActive = val;
+                      });
+                    },
+                  ),
+                  const Divider(color: Colors.white70),
+                  ListTile(
+                    leading: const Icon(Icons.widgets, color: Colors.tealAccent),
+                    title: const Text("Test Floating Alert Drawer", style: TextStyle(color: Colors.white, fontSize: 13)),
+                    trailing: ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+                      onPressed: () {
+                        setState(() {
+                          _showMiniFloatingWindow = !_showMiniFloatingWindow;
+                        });
+                      },
+                      child: const Text("Trigger HUD", style: TextStyle(color: Colors.white, fontSize: 11)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          const Text(
+            "Floating Assistant Features",
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+          ),
+          const SizedBox(height: 12),
+
+          _buildFeatureInfoTile(
+            icon: Icons.schedule,
+            title: "Real-Time Labor Conversion",
+            desc: "Instantly converts prices into real hours you must work.",
+          ),
+          _buildFeatureInfoTile(
+            icon: Icons.stars,
+            title: "Quick Regret Score",
+            desc: "Evaluates standard impulse decision matrices on the fly.",
+          ),
+          _buildFeatureInfoTile(
+            icon: Icons.monetization_on,
+            title: "One-Tap Vault Protection",
+            desc: "Logs avoided impulse purchases straight into your savings vault.",
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeatureInfoTile({required IconData icon, required String title, required String desc}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E2230),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white70),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.teal, size: 24),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  desc,
+                  style: const TextStyle(color: Colors.grey, fontSize: 11),
                 ),
               ],
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildStatItem(String label, String val) {
-    return Column(
-      children: [
-        Text(
-          val,
-          style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.tealAccent),
-        ),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 11, color: Colors.grey),
-        ),
-      ],
     );
   }
 }
