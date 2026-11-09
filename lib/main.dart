@@ -1,965 +1,1132 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(const OverlayPulseApp());
+  runApp(const BubblePilotApp());
 }
 
-class OverlayPulseApp extends StatelessWidget {
-  const OverlayPulseApp({super.key});
+class BubblePilotApp extends StatelessWidget {
+  const BubblePilotApp({super.key});
 
   @override
-  Widget build(BuildContext meContext) {
+  Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'OverlayPulse',
+      title: 'BubblePilot',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0F172A),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.teal,
-          brightness: Brightness.dark,
-          surface: const Color(0xFF1E293B),
+          seedColor: Colors.indigo,
+          brightness: Brightness.light,
         ),
-        cardTheme: CardThemeData(
-          color: const Color(0xFF1E293B),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          elevation: 4,
-        ),
+        scaffoldBackgroundColor: const Color(0xFFF4F6F9),
       ),
-      home: const MainScreen(),
+      home: const MainHomeScreen(),
     );
   }
 }
 
-class BubbleWidgetData {
-  String id;
-  String title;
-  String content;
-  IconData icon;
-  Color color;
-  Offset position;
-  bool isMinimized;
-
-  BubbleWidgetData({
-    required this.id,
-    required this.title,
-    required this.content,
-    required this.icon,
-    required this.color,
-    required this.position,
-    this.isMinimized = false,
-  });
-}
-
-class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+class MainHomeScreen extends StatefulWidget {
+  const MainHomeScreen({super.key});
 
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  State<MainHomeScreen> createState() => _MainHomeScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
-  int _currentIndex = 0;
+class _MainHomeScreenState extends State<MainHomeScreen> {
+  int _selectedIndex = 0;
+  bool _isFloatingOverlayActive = true;
+  Offset _bubblePosition = const Offset(20, 120);
 
-  // Hourly wage for impulse calculation
-  double _hourlyWage = 25.00;
-  final TextEditingController _wageController = TextEditingController(text: "25.00");
-  final TextEditingController _itemNameController = TextEditingController();
-  final TextEditingController _itemPriceController = TextEditingController();
-
-  // Calculated results
-  String _calculatedItem = "";
-  double _calculatedPrice = 0.0;
-  double _calculatedHours = 0.0;
-  String _calculatedRegretLevel = "";
-
-  // Floating Overlay Bubbles
-  final List<BubbleWidgetData> _bubbles = [
-    BubbleWidgetData(
-      id: "1",
-      title: "Impulse Guard",
-      content: "Sneakers: \$120 = 4.8 Work Hours",
-      icon: Icons.monetization_on,
-      color: Colors.teal,
-      position: const Offset(20, 80),
-    ),
-    BubbleWidgetData(
-      id: "2",
-      title: "Quick Snippet",
-      content: "Buy groceries at 6 PM & call Alex",
-      icon: Icons.lightbulb,
-      color: Colors.amber,
-      position: const Offset(40, 260),
-    ),
-    BubbleWidgetData(
-      id: "3",
-      title: "Micro Decision",
-      content: "Spin: Cook Dinner at Home!",
-      icon: Icons.touch_app,
-      color: Colors.purple,
-      position: const Offset(30, 440),
-    ),
-  ];
-
-  // Micro decision spinner options
-  final List<String> _decisionOptions = [
-    "Buy Now",
-    "Wait 24 Hours",
-    "Cook at Home",
-    "Skip Purchase",
-    "Do 10 Pushups",
-    "Take 5m Break"
-  ];
-  String _spottedDecision = "Tap Spin to Decide!";
-
-  // Permission Toggles
-  bool _overlayPermission = true;
-  bool _notificationPermission = true;
-  bool _smartPulseActive = true;
-  int _dailyPoints = 140;
+  // App State Data
+  String _activeContext = 'Work Mode';
+  int _dailyDecisionsCount = 14;
+  double _savedAmount = 145.50;
   int _streakDays = 5;
 
-  void _calculateImpulse() {
-    FocusScope.of(context).unfocus();
-    final double wage = double.tryParse(_wageController.text) ?? 25.0;
+  // Impulse Calculator Controllers
+  final TextEditingController _itemNameController = TextEditingController();
+  final TextEditingController _itemPriceController = TextEditingController();
+  final TextEditingController _hourlyWageController = TextEditingController();
+  double _calculatedHours = 0.0;
+  String _purchaseVerdict = '';
+
+  // Decision Tool State
+  final TextEditingController _dilemmaController = TextEditingController();
+  final List<String> _dilemmaOptions = ['Option A', 'Option B'];
+  final TextEditingController _newOptionController = TextEditingController();
+  String _chosenOption = '';
+  bool _isSpinning = false;
+
+  // Anti-Procrastination Micro Task Generator
+  final TextEditingController _bigTaskController = TextEditingController();
+  List<String> _generatedMicroSteps = [];
+
+  // Scratchpad Data
+  final TextEditingController _noteInputController = TextEditingController();
+  final List<Map<String, dynamic>> _notes = [
+    {
+      'id': '1',
+      'title': 'Compare grocery unit prices',
+      'category': 'Shopping Mode',
+      'completed': false,
+      'time': '10:30 AM'
+    },
+    {
+      'id': '2',
+      'title': 'Send 1-page update to client',
+      'category': 'Work Mode',
+      'completed': true,
+      'time': '09:15 AM'
+    },
+    {
+      'id': '3',
+      'title': 'Check flight luggage limits',
+      'category': 'Travel Mode',
+      'completed': false,
+      'time': 'Yesterday'
+    },
+  ];
+
+  @override
+  void dispose() {
+    _itemNameController.dispose();
+    _itemPriceController.dispose();
+    _hourlyWageController.dispose();
+    _dilemmaController.dispose();
+    _newOptionController.dispose();
+    _bigTaskController.dispose();
+    _noteInputController.dispose();
+    super.dispose();
+  }
+
+  void _calculateImpulseCost() {
     final double price = double.tryParse(_itemPriceController.text) ?? 0.0;
-    final String name = _itemNameController.text.trim().isEmpty
-        ? "Selected Item"
-        : _itemNameController.text.trim();
+    final double wage = double.tryParse(_hourlyWageController.text) ?? 0.0;
 
-    if (price <= 0) return;
+    if (price <= 0 || wage <= 0) {
+      setState(() {
+        _calculatedHours = 0.0;
+        _purchaseVerdict = 'Please enter valid numbers.';
+      });
+      return;
+    }
 
-    final double hours = price / (wage <= 0 ? 1 : wage);
-    String regret = "LOW RISK";
+    final double hours = price / wage;
+    String verdict = '';
     if (hours > 20) {
-      regret = "CRITICAL REGRET RISK";
-    } else if (hours > 8) {
-      regret = "HIGH IMPULSE RISK";
-    } else if (hours > 3) {
-      regret = "MODERATE RISK";
+      verdict = '🛑 HIGH RISK: Costs over 20 hours of labor! Sleep on it for 48 hours.';
+    } else if (hours > 5) {
+      verdict = '⚠️ MODERATE: Costs $hours hours of work. Wait 24 hours before buying.';
+    } else {
+      verdict = '✅ LOW IMPACT: Costs under 5 hours of work. Fits budget safe zone.';
     }
 
     setState(() {
-      _hourlyWage = wage;
-      _calculatedItem = name;
-      _calculatedPrice = price;
       _calculatedHours = hours;
-      _calculatedRegretLevel = regret;
-      _dailyPoints += 15;
+      _purchaseVerdict = verdict;
+    });
+  }
+
+  void _generateMicroSteps() {
+    final task = _bigTaskController.text.trim();
+    if (task.isEmpty) return;
+
+    setState(() {
+      _generatedMicroSteps = [
+        '1️⃣ Spend 60 seconds gathering materials for "$task"',
+        '2️⃣ Write down just 3 key outcome bullet points',
+        '3️⃣ Set a 5-minute initial timer and start step 1 now',
+      ];
+    });
+  }
+
+  void _pickRandomDecision() {
+    if (_dilemmaOptions.isEmpty) return;
+    setState(() {
+      _isSpinning = true;
+      _chosenOption = 'Analyzing options...';
     });
 
-    // Add to floating canvas automatically
-    _addBubble(
-      name,
-      "\$$price = ${hours.toStringAsFixed(1)} hrs work ($regret)",
-      Icons.shopping_bag,
-      Colors.teal,
+    Future.delayed(const Duration(milliseconds: 700), () {
+      setState(() {
+        _isSpinning = false;
+        _dilemmaOptions.shuffle();
+        _chosenOption = _dilemmaOptions.first;
+        _dailyDecisionsCount++;
+      });
+    });
+  }
+
+  void _addScratchNote() {
+    final text = _noteInputController.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() {
+      _notes.insert(0, {
+        'id': DateTime.now().millisecondsSinceEpoch.toString(),
+        'title': text,
+        'category': _activeContext,
+        'completed': false,
+        'time': 'Just now',
+      });
+      _noteInputController.clear();
+    });
+  }
+
+  void _showOverlay QuickToolsModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+            top: 20,
+            left: 20,
+            right: 20,
+          ),
+          child: SafeArea(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: const [
+                          Icon(Icons.bolt, color: Colors.indigo),
+                          SizedBox(width: 8),
+                          Text(
+                            'Floating Quick Assistant',
+                            style: TextStyle(
+                              fontSize: 18,
+                              FontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                  const Divider(),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Active Mode Switcher',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      'Work Mode',
+                      'Shopping Mode',
+                      'Focus Mode',
+                      'Travel Mode'
+                    ].map((mode) {
+                      final isSelected = _activeContext == mode;
+                      return ChoiceChip(
+                        label: Text(mode),
+                        selected: isSelected,
+                        selectedColor: Colors.indigo.withOpacity(0.2),
+                        onSelected: (val) {
+                          if (val) {
+                            setState(() => _activeContext = mode);
+                            Navigator.pop(ctx);
+                          }
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Quick Action Scratchpad',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _noteInputController,
+                          decoration: const InputDecoration(
+                            hintText: 'Quick memo, code, or buy item...',
+                            border: OutlineInputBorder(),
+                            contentPadding:
+                                EdgeInsets.symmetric(horizontal: 12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.indigo,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: () {
+                          _addScratchNote();
+                          Navigator.pop(ctx);
+                        },
+                        child: const Icon(Icons.add),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
-  }
-
-  void _addBubble(String title, String content, IconData icon, Color color) {
-    setState(() {
-      _bubbles.add(
-        BubbleWidgetData(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          title: title,
-          content: content,
-          icon: icon,
-          color: color,
-          position: Offset(30.0 + (_bubbles.length * 10), 100.0 + (_bubbles.length * 15)),
-        ),
-      );
-    });
-  }
-
-  void _spinDecision() {
-    final random = Random();
-    final selected = _decisionOptions[random.nextInt(_decisionOptions.length)];
-    setState(() {
-      _spottedDecision = selected;
-      _dailyPoints += 10;
-    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final Size screenSize = MediaQuery.of(context).size;
+
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0F172A),
-        elevation: 0,
         title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.teal.withOpacity(0.2),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.bolt, color: Colors.tealAccent, size: 24),
-            ),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Text(
-                'OverlayPulse',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20,
-                  color: Colors.white,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.amber.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.amber.withOpacity(0.5)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.stars, color: Colors.amber, size: 16),
-                  const SizedBox(width: 4),
-                  Text(
-                    '$_dailyPoints pts',
-                    style: const TextStyle(
-                      color: Colors.amber,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
+          children: const [
+            Icon(Icons.widgets, color: Colors.indigo),
+            SizedBox(width: 8),
+            Text(
+              'BubblePilot',
+              style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ],
         ),
-      ),
-      body: SafeArea(
-        child: IndexedStack(
-          index: _currentIndex,
-          children: [
-            _buildFloatingCanvasTab(),
-            _buildImpulseGuardTab(),
-            _buildSnippetsTab(),
-            _buildPermissionsHubTab(),
-          ],
-        ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: const Color(0xFF1E293B),
-        selectedItemColor: Colors.tealAccent,
-        unselectedItemColor: Colors.grey,
-        showUnselectedLabels: true,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-        unselectedLabelStyle: const TextStyle(fontSize: 11),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.widgets),
-            label: 'Canvas',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.monetization_on),
-            label: 'Life-Cost',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.layers),
-            label: 'Snippets',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.security),
-            label: 'Pulse Guard',
-          ),
-        ],
-      ),
-    );
-  }
-
-  // TAB 1: Floating Canvas with Dynamic Floating Bubbles
-  Widget _buildFloatingCanvasTab() {
-    return Container(
-      color: const Color(0xFF0F172A),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Card(
-              color: const Color(0xFF1E293B),
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Row(
-                  children: [
-                    const Icon(Icons.touch_app, color: Colors.tealAccent, size: 28),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text(
-                            "Interactive Floating Overlay",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: Colors.white,
-                            ),
-                          ),
-                          Text(
-                            "Drag bubbles freely around the screen simulator.",
-                            style: TextStyle(fontSize: 11, color: Colors.grey),
-                            softWrap: true,
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.add_circle, color: Colors.tealAccent),
-                      onPressed: () {
-                        _addBubble(
-                          "Quick Note",
-                          "Tap to customize snippet text!",
-                          Icons.lightbulb,
-                          Colors.blue,
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              _isFloatingOverlayActive
+                  ? Icons.notifications_active
+                  : Icons.notifications_off,
+              color: _isFloatingOverlayActive ? Colors.indigo : Colors.grey,
             ),
-          ),
-          Expanded(
-            child: Stack(
-              children: [
-                // Simulated phone background grid design
-                Positioned.fill(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF182234),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.teal.withOpacity(0.3)),
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.dashboard_customize,
-                              size: 48, color: Colors.white.withOpacity(0.08)),
-                          const SizedBox(height: 8),
-                          Text(
-                            "SCREEN OVERLAY SIMULATOR",
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.15),
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.5,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+            tooltip: 'Toggle Floating Copilot Overlay',
+            onPressed: () {
+              setState(() {
+                _isFloatingOverlayActive = !_isFloatingOverlayActive;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    _isFloatingOverlayActive
+                        ? 'Floating Overlay Simulator Activated!'
+                        : 'Floating Overlay Deactivated.',
                   ),
-                ),
-                // Render Interactive Draggable Bubbles
-                ..._bubbles.map((bubble) {
-                  return Positioned(
-                    left: bubble.position.dx,
-                    top: bubble.position.dy,
-                    child: GestureDetector(
-                      onPanUpdate: (details) {
-                        setState(() {
-                          bubble.position = Offset(
-                            (bubble.position.dx + details.delta.dx).clamp(10.0, 260.0),
-                            (bubble.position.dy + details.delta.dy).clamp(10.0, 420.0),
-                          );
-                        });
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        width: bubble.isMinimized ? 54 : 220,
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: bubble.color.withOpacity(0.95),
-                          borderRadius: BorderRadius.circular(bubble.isMinimized ? 27 : 16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: bubble.color.withOpacity(0.4),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: bubble.isMinimized
-                            ? GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    bubble.isMinimized = false;
-                                  });
-                                },
-                                child: Center(
-                                  child: Icon(bubble.icon, color: Colors.white, size: 26),
-                                ),
-                              )
-                            : Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(bubble.icon, color: Colors.white, size: 18),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: Text(
-                                          bubble.title,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                            fontSize: 13,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                      InkWell(
-                                        onTap: () {
-                                          setState(() {
-                                            bubble.isMinimized = true;
-                                          });
-                                        },
-                                        child: const Icon(Icons.close,
-                                            color: Colors.white70, size: 16),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    bubble.content,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 11,
-                                    ),
-                                    softWrap: true,
-                                    maxLines: 3,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // TAB 2: Impulse Purchase Life-Cost Calculator
-  Widget _buildImpulseGuardTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Card(
-            color: const Color(0xFF1E293B),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: const [
-                      Icon(Icons.monetization_on, color: Colors.tealAccent, size: 24),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          "Impulse Purchase Life-Cost Converter",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    "Calculate how many hours of your life you must sacrifice to buy something before making an impulse decision.",
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                    softWrap: true,
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _wageController,
-                    keyboardType: TextInputType.number,
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
-                    decoration: const InputDecoration(
-                      labelText: "Your Hourly Income (\$/hr)",
-                      labelStyle: TextStyle(color: Colors.tealAccent, fontSize: 12),
-                      prefixIcon: Icon(Icons.account_balance_wallet, color: Colors.tealAccent),
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _itemNameController,
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
-                    decoration: const InputDecoration(
-                      labelText: "Item Name (e.g. Designer Jacket)",
-                      labelStyle: TextStyle(color: Colors.tealAccent, fontSize: 12),
-                      prefixIcon: Icon(Icons.shopping_bag, color: Colors.tealAccent),
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _itemPriceController,
-                    keyboardType: TextInputType.number,
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
-                    decoration: const InputDecoration(
-                      labelText: "Item Price (\$)",
-                      labelStyle: TextStyle(color: Colors.tealAccent, fontSize: 12),
-                      prefixIcon: Icon(Icons.attach_money, color: Colors.tealAccent),
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.teal,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: _calculateImpulse,
-                      icon: const Icon(Icons.calculate, color: Colors.white),
-                      label: const Text(
-                        "CONVERT TO WORK HOURS",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (_calculatedPrice > 0) ...[
-            const SizedBox(height: 16),
-            Card(
-              color: const Color(0xFF0F2942),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: const BorderSide(color: Colors.tealAccent, width: 1.5),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    Text(
-                      _calculatedItem.toUpperCase(),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.tealAccent,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        "${_calculatedHours.toStringAsFixed(1)} HOURS",
-                        style: const TextStyle(
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      "of direct work required to earn \$${_calculatedPrice.toStringAsFixed(2)}",
-                      style: const TextStyle(color: Colors.grey, fontSize: 12),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.redAccent.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.redAccent),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.warning_amber, color: Colors.redAccent, size: 16),
-                          const SizedBox(width: 6),
-                          Text(
-                            _calculatedRegretLevel,
-                            style: const TextStyle(
-                              color: Colors.redAccent,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(height: 16),
-          // Micro Decision Wheel Section
-          Card(
-            color: const Color(0xFF1E293B),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: const [
-                      Icon(Icons.touch_app, color: Colors.purpleAccent, size: 24),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          "Instant Micro Decision Spinner",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    "Stuck in decision fatigue? Spin for instant direction on everyday micro-actions.",
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                    softWrap: true,
-                  ),
-                  const SizedBox(height: 16),
-                  Center(
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.purple.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.purpleAccent.withOpacity(0.4)),
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                            _spottedDecision,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.purpleAccent,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 12),
-                          ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.purple,
-                            ),
-                            onPressed: _spinDecision,
-                            icon: const Icon(Icons.refresh, color: Colors.white),
-                            label: const Text(
-                              "SPIN DECISION",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // TAB 3: Active Snippets & Quick Floating Note Manager
-  Widget _buildSnippetsTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Expanded(
-                child: Text(
-                  "Active Floating Snippets",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.teal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
-                onPressed: () {
-                  _addBubble(
-                    "New Snippet",
-                    "Tap to edit snippet content",
-                    Icons.lightbulb,
-                    Colors.orange,
-                  );
-                },
-                icon: const Icon(Icons.add, size: 16, color: Colors.white),
-                label: const Text(
-                  "Add Snippet",
-                  style: TextStyle(color: Colors.white, fontSize: 12),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _bubbles.length,
-            itemBuilder: (context, index) {
-              final bubble = _bubbles[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 10),
-                color: const Color(0xFF1E293B),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: bubble.color.withOpacity(0.2),
-                    child: Icon(bubble.icon, color: bubble.color, size: 20),
-                  ),
-                  title: Text(
-                    bubble.title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      fontSize: 14,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text(
-                    bubble.content,
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
-                    softWrap: true,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          bubble.isMinimized ? Icons.visibility_off : Icons.visibility,
-                          color: Colors.tealAccent,
-                          size: 20,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            bubble.isMinimized = !bubble.isMinimized;
-                          });
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
-                        onPressed: () {
-                          setState(() {
-                            _bubbles.removeAt(index);
-                          });
-                        },
-                      ),
-                    ],
-                  ),
+                  duration: const Duration(seconds: 2),
                 ),
               );
             },
           ),
         ],
       ),
+      body: Stack(
+        children: [
+          // Main Body Tabs
+          SafeArea(
+            child: IndexedStack(
+              index: _selectedIndex,
+              children: [
+                _buildContextHubTab(),
+                _buildImpulseEvaluatorTab(),
+                _buildDecisionToolsTab(),
+                _buildScratchpadTab(),
+              ],
+            ),
+          ),
+
+          // Simulated Interactive Floating Copilot Bubble Overlay
+          if (_isFloatingOverlayActive)
+            Positioned(
+              left: _bubblePosition.dx.clamp(0, screenSize.width - 70),
+              top: _bubblePosition.dy.clamp(0, screenSize.height - 180),
+              child: GestureDetector(
+                onPanUpdate: (details) {
+                  setState(() {
+                    _bubblePosition += details.delta;
+                  });
+                },
+                onTap: _showOverlay QuickToolsModal,
+                child: Material(
+                  elevation: 8,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  color: Colors.indigo,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.bolt, color: Colors.amber, size: 20),
+                        const SizedBox(width: 6),
+                        Text(
+                          _activeContext.split(' ').first,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.open_in_full,
+                            color: Colors.white70, size: 14),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: (index) => setState(() => _selectedIndex = index),
+        selectedItemColor: Colors.indigo,
+        unselectedItemColor: Colors.grey,
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_max),
+            label: 'Hub',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.monetization_on),
+            label: 'Impulse Check',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.lightbulb),
+            label: 'Decisions',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.content_paste),
+            label: 'Scratchpad',
+          ),
+        ],
+      ),
     );
   }
 
-  // TAB 4: Permissions & Floating Controller Hub
-  Widget _buildPermissionsHubTab() {
+  // --- TAB 1: CONTEXT HUB & DASHBOARD ---
+  Widget _buildContextHubTab() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Gamified Retention Card
-          Card(
-            color: const Color(0xFF1E293B),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.flash_on, color: Colors.orangeAccent, size: 28),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Streak: $_streakDays Days Active",
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                            color: Colors.white,
-                          ),
+          // Dynamic Active Mode Banner
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Colors.indigo, Colors.purple],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'ACTIVE CONTEXT',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
                         ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          "Keep floating overlays active daily to earn decision streak points!",
-                          style: TextStyle(fontSize: 11, color: Colors.grey),
-                          softWrap: true,
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        const Icon(Icons.stars, color: Colors.amber, size: 18),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$_streakDays Day Streak',
+                          style: const TextStyle(
+                              color: Colors.white, fontWeight: FontWeight.bold),
                         ),
                       ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            "System Permissions Guard",
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Card(
-            color: const Color(0xFF1E293B),
-            child: Column(
-              children: [
-                SwitchListTile(
-                  activeColor: Colors.tealAccent,
-                  title: const Text(
-                    "Display Over Other Apps",
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                  ),
-                  subtitle: const Text(
-                    "Required to render floating decision bubbles on device screen.",
-                    style: TextStyle(fontSize: 11, color: Colors.grey),
-                  ),
-                  value: _overlayPermission,
-                  onChanged: (val) {
-                    setState(() => _overlayPermission = val);
-                  },
+                    )
+                  ],
                 ),
-                const Divider(height: 1, color: Colors.white70),
-                SwitchListTile(
-                  activeColor: Colors.tealAccent,
-                  title: const Text(
-                    "Smart Floating Notifications",
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                const SizedBox(height: 12),
+                Text(
+                  _activeContext,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
                   ),
-                  subtitle: const Text(
-                    "Receive contextual urge alerts and micro-decision triggers.",
-                    style: TextStyle(fontSize: 11, color: Colors.grey),
-                  ),
-                  value: _notificationPermission,
-                  onChanged: (val) {
-                    setState(() => _notificationPermission = val);
-                  },
                 ),
-                const Divider(height: 1, color: Colors.white70),
-                SwitchListTile(
-                  activeColor: Colors.tealAccent,
-                  title: const Text(
-                    "Background Pulse Service",
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                  ),
-                  subtitle: const Text(
-                    "Monitors impulse cooling timers in real-time.",
-                    style: TextStyle(fontSize: 11, color: Colors.grey),
-                  ),
-                  value: _smartPulseActive,
-                  onChanged: (val) {
-                    setState(() => _smartPulseActive = val);
-                  },
+                const SizedBox(height: 6),
+                const Text(
+                  'Floating Copilot active. Micro-tools optimized for your context.',
+                  style: TextStyle(color: Colors.white70, fontSize: 13),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
+
+          // Daily Stats Quick Overview
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  title: 'Decisions Simplified',
+                  value: '$_dailyDecisionsCount',
+                  icon: Icons.calculate,
+                  color: Colors.teal,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatCard(
+                  title: 'Impulse Money Saved',
+                  value: '\$${_savedAmount.toStringAsFixed(2)}',
+                  icon: Icons.attach_money,
+                  color: Colors.green,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          const Text(
+            'Context Switcher',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+
+          // Context Switcher Grid
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              _buildContextTile('Work Mode', Icons.work, Colors.blue),
+              _buildContextTile(
+                  'Shopping Mode', Icons.shopping_bag, Colors.orange),
+              _buildContextTile(
+                  'Focus Mode', Icons.center_focus_strong, Colors.purple),
+              _buildContextTile('Travel Mode', Icons.explore, Colors.teal),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // Quick Action Cards
+          const Text(
+            'Instant Micro-Tools',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
           Card(
-            color: const Color(0xFF1E293B),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: ListTile(
+              leading:
+                  const CircleAvatar(backgroundColor: Color(0xFFE8EAF6), child: Icon(Icons.bolt, color: Colors.indigo)),
+              title: const Text('Floating Overlay Status'),
+              subtitle: Text(
+                  _isFloatingOverlayActive ? 'Enabled & Draggable' : 'Disabled'),
+              trailing: Switch(
+                value: _isFloatingOverlayActive,
+                onChanged: (val) {
+                  setState(() => _isFloatingOverlayActive = val);
+                },
+              ),
+            ),
+          ),
+          Card(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: ListTile(
+              leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFFFF3E0),
+                  child: Icon(Icons.monetization_on, color: Colors.orange)),
+              title: const Text('Impulse Buy Time-Cost Calculator'),
+              subtitle:
+                  const Text('Evaluate if an item is worth your work hours'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () => setState(() => _selectedIndex = 1),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 8),
+          FittedBox(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+            softWrap: true,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContextTile(String mode, IconData icon, Color color) {
+    final bool isSelected = _activeContext == mode;
+    return GestureDetector(
+      onTap: () => setState(() => _activeContext = mode),
+      child: Container(
+        width: 160,
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withOpacity(0.12) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? color : Colors.grey.shade300,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: isSelected ? color : Colors.grey),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                mode,
+                style: TextStyle(
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected ? color : Colors.black87,
+                  fontSize: 13,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- TAB 2: IMPULSE BUY & VALUE EVALUATOR ---
+  Widget _buildImpulseEvaluatorTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Impulse Buy Time-Cost Evaluator',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Stop unnecessary spending by calculating how many actual labor hours an item costs you.',
+            style: TextStyle(color: Colors.grey, fontSize: 13),
+          ),
+          const SizedBox(height: 20),
+
+          // Input Form
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              children: [
+                TextField(
+                  controller: _itemNameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Item Name',
+                    hintText: 'e.g. Wireless Headphones',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.shopping_bag),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _itemPriceController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Item Price (\$)',
+                    hintText: 'e.g. 150',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.attach_money),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _hourlyWageController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Your Net Hourly Wage (\$)',
+                    hintText: 'e.g. 25',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.schedule),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.indigo,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: _calculateImpulseCost,
+                    child: const Text(
+                      'Evaluate Value vs Work Hours',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Result Card
+          if (_calculatedHours > 0 || _purchaseVerdict.isNotEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.indigo.shade50,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.indigo.shade200),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const Text(
+                    'Evaluation Result',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.indigo,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
                   Row(
-                    children: const [
-                      Icon(Icons.info, color: Colors.tealAccent, size: 20),
-                      SizedBox(width: 8),
-                      Text(
-                        "How OverlayPulse Solves Everyday Problems",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          fontSize: 13,
+                    children: [
+                      const Icon(Icons.timer, color: Colors.indigo, size: 36),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${_calculatedHours.toStringAsFixed(1)} Labor Hours Required',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const Text(
+                              'Work hours dedicated solely to this single item.',
+                              style: TextStyle(
+                                  fontSize: 12, color: Colors.black87),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    "1. Prevents financial regret by translating item costs directly into hours of life spent working.\n"
-                    "2. Keeps notes and snippets floating on screen while switching between mobile apps.\n"
-                    "3. Solves daily decision paralysis with instant micro-decision tools.",
-                    style: TextStyle(fontSize: 11, color: Colors.grey, height: 1.5),
-                    softWrap: true,
+                  const Divider(height: 24),
+                  Text(
+                    _purchaseVerdict,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: const Icon(Icons.check),
+                    label: const Text('Decided Not To Buy (Save Money)'),
+                    onPressed: () {
+                      final double saved =
+                          double.tryParse(_itemPriceController.text) ?? 0.0;
+                      setState(() {
+                        _savedAmount += saved;
+                        _itemPriceController.clear();
+                        _itemNameController.clear();
+                        _calculatedHours = 0.0;
+                        _purchaseVerdict =
+                            'Great decision! \$${saved.toStringAsFixed(2)} added to your saved score!';
+                      });
+                    },
                   ),
                 ],
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  // --- TAB 3: DECISION TOOLS & MICRO-STEP GENERATOR ---
+  Widget _buildDecisionToolsTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Micro-Decision Eliminator',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Stuck choosing between options? Let BubblePilot break decision fatigue.',
+            style: TextStyle(color: Colors.grey, fontSize: 13),
+          ),
+          const SizedBox(height: 20),
+
+          // Option Picker Card
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Add Dilemma Options',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _newOptionController,
+                        decoration: const InputDecoration(
+                          hintText: 'e.g. Order Salad vs Cook Pasta',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.indigo,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () {
+                        final val = _newOptionController.text.trim();
+                        if (val.isNotEmpty) {
+                          setState(() {
+                            _dilemmaOptions.add(val);
+                            _newOptionController.clear();
+                          });
+                        }
+                      },
+                      child: const Text('Add'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _dilemmaOptions.map((opt) {
+                    return Chip(
+                      label: Text(opt),
+                      onDeleted: () {
+                        setState(() {
+                          _dilemmaOptions.remove(opt);
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.purple,
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: _isSpinning
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Icon(Icons.casino),
+                    label: const Text('Eliminate & Decide For Me'),
+                    onPressed: _isSpinning ? null : _pickRandomDecision,
+                  ),
+                ),
+                if (_chosenOption.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      'Verdict: $_chosenOption',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.purple,
+                      ),
+                    ),
+                  ),
+                ]
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Procrastination 1-Min Step Builder
+          const Text(
+            '1-Minute Anti-Procrastination Builder',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Break heavy tasks down into 3 immediate micro-steps.',
+            style: TextStyle(color: Colors.grey, fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              children: [
+                TextField(
+                  controller: _bigTaskController,
+                  decoration: const InputDecoration(
+                    labelText: 'What task are you delaying?',
+                    hintText: 'e.g. Clean garage, write report...',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal,
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: const Icon(Icons.bolt),
+                    label: const Text('Generate 1-Min Micro Steps'),
+                    onPressed: _generateMicroSteps,
+                  ),
+                ),
+                if (_generatedMicroSteps.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Column(
+                    children: _generatedMicroSteps
+                        .map((step) => Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.check_circle_outline,
+                                      color: Colors.teal, size: 20),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      step,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w500),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ))
+                        .toList(),
+                  )
+                ]
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- TAB 4: QUICK SCRATCHPAD & CONTEXT LOGS ---
+  Widget _buildScratchpadTab() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Context Scratchpad',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Quick capture micro-notes in $_activeContext mode',
+            style: const TextStyle(color: Colors.grey, fontSize: 13),
+          ),
+          const SizedBox(height: 14),
+
+          // Add Note Field
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _noteInputController,
+                  decoration: const InputDecoration(
+                    hintText: 'Add instant note or scratch item...',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.indigo,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.all(14),
+                ),
+                onPressed: _addScratchNote,
+                child: const Icon(Icons.add),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Notes List
+          Expanded(
+            child: _notes.isEmpty
+                ? const Center(
+                    child: Text(
+                      'No scratchpad notes yet. Add one above!',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: _notes.length,
+                    itemBuilder: (ctx, index) {
+                      final item = _notes[index];
+                      final bool isDone = item['completed'] as bool;
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ListTile(
+                          leading: Checkbox(
+                            value: isDone,
+                            onChanged: (val) {
+                              setState(() {
+                                item['completed'] = val;
+                              });
+                            },
+                          ),
+                          title: Text(
+                            item['title'].toString(),
+                            style: TextStyle(
+                              decoration: isDone
+                                  ? TextDecoration.lineThrough
+                                  : TextDecoration.none,
+                              color: isDone ? Colors.grey : Colors.black87,
+                            ),
+                          ),
+                          subtitle: Text(
+                            '${item['category']} • ${item['time']}',
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete_outline,
+                                color: Colors.grey),
+                            onPressed: () {
+                              setState(() {
+                                _notes.removeAt(index);
+                              });
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
