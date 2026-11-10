@@ -1,1209 +1,1204 @@
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(const PulseBoardApp());
+  runApp(const OmniDockApp());
 }
 
-class PulseBoardApp extends StatelessWidget {
-  const PulseBoardApp({super.key});
+class OmniDockApp extends StatelessWidget {
+  const OmniDockApp({super.key});
 
   @override
-  Widget build(BuildContext meContext) {
+  Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'PulseBoard',
+      title: 'OmniDock Assist',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.indigo,
-          brightness: Brightness.light,
+          brightness: Brightness.dark,
         ),
-        scaffoldBackgroundColor: Colors.grey[100],
+        scaffoldBackgroundColor: const Color(0xFF0F172A),
       ),
-      home: const PulseBoardHomeScreen(),
+      home: const MainDockScreen(),
     );
   }
 }
 
-class PulseBoardHomeScreen extends StatefulWidget {
-  const PulseBoardHomeScreen({super.key});
+class SnippetItem {
+  final String id;
+  final String title;
+  final String content;
+  final String category;
+  final IconData icon;
 
-  @override
-  State<PulseBoardHomeScreen> meCreateState() => _PulseBoardHomeScreenState();
+  SnippetItem({
+    required this.id,
+    required this.title,
+    required this.content,
+    required this.category,
+    required this.icon,
+  });
 }
 
-class _PulseBoardHomeScreenState extends State<PulseBoardHomeScreen> {
-  int _activeTabIndex = 0;
+class MainDockScreen extends StatefulWidget {
+  const MainDockScreen({super.key});
 
-  // Global Overlay Simulation State
-  bool _isFloatingBubbleEnabled = true;
-  bool _hasOverlayPermission = true;
-  bool _hasNotificationPermission = true;
-  bool _isOverlayDrawerOpen = false;
+  @override
+  State<MainDockScreen> createState() => _MainDockScreenState();
+}
 
-  // Calculator State
-  double _monthlyIncome = 2400.0;
-  double _workingHoursPerWeek = 40.0;
-  double _itemPrice = 120.0;
-  double _discountPercent = 15.0;
+class _MainDockScreenState extends State<MainDockScreen> {
+  int _currentIndex = 0;
+  bool _isFloatingServiceActive = true;
+  bool _showFloatingOverlay = true;
+  Offset _bubbleOffset = const Offset(20, 200);
 
-  // Text Sanitizer & Tone State
-  final TextEditingController _linkController = TextEditingController(
-    text: 'https://store.example.com/item/8923?utm_source=social&utm_medium=click&affiliate=9931',
-  );
-  String _cleanedLink = '';
-  final TextEditingController _draftController = TextEditingController(
-    text: 'i am late for the meeting today because traffic was very heavy sorry',
-  );
-  String _selectedTone = 'Professional';
-  String _formattedToneOutput = '';
-
-  // Quick Currency Splitter State
-  double _billTotal = 85.0;
-  int _peopleCount = 3;
-  double _tipPercentage = 10.0;
-
-  // Clip Vault Items
-  final List<Map<String, String>> _vaultItems = [
-    {'title': 'Cleaned Link', 'content': 'https://store.example.com/item/8923', 'tag': 'Link'},
-    {'title': 'Client Reply', 'content': 'Dear team, I apologize for the delay due to unexpected traffic.', 'tag': 'Message'},
+  // Initial mock data for everyday utility
+  final List<SnippetItem> _snippets = [
+    SnippetItem(
+      id: '1',
+      title: 'Primary Bank Account',
+      content: 'ACC: 9876-5432-1098 | IFSC/Swift: OMNI0004',
+      category: 'Finance',
+      icon: Icons.monetization_on,
+    ),
+    SnippetItem(
+      id: '2',
+      title: 'Home Delivery Address',
+      content: '42 Lotus Avenue, 3rd Floor, Tech Park District, NY 10001',
+      category: 'Personal',
+      icon: Icons.home,
+    ),
+    SnippetItem(
+      id: '3',
+      title: 'Quick WhatsApp Response',
+      content: 'Hey! I am currently busy in a meeting. I will call you back shortly.',
+      category: 'Templates',
+      icon: Icons.chat,
+    ),
+    SnippetItem(
+      id: '4',
+      title: 'Promo Discount Code',
+      content: 'SAVE20NOW',
+      category: 'Shopping',
+      icon: Icons.discount,
+    ),
   ];
+
+  String _searchQuery = '';
+  String _selectedCategory = 'All';
+
+  // Shopping Calc controllers
+  final TextEditingController _priceController = TextEditingController(text: '150');
+  final TextEditingController _discountController = TextEditingController(text: '15');
+  final TextEditingController _taxController = TextEditingController(text: '8');
+
+  double _finalPrice = 0.0;
+  double _savedAmount = 0.0;
 
   @override
   void initState() {
     super.initState();
-    _cleanCurrentLink();
-    _generateToneText();
+    _calculateShopping();
   }
 
   @override
   void dispose() {
-    _linkController.dispose();
-    _draftController.dispose();
+    _priceController.dispose();
+    _discountController.dispose();
+    _taxController.dispose();
     super.dispose();
   }
 
-  void _cleanCurrentLink() {
-    final rawText = _linkController.text.trim();
-    if (rawText.contains('?')) {
-      setState(() {
-        _cleanedLink = rawText.split('?').first;
-      });
-    } else {
-      setState(() {
-        _cleanedLink = rawText;
-      });
-    }
-  }
+  void _calculateShopping() {
+    final double originalPrice = double.tryParse(_priceController.text) ?? 0.0;
+    final double discountPercent = double.tryParse(_discountController.text) ?? 0.0;
+    final double taxPercent = double.tryParse(_taxController.text) ?? 0.0;
 
-  void _generateToneText() {
-    final input = _draftController.text.trim();
-    if (input.isEmpty) {
-      setState(() {
-        _formattedToneOutput = '';
-      });
-      return;
-    }
-
-    String result = '';
-    if (_selectedTone == 'Professional') {
-      result = 'Dear Team,\n\nPlease be informed that: "$input". I appreciate your patience.\n\nBest regards.';
-    } else if (_selectedTone == 'Friendly') {
-      result = 'Hey there! 😊 Just wanted to let you know: $input. Thanks for understanding!';
-    } else if (_selectedTone == 'Urgent') {
-      result = '⚡ QUICK UPDATE: $input. Please take note immediately.';
-    } else {
-      result = '🚀 $input ✨ #Update #QuickNotes';
-    }
+    final double discountVal = originalPrice * (discountPercent / 100);
+    final double priceAfterDiscount = originalPrice - discountVal;
+    final double taxVal = priceAfterDiscount * (taxPercent / 100);
 
     setState(() {
-      _formattedToneOutput = result;
+      _savedAmount = discountVal;
+      _finalPrice = priceAfterDiscount + taxVal;
     });
   }
 
-  void _addCurrentToneToVault() {
-    if (_formattedToneOutput.isNotEmpty) {
-      setState(() {
-        _vaultItems.insert(0, {
-          'title': '$_selectedTone Draft',
-          'content': _formattedToneOutput,
-          'tag': 'Tone',
-        });
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Saved to Vault!')),
-      );
-    }
-  }
-
-  // Life Cost Calculations
-  double get _hourlyWage {
-    final weeklyHours = _workingHoursPerWeek <= 0 ? 40.0 : _workingHoursPerWeek;
-    final monthlyHours = weeklyHours * 4.33;
-    return _monthlyIncome / (monthlyHours > 0 ? monthlyHours : 1);
-  }
-
-  double get _finalItemPrice {
-    final discount = _itemPrice * (_discountPercent / 100.0);
-    return _itemPrice - discount;
-  }
-
-  double get _hoursOfWorkRequired {
-    if (_hourlyWage <= 0) return 0.0;
-    return _finalItemPrice / _hourlyWage;
-  }
-
-  double get _daysOfWorkRequired {
-    final dailyHours = _workingHoursPerWeek / 5.0;
-    if (dailyHours <= 0) return 0.0;
-    return _hoursOfWorkRequired / dailyHours;
-  }
-
-  String get _impulseRiskLevel {
-    final hours = _hoursOfWorkRequired;
-    if (hours > 20) return 'HIGH IMPULSE RISK';
-    if (hours > 8) return 'MEDIUM IMPULSE RISK';
-    return 'LOW IMPULSE RISK';
-  }
-
-  Color get _impulseRiskColor {
-    final hours = _hoursOfWorkRequired;
-    if (hours > 20) return Colors.red;
-    if (hours > 8) return Colors.orange;
-    return Colors.green;
-  }
-
-  @override
-  Widget build(BuildContext meContext) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.indigo,
-        foregroundColor: Colors.white,
-        elevation: 2,
-        title: Row(
-          children: const [
-            Icon(Icons.bubble_chart, color: Colors.amber),
-            SizedBox(width: 8),
-            Flexible(
+  void _copyToClipboard(String text, String label) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.green),
+            const SizedBox(width: 8),
+            Expanded(
               child: Text(
-                'PulseBoard Assistant',
-                softWrap: true,
+                'Copied $label to clipboard!',
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
               ),
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              _isFloatingBubbleEnabled ? Icons.layers : Icons.layers_clear,
-              color: Colors.amber,
-            ),
-            tooltip: 'Toggle Overlay Bubble',
-            onPressed: () {
-              setState(() {
-                _isFloatingBubbleEnabled = !_isFloatingBubbleEnabled;
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    _isFloatingBubbleEnabled
-                        ? 'Floating Assistant Enabled!'
-                        : 'Floating Assistant Disabled!',
-                  ),
-                  duration: const Duration(seconds: 1),
-                ),
-              );
-            },
-          ),
-        ],
+        duration: const Duration(seconds: 2),
+        backgroundColor: const Color(0xFF1E293B),
+        behavior: SnackBarBehavior.floating,
       ),
+    );
+  }
+
+  void _addNewSnippetModal() {
+    final titleCtrl = TextEditingController();
+    final contentCtrl = TextEditingController();
+    String category = 'Personal';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF1E293B),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+            left: 20,
+            right: 20,
+            top: 20,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Add Quick Snippet',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.grey),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: titleCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Snippet Title',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: contentCtrl,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Content / Text to copy',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                StatefulBuilder(
+                  builder: (context, setModalState) {
+                    return Wrap(
+                      spacing: 8,
+                      children: ['Personal', 'Finance', 'Shopping', 'Templates'].map((cat) {
+                        final isSelected = category == cat;
+                        return ChoiceChip(
+                          label: Text(cat),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            if (selected) {
+                              setModalState(() {
+                                category = cat;
+                              });
+                            }
+                          },
+                        );
+                      }).toList(),
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.indigo,
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Save Snippet'),
+                    onPressed: () {
+                      if (titleCtrl.text.isNotEmpty && contentCtrl.text.isNotEmpty) {
+                        setState(() {
+                          _snippets.insert(
+                            0,
+                            SnippetItem(
+                              id: DateTime.now().millisecondsSinceEpoch.toString(),
+                              title: titleCtrl.text,
+                              content: contentCtrl.text,
+                              category: category,
+                              icon: category == 'Finance'
+                                  ? Icons.monetization_on
+                                  : category == 'Shopping'
+                                      ? Icons.discount
+                                      : category == 'Templates'
+                                          ? Icons.chat
+                                          : Icons.bookmark,
+                            ),
+                          );
+                        });
+                        Navigator.pop(ctx);
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
       body: SafeArea(
         child: Stack(
           children: [
-            // Main Tab View
-            IndexedStack(
-              index: _activeTabIndex,
+            // Main Screen Body by Navigation Index
+            Column(
               children: [
-                _buildLifeCostTab(),
-                _buildSanitizerAndToneTab(),
-                _buildSplitAndToolsTab(),
-                _buildPermissionsAndSettingsTab(),
+                _buildHeader(),
+                Expanded(
+                  child: IndexedStack(
+                    index: _currentIndex,
+                    children: [
+                      _buildDashboardTab(),
+                      _buildSnippetVaultTab(),
+                      _buildShoppingCalcTab(),
+                      _buildFloatingOverlaySettingsTab(),
+                    ],
+                  ),
+                ),
               ],
             ),
 
-            // Simulated Floating Drawer Overlay
-            if (_isFloatingBubbleEnabled && _isOverlayDrawerOpen)
+            // Interactive Simulated Floating Overlay Bubble (Display Above Apps preview)
+            if (_showFloatingOverlay && _isFloatingServiceActive)
               Positioned(
-                bottom: 80,
-                right: 16,
-                left: 16,
-                child: Material(
-                  elevation: 12,
-                  borderRadius: BorderRadius.circular(16),
-                  color: Colors.indigo[900],
+                left: _bubbleOffset.dx,
+                top: _bubbleOffset.dy,
+                child: GestureDetector(
+                  onPanUpdate: (details) {
+                    setState(() {
+                      _bubbleOffset += details.delta;
+                    });
+                  },
+                  onTap: () {
+                    _showFloatingMenuDialog();
+                  },
                   child: Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.amber, width: 1.5),
+                      color: Colors.indigo.withOpacity(0.95),
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.4),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                      border: Border.all(color: Colors.tealAccent, width: 1.5),
                     ),
-                    child: Column(
+                    child: const Row(
                       mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.bolt, color: Colors.amber),
-                            const SizedBox(width: 8),
-                            const Expanded(
-                              child: Text(
-                                'PulseBoard Heads-Up Assistant',
-                                softWrap: true,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.close, color: Colors.white70, size: 20),
-                              onPressed: () {
-                                setState(() {
-                                  _isOverlayDrawerOpen = false;
-                                });
-                              },
-                            ),
-                          ],
+                        Icon(Icons.bolt, color: Colors.amber, size: 20),
+                        SizedBox(width: 6),
+                        Text(
+                          'OmniDock',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
                         ),
-                        const Divider(color: Colors.white70),
-                        const SizedBox(height: 4),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            ActionChip(
-                              avatar: const Icon(Icons.work, size: 16, color: Colors.indigo),
-                              label: Text('Work Hours: ${_hoursOfWorkRequired.toStringAsFixed(1)}h'),
-                              backgroundColor: Colors.white,
-                              onPressed: () {
-                                setState(() {
-                                  _activeTabIndex = 0;
-                                  _isOverlayDrawerOpen = false;
-                                });
-                              },
-                            ),
-                            ActionChip(
-                              avatar: const Icon(Icons.cleaning_services, size: 16, color: Colors.indigo),
-                              label: const Text('Clean URL'),
-                              backgroundColor: Colors.white,
-                              onPressed: () {
-                                setState(() {
-                                  _activeTabIndex = 1;
-                                  _isOverlayDrawerOpen = false;
-                                });
-                              },
-                            ),
-                            ActionChip(
-                              avatar: const Icon(Icons.calculate, size: 16, color: Colors.indigo),
-                              label: Text('Split: \$${(_billTotal / _peopleCount).toStringAsFixed(1)}/p'),
-                              backgroundColor: Colors.white,
-                              onPressed: () {
-                                setState(() {
-                                  _activeTabIndex = 2;
-                                  _isOverlayDrawerOpen = false;
-                                });
-                              },
-                            ),
-                          ],
-                        ),
+                        SizedBox(width: 4),
+                        Icon(Icons.touch_app, color: Colors.white70, size: 14),
                       ],
                     ),
                   ),
-                ),
-              ),
-
-            // Simulated Floating Assistant Bubble Button
-            if (_isFloatingBubbleEnabled)
-              Positioned(
-                bottom: 16,
-                right: 16,
-                child: FloatingActionButton.extended(
-                  heroTag: 'floatingAssistantBtn',
-                  backgroundColor: Colors.amber,
-                  foregroundColor: Colors.black,
-                  icon: const Icon(Icons.bubble_chart),
-                  label: Text(_isOverlayDrawerOpen ? 'Close Bar' : 'Quick Assist'),
-                  onPressed: () {
-                    setState(() {
-                      _isOverlayDrawerOpen = !_isOverlayDrawerOpen;
-                    });
-                  },
                 ),
               ),
           ],
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _activeTabIndex,
-        selectedItemColor: Colors.indigo,
-        unselectedItemColor: Colors.grey[600],
-        type: BottomNavigationBarType.fixed,
-        onTap: (index) {
+        currentIndex: _currentIndex,
+        onTap: (idx) {
           setState(() {
-            _activeTabIndex = index;
+            _currentIndex = idx;
           });
         },
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: const Color(0xFF1E293B),
+        selectedItemColor: Colors.tealAccent,
+        unselectedItemColor: Colors.grey,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.work_history),
-            label: 'Life Cost',
+            icon: Icon(Icons.layers),
+            label: 'Assist Hub',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.auto_fix_high),
-            label: 'Sanitizer',
+            icon: Icon(Icons.content_copy),
+            label: 'Snippets',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.calculate),
-            label: 'Split Pay',
+            label: 'Quick Calc',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.settings_suggest),
-            label: 'Assistant',
+            icon: Icon(Icons.settings),
+            label: 'Overlay Dock',
           ),
         ],
       ),
     );
   }
 
-  // TAB 1: VIRAL LIFE COST & DEAL ANALYZER
-  Widget _buildLifeCostTab() {
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      color: const Color(0xFF1E293B),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.indigo.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.widgets, color: Colors.tealAccent),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'OmniDock Assist',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                Text(
+                  _isFloatingServiceActive ? 'Screen Overlay: ACTIVE' : 'Screen Overlay: INACTIVE',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: _isFloatingServiceActive ? Colors.greenAccent : Colors.orangeAccent,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: _isFloatingServiceActive,
+            activeColor: Colors.tealAccent,
+            onChanged: (val) {
+              setState(() {
+                _isFloatingServiceActive = val;
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // TAB 1: Dashboard & Active Floating Status
+  Widget _buildDashboardTab() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Banner Card
           Container(
+            width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Colors.indigo, Colors.deepPurple],
+                colors: [Colors.indigo, Color(0xFF312E81)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white70),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'LIFE-COST & IMPULSE ANALYZER',
-                  style: TextStyle(
-                    color: Colors.amber,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                    letterSpacing: 1.1,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Is this item really worth your precious life hours?',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Your current hourly rate is calculated at \$${_hourlyWage.toStringAsFixed(2)}/hr.',
-                  style: const TextStyle(color: Colors.white70, fontSize: 13),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Inputs Section
-          Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '1. Financial Benchmarks',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Monthly Net Income: \$${_monthlyIncome.toStringAsFixed(0)}',
-                          softWrap: true,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Slider(
-                    value: _monthlyIncome,
-                    min: 500,
-                    max: 10000,
-                    divisions: 190,
-                    activeColor: Colors.indigo,
-                    onChanged: (val) {
-                      setState(() {
-                        _monthlyIncome = val;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Work Hours / Week: ${_workingHoursPerWeek.toStringAsFixed(0)}h',
-                          softWrap: true,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Slider(
-                    value: _workingHoursPerWeek,
-                    min: 10,
-                    max: 80,
-                    divisions: 70,
-                    activeColor: Colors.indigo,
-                    onChanged: (val) {
-                      setState(() {
-                        _workingHoursPerWeek = val;
-                      });
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Target Item Inputs
-          Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '2. Target Purchase Details',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Item Price: \$${_itemPrice.toStringAsFixed(0)}',
-                          softWrap: true,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Slider(
-                    value: _itemPrice,
-                    min: 5,
-                    max: 2000,
-                    divisions: 399,
-                    activeColor: Colors.deepPurple,
-                    onChanged: (val) {
-                      setState(() {
-                        _itemPrice = val;
-                      });
-                    },
-                  ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Discount / Coupon: ${_discountPercent.toStringAsFixed(0)}%',
-                          softWrap: true,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Slider(
-                    value: _discountPercent,
-                    min: 0,
-                    max: 75,
-                    divisions: 75,
-                    activeColor: Colors.deepPurple,
-                    onChanged: (val) {
-                      setState(() {
-                        _discountPercent = val;
-                      });
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Result Card (Life-Cost Breakdown)
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: _impulseRiskColor, width: 2),
-            ),
-            child: Column(
-              children: [
-                Row(
+                const Row(
                   children: [
-                    Icon(Icons.warning_amber, color: _impulseRiskColor),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _impulseRiskLevel,
-                        softWrap: true,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: _impulseRiskColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                    Icon(Icons.verified_user, color: Colors.tealAccent),
+                    SizedBox(width: 8),
+                    Text(
+                      'Universal Ambient Assistant',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
                   ],
                 ),
-                const Divider(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                const SizedBox(height: 8),
+                const Text(
+                  'Never leave your app to switch texts, check standard details, or compute discounts while messaging or online shopping.',
+                  style: TextStyle(fontSize: 13, color: Colors.white70),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
-                    Expanded(
-                      child: Column(
-                        children: [
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              '${_hoursOfWorkRequired.toStringAsFixed(1)} hrs',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 22,
-                                color: Colors.indigo,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Exact Work Hours',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
-                        ],
-                      ),
+                    Chip(
+                      avatar: const Icon(Icons.check, size: 16, color: Colors.tealAccent),
+                      label: const Text('Floating Dock Ready', style: TextStyle(fontSize: 11)),
+                      backgroundColor: Colors.black87,
                     ),
-                    Container(height: 40, width: 1, color: Colors.grey[300]),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              '${_daysOfWorkRequired.toStringAsFixed(1)} days',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 22,
-                                color: Colors.indigo,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Full Work Days',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
-                        ],
-                      ),
+                    Chip(
+                      avatar: const Icon(Icons.shield, size: 16, color: Colors.amberAccent),
+                      label: const Text('Local Data Secured', style: TextStyle(fontSize: 11)),
+                      backgroundColor: Colors.black87,
                     ),
                   ],
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.info_outline, color: Colors.indigo, size: 20),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'After a ${_discountPercent.toStringAsFixed(0)}% discount, you pay \$${_finalItemPrice.toStringAsFixed(2)}. You must work ${_hoursOfWorkRequired.toStringAsFixed(1)} hours solely to afford this!',
-                          softWrap: true,
-                          overflow: TextOverflow.clip,
-                          style: const TextStyle(fontSize: 12, color: Colors.black87),
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 80),
-        ],
-      ),
-    );
-  }
+          const SizedBox(height: 20),
 
-  // TAB 2: LINK SANITIZER & TONE TRANSFORMER
-  Widget _buildSanitizerAndToneTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Section 1: URL Tracker Cleaner
-          Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: const [
-                      Icon(Icons.cleaning_services, color: Colors.indigo),
-                      SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          'URL Tracker & Junk Cleaner',
-                          softWrap: true,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Strips UTM tags, affiliate tracking, and privacy-invading url queries instantly.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _linkController,
-                    onChanged: (_) => _cleanCurrentLink(),
-                    decoration: const InputDecoration(
-                      labelText: 'Paste Raw Web / Store Link',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.link),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.green[50],
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.green),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Cleaned Privacy-Safe URL:',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green),
-                        ),
-                        const SizedBox(height: 4),
-                        SelectableText(
-                          _cleanedLink.isEmpty ? 'No link provided' : _cleanedLink,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.copy, size: 16),
-                      label: const Text('Copy Clean Link'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.indigo,
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Clean URL Copied to Clipboard!')),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          const Text(
+            'Quick Action Dock Widgets',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
-          // Section 2: Text Tone Transformer
-          Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: const [
-                      Icon(Icons.psychology, color: Colors.deepPurple),
-                      SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          'AI Message Tone Transformer',
-                          softWrap: true,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Reformat messy thoughts into clean, presentable message drafts.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _draftController,
-                    maxLines: 3,
-                    onChanged: (_) => _generateToneText(),
-                    decoration: const InputDecoration(
-                      labelText: 'Type Quick Rough Thought',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    crossAxisAlignment: WrapCrossAxisAlignment.center,
-                    children: ['Professional', 'Friendly', 'Urgent', 'Casual Emoji'].map((tone) {
-                      final isSelected = _selectedTone == tone;
-                      return ChoiceChip(
-                        label: Text(tone),
-                        selected: isSelected,
-                        selectedColor: Colors.deepPurple,
-                        labelStyle: TextStyle(
-                          color: isSelected ? Colors.white : Colors.black87,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                        ),
-                        onSelected: (val) {
-                          if (val) {
-                            setState(() {
-                              _selectedTone = tone;
-                            });
-                            _generateToneText();
-                          }
-                        },
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.purple[50],
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.deepPurple.shade200),
-                    ),
-                    child: Text(
-                      _formattedToneOutput,
-                      softWrap: true,
-                      style: const TextStyle(fontSize: 13, height: 1.4),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      OutlinedButton.icon(
-                        icon: const Icon(Icons.bookmark_add, size: 16),
-                        label: const Text('Save to Vault'),
-                        onPressed: _addCurrentToneToVault,
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.copy, size: 16),
-                        label: const Text('Copy Draft'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.deepPurple,
-                          foregroundColor: Colors.white,
-                        ),
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Formatted Draft Copied!')),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 80),
-        ],
-      ),
-    );
-  }
-
-  // TAB 3: SPLIT PAY & SAVED VAULT
-  Widget _buildSplitAndToolsTab() {
-    final perPerson = (_billTotal * (1 + _tipPercentage / 100)) / (_peopleCount > 0 ? _peopleCount : 1);
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Quick Split Card
-          Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: const [
-                      Icon(Icons.monetization_on, color: Colors.teal),
-                      SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          'Quick Bill & Tip Splitter',
-                          softWrap: true,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Total Bill: \$${_billTotal.toStringAsFixed(0)}',
-                          softWrap: true,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Slider(
-                    value: _billTotal,
-                    min: 10,
-                    max: 500,
-                    divisions: 98,
-                    activeColor: Colors.teal,
-                    onChanged: (val) {
-                      setState(() {
-                        _billTotal = val;
-                      });
-                    },
-                  ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Split Between: $_peopleCount People',
-                          softWrap: true,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Slider(
-                    value: _peopleCount.toDouble(),
-                    min: 1,
-                    max: 15,
-                    divisions: 14,
-                    activeColor: Colors.teal,
-                    onChanged: (val) {
-                      setState(() {
-                        _peopleCount = val.toInt();
-                      });
-                    },
-                  ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Tip Amount: ${_tipPercentage.toStringAsFixed(0)}%',
-                          softWrap: true,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Slider(
-                    value: _tipPercentage,
-                    min: 0,
-                    max: 30,
-                    divisions: 30,
-                    activeColor: Colors.teal,
-                    onChanged: (val) {
-                      setState(() {
-                        _tipPercentage = val;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.teal[50],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.teal),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Each Person Pays:',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                        ),
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            '\$${perPerson.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 22,
-                              color: Colors.teal,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Saved Clip Vault
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // Grid of Quick Actions
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 1.4,
             children: [
-              const Text(
-                'Saved Clip Vault',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              _buildWidgetCard(
+                title: 'Copy Bank ID',
+                subtitle: '1-Tap clipboard paste',
+                icon: Icons.monetization_on,
+                color: Colors.teal,
+                onTap: () {
+                  _copyToClipboard('ACC: 9876-5432-1098', 'Bank Details');
+                },
               ),
-              Chip(
-                label: Text('${_vaultItems.length} items'),
-                backgroundColor: Colors.indigo[50],
+              _buildWidgetCard(
+                title: 'Copy Address',
+                subtitle: 'Delivery location',
+                icon: Icons.home,
+                color: Colors.purple,
+                onTap: () {
+                  _copyToClipboard('42 Lotus Avenue, 3rd Floor, NY', 'Address');
+                },
+              ),
+              _buildWidgetCard(
+                title: 'Instant Calc',
+                subtitle: 'Discount & tax floating matrix',
+                icon: Icons.calculate,
+                color: Colors.blue,
+                onTap: () {
+                  setState(() {
+                    _currentIndex = 2;
+                  });
+                },
+              ),
+              _buildWidgetCard(
+                title: 'Text Vault',
+                subtitle: '${_snippets.length} Saved Snippets',
+                icon: Icons.snippet_folder,
+                color: Colors.deepOrange,
+                onTap: () {
+                  setState(() {
+                    _currentIndex = 1;
+                  });
+                },
               ),
             ],
           ),
-          const SizedBox(height: 8),
 
-          if (_vaultItems.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(24.0),
-              child: Center(
-                child: Text('No clips saved yet. Add drafts or links above!'),
-              ),
-            )
-          else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _vaultItems.length,
-              itemBuilder: (context, index) {
-                final item = _vaultItems[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: Colors.indigo[100],
-                      child: Icon(
-                        item['tag'] == 'Link' ? Icons.link : Icons.message,
-                        color: Colors.indigo,
-                        size: 20,
-                      ),
-                    ),
-                    title: Text(
-                      item['title'] ?? 'Clip',
-                      softWrap: true,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Text(
-                      item['content'] ?? '',
-                      softWrap: true,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.red),
-                      onPressed: () {
-                        setState(() {
-                          _vaultItems.removeAt(index);
-                        });
-                      },
-                    ),
-                  ),
-                );
-              },
-            ),
-          const SizedBox(height: 80),
-        ],
-      ),
-    );
-  }
+          const SizedBox(height: 20),
 
-  // TAB 4: FLOATING ASSISTANT & PERMISSIONS HUB
-  Widget _buildPermissionsAndSettingsTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header Card
+          // Notification Style Status Pill
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.indigo[800],
-              borderRadius: BorderRadius.circular(16),
+              color: const Color(0xFF1E293B),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white70),
             ),
             child: Row(
               children: [
-                const Icon(Icons.tune, color: Colors.amber, size: 36),
+                const Icon(Icons.notifications_active, color: Colors.amber),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text(
-                        'Floating Screen Assistant',
-                        softWrap: true,
-                        overflow: TextOverflow.ellipsis,
+                    children: [
+                      const Text(
+                        'Floating Notification Pill Active',
                         style: TextStyle(
-                          color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                          fontSize: 14,
+                          color: Colors.white,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       Text(
-                        'Grant permissions to keep PulseBoard available over other apps for rapid micro-calculations.',
-                        softWrap: true,
-                        style: TextStyle(color: Colors.white70, fontSize: 12),
+                        _showFloatingOverlay
+                            ? 'Simulated persistent overlay widget visible on screen.'
+                            : 'Overlay icon hidden. Enable from Overlay Dock settings.',
+                        style: const TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                     ],
                   ),
                 ),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _showFloatingOverlay = !_showFloatingOverlay;
+                    });
+                  },
+                  child: Text(_showFloatingOverlay ? 'Hide' : 'Show'),
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
 
-          // Permission Controls
-          Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Column(
+  Widget _buildWidgetCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.4)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Row(
               children: [
-                SwitchListTile(
-                  title: const Text('Display Over Other Apps'),
-                  subtitle: const Text('Allows floating bubble quick access overlay'),
-                  secondary: const Icon(Icons.layers, color: Colors.indigo),
-                  value: _hasOverlayPermission,
-                  onChanged: (val) {
-                    setState(() {
-                      _hasOverlayPermission = val;
-                      _isFloatingBubbleEnabled = val;
-                    });
-                  },
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: color.withOpacity(0.2),
+                  child: Icon(icon, color: color, size: 18),
                 ),
-                const Divider(height: 1),
-                SwitchListTile(
-                  title: const Text('Smart Notification Head'),
-                  subtitle: const Text('Receive quick life-cost alerts & copy reminders'),
-                  secondary: const Icon(Icons.notifications, color: Colors.indigo),
-                  value: _hasNotificationPermission,
-                  onChanged: (val) {
-                    setState(() {
-                      _hasNotificationPermission = val;
-                    });
-                  },
-                ),
-                const Divider(height: 1),
-                SwitchListTile(
-                  title: const Text('Enable Floating Assistant Button'),
-                  subtitle: const Text('Show interactive bubble widget on screen'),
-                  secondary: const Icon(Icons.bubble_chart, color: Colors.amber),
-                  value: _isFloatingBubbleEnabled,
-                  onChanged: (val) {
-                    setState(() {
-                      _isFloatingBubbleEnabled = val;
-                    });
-                  },
-                ),
+                const Spacer(),
+                const Icon(Icons.arrow_forward_ios, color: Colors.white70, size: 12),
               ],
             ),
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 10),
+            Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 11, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-          // Tips Card
-          Card(
-            elevation: 2,
-            color: Colors.amber[50],
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    '💡 Why Keep Floating Assistant On?',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.black87),
+  // TAB 2: Snippet Vault
+  Widget _buildSnippetVaultTab() {
+    final filteredSnippets = _snippets.where((s) {
+      final matchesSearch = s.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          s.content.toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchesCategory = _selectedCategory == 'All' || s.category == _selectedCategory;
+      return matchesSearch && matchesCategory;
+    }).toList();
+
+    return Column(
+      children: [
+        // Search & Add Bar
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      onChanged: (val) {
+                        setState(() {
+                          _searchQuery = val;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Search snippets...',
+                        prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                        filled: true,
+                        fillColor: const Color(0xFF1E293B),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
                   ),
-                  SizedBox(height: 8),
-                  Text(
-                    'When browsing shopping apps or social media, tap the floating bubble to instantly calculate how many work hours an item costs or to clean shared links before sending to friends!',
-                    softWrap: true,
-                    style: TextStyle(fontSize: 12, height: 1.4, color: Colors.black87),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: _addNewSnippetModal,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.tealAccent,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.all(14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Icon(Icons.add, color: Colors.black),
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
+
+              // Category Filter Pills
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: ['All', 'Finance', 'Personal', 'Shopping', 'Templates'].map((cat) {
+                    final isSelected = _selectedCategory == cat;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: FilterChip(
+                        label: Text(cat),
+                        selected: isSelected,
+                        selectedColor: Colors.indigo,
+                        backgroundColor: const Color(0xFF1E293B),
+                        labelStyle: TextStyle(
+                          color: isSelected ? Colors.white : Colors.grey,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
+                        onSelected: (selected) {
+                          setState(() {
+                            _selectedCategory = cat;
+                          });
+                        },
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Snippet List
+        Expanded(
+          child: filteredSnippets.isEmpty
+              ? const Center(
+                  child: Text(
+                    'No snippets found. Tap + to create one!',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: filteredSnippets.length,
+                  itemBuilder: (ctx, index) {
+                    final item = filteredSnippets[index];
+                    return Card(
+                      color: const Color(0xFF1E293B),
+                      margin: const EdgeInsets.only(bottom: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: const BorderSide(color: Colors.white70),
+                      ),
+                      child: ListTile,
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  // Extension helper for ListTile formatting in Snippet Tab
+  Widget _buildSnippetCard(SnippetItem item) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white70),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(item.icon, color: Colors.tealAccent, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    item.title,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.indigo.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    item.category,
+                    style: const TextStyle(fontSize: 10, color: Colors.tealAccent),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              item.content,
+              style: const TextStyle(fontSize: 13, color: Colors.white70),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.grey, size: 20),
+                  onPressed: () {
+                    setState(() {
+                      _snippets.removeWhere((element) => element.id == item.id);
+                    });
+                  },
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  icon: const Icon(Icons.content_copy, size: 16),
+                  label: const Text('1-Tap Copy', style: TextStyle(fontSize: 12)),
+                  onPressed: () {
+                    _copyToClipboard(item.content, item.title);
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // TAB 3: Quick Shopping Discount & Tax Calculator Matrix
+  Widget _buildShoppingCalcTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E293B),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white70),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.shopping_bag, color: Colors.amber),
+                    SizedBox(width: 8),
+                    Text(
+                      'Live Discount & Tax Matrix',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Instantly compute real item price while shopping on Amazon, eBay, or store apps.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 16),
+
+                // Input fields
+                TextField(
+                  controller: _priceController,
+                  keyboardType: TextInputType.number,
+                  onChanged: (_) => _calculateShopping(),
+                  decoration: const InputDecoration(
+                    labelText: 'Original Price (\$)',
+                    prefixText: '\$ ',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _discountController,
+                        keyboardType: TextInputType.number,
+                        onChanged: (_) => _calculateShopping(),
+                        decoration: const InputDecoration(
+                          labelText: 'Discount %',
+                          suffixText: '%',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _taxController,
+                        keyboardType: TextInputType.number,
+                        onChanged: (_) => _calculateShopping(),
+                        decoration: const InputDecoration(
+                          labelText: 'Tax %',
+                          suffixText: '%',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 80),
+          const SizedBox(height: 16),
+
+          // Result Summary Card
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF047857), Color(0xFF065F46)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'You Save:',
+                      style: TextStyle(fontSize: 14, color: Colors.white70),
+                    ),
+                    Text(
+                      '\$${_savedAmount.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.amberAccent,
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(color: Colors.white70, height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Final Payable Price:',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    FittedBox(
+                      child: Text(
+                        '\$${_finalPrice.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Colors.white70),
+                    ),
+                    icon: const Icon(Icons.content_copy, size: 16),
+                    label: Text('Copy Payable \$${_finalPrice.toStringAsFixed(2)}'),
+                    onPressed: () {
+                      _copyToClipboard('\$${_finalPrice.toStringAsFixed(2)}', 'Final Price');
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  // TAB 4: Overlay & Dock Customizer Settings
+  Widget _buildFloatingOverlaySettingsTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Floating Service & Permissions',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          const SizedBox(height: 12),
+
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E293B),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white70),
+            ),
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: const Text('Display Above Other Apps', style: TextStyle(color: Colors.white)),
+                  subtitle: const Text('Simulates persistent floating pill over home screen', style: TextStyle(fontSize: 12)),
+                  value: _isFloatingServiceActive,
+                  activeColor: Colors.tealAccent,
+                  onChanged: (val) {
+                    setState(() {
+                      _isFloatingServiceActive = val;
+                    });
+                  },
+                ),
+                const Divider(height: 1, color: Colors.white70),
+                SwitchListTile(
+                  title: const Text('Show Bubble Preview In App', style: TextStyle(color: Colors.white)),
+                  subtitle: const Text('Draggable floating button on current screen', style: TextStyle(fontSize: 12)),
+                  value: _showFloatingOverlay,
+                  activeColor: Colors.tealAccent,
+                  onChanged: (val) {
+                    setState(() {
+                      _showFloatingOverlay = val;
+                    });
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          const Text(
+            'Quick Notification Priority Bar',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          const SizedBox(height: 12),
+
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E293B),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white70),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.tune, color: Colors.indigoAccent),
+                    SizedBox(width: 8),
+                    Text(
+                      'System Tray Quick Pin',
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Keep 1-tap copy snippets directly inside Android/iOS pull-down notification status bar for instant paste.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.indigo,
+                        foregroundColor: Colors.white,
+                      ),
+                      icon: const Icon(Icons.notifications_active, size: 16),
+                      label: const Text('Pin Bank Snippet to Status Bar'),
+                      onPressed: () {
+                        _copyToClipboard('Bank Details Pinned to Notifications', 'Notification Bar');
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Floating menu dialog triggered when user clicks the active floating bubble preview
+  void _showFloatingMenuDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.bolt, color: Colors.amber),
+              SizedBox(width: 8),
+              Text('OmniDock Quick Action', style: TextStyle(color: Colors.white, fontSize: 16)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.monetization_on, color: Colors.tealAccent),
+                title: const Text('Copy Bank Account', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _copyToClipboard('ACC: 9876-5432-1098', 'Bank Account');
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.home, color: Colors.purpleAccent),
+                title: const Text('Copy Delivery Address', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _copyToClipboard('42 Lotus Avenue, NY 10001', 'Address');
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.discount, color: Colors.orangeAccent),
+                title: const Text('Copy Promo Code', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _copyToClipboard('SAVE20NOW', 'Promo Code');
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Helper method inside state to render snippet cards without overflow
+  Widget _buildSnippetVaultTabList() {
+    final filtered = _snippets.where((s) {
+      final matchesSearch = s.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          s.content.toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchesCat = _selectedCategory == 'All' || s.category == _selectedCategory;
+      return matchesSearch && matchesCat;
+    }).toList();
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: filtered.length,
+      itemBuilder: (context, i) {
+        return _buildSnippetCard(filtered[i]);
+      },
     );
   }
 }
