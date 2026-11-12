@@ -1,1411 +1,1127 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
+import 'dart:math';
 
 void main() {
-  runApp(const ValuePulseApp());
+  runApp(const LifeHUDApp());
 }
 
-class ValuePulseApp extends StatelessWidget {
-  const ValuePulseApp({super.key});
+class LifeHUDApp extends StatelessWidget {
+  const LifeHUDApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'ValuePulse',
+      title: 'LifeHUD',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.teal,
-          brightness: Brightness.light,
+          seedColor: Colors.deepPurple,
+          brightness: Brightness.dark,
         ),
+        scaffoldBackgroundColor: const Color(0xFF0F0E17),
       ),
-      home: const MainHomeScreen(),
+      home: const MainHUDDashboard(),
     );
   }
 }
 
-class WishlistItem {
-  final String id;
-  final String name;
-  final double price;
-  final String category;
-  double urgeRating; // 1 to 10
-  final DateTime dateAdded;
-  bool isSaved;
-
-  WishlistItem({
-    required this.id,
-    required this.name,
-    required this.price,
-    required this.category,
-    required this.urgeRating,
-    required this.dateAdded,
-    this.isSaved = false,
-  });
-}
-
-class MainHomeScreen extends StatefulWidget {
-  const MainHomeScreen({super.key});
+class MainHUDDashboard extends StatefulWidget {
+  const MainHUDDashboard({super.key});
 
   @override
-  State<MainHomeScreen> createState() => _MainHomeScreenState();
+  State<MainHUDDashboard> createState() => _MainHUDDashboardState();
 }
 
-class _MainHomeScreenState extends State<MainHomeScreen> {
-  int _currentIndex = 0;
-
-  // Global user metrics
-  double _hourlyWage = 22.50; // default \$22.50 / hr
-  double _totalSavedMoney = 485.00;
-  double _totalHoursSaved = 21.5;
-
-  // Active items in vault
-  final List<WishlistItem> _coolingVault = [
-    WishlistItem(
-      id: '1',
-      name: 'Wireless Gaming Headphones',
-      price: 149.99,
-      category: 'Electronics',
-      urgeRating: 8.0,
-      dateAdded: DateTime.now().subtract(const Duration(days: 4)),
-    ),
-    WishlistItem(
-      id: '2',
-      name: 'Designer Leather Jacket',
-      price: 280.00,
-      category: 'Fashion',
-      urgeRating: 5.5,
-      dateAdded: DateTime.now().subtract(const Duration(days: 12)),
-    ),
-    WishlistItem(
-      id: '3',
-      name: 'Smart Coffee Mug Heater',
-      price: 45.00,
-      category: 'Gadgets',
-      urgeRating: 3.0,
-      dateAdded: DateTime.now().subtract(const Duration(days: 18)),
-    ),
+class _MainHUDDashboardState extends State<MainHUDDashboard> {
+  int _selectedTabIndex = 0;
+  
+  // Floating Bubble Overlay State
+  Offset _bubblePosition = const Offset(20, 160);
+  bool _isFloatingHudExpanded = false;
+  
+  // Active Context State
+  String _activeContext = 'Deep Focus';
+  final List<String> _contexts = ['Deep Focus', 'Rapid Execution', 'Creative Vibe', 'Rest & Reset'];
+  
+  // Quick Notes in HUD
+  final List<String> _hudNotes = [
+    'Drink 500ml water before 2 PM',
+    'Send daily summary report',
+    'Take 5 min deep breathing break'
   ];
+  final TextEditingController _noteController = TextEditingController();
 
-  // System permissions state for floating guardian
-  bool _overlayPermissionGranted = true;
-  bool _notificationPermissionGranted = true;
-  bool _floatingWidgetActive = true;
+  // Micro-Decision Resolver State
+  final List<String> _decisionOptions = ['Work on Priority Project', 'Take 10 Min Walk', 'Clean Workspace'];
+  final TextEditingController _decisionInputController = TextEditingController();
+  String? _resolvedDecision;
 
-  void _addVaultItem(WishlistItem item) {
-    setState(() {
-      _coolingVault.add(item);
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${item.name} sent to 30-Day Cooling Vault!'),
-        backgroundColor: Colors.teal,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  // Friction Resolver State
+  final TextEditingController _frictionController = TextEditingController();
+  List<Map<String, dynamic>> _frictionSteps = [];
+  bool _isAnalyzingFriction = false;
+
+  // Ambient Engine State
+  bool _isPulseActive = true;
+  double _pulseSpeed = 1.5;
+  String _activeVibeMode = 'Alpha Focus Waves (10 Hz)';
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    _decisionInputController.dispose();
+    _frictionController.dispose();
+    super.dispose();
   }
 
-  void _markAsSaved(WishlistItem item) {
+  void _addQuickNote() {
+    if (_noteController.text.trim().isNotEmpty) {
+      setState(() {
+        _hudNotes.insert(0, _noteController.text.trim());
+        _noteController.clear();
+      });
+    }
+  }
+
+  void _resolveDecision() {
+    if (_decisionOptions.isEmpty) return;
+    final random = Random();
     setState(() {
-      item.isSaved = true;
-      _totalSavedMoney += item.price;
-      _totalHoursSaved += (item.price / _hourlyWage);
-      _coolingVault.removeWhere((element) => element.id == item.id);
+      _resolvedDecision = _decisionOptions[random.nextInt(_decisionOptions.length)];
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('🎉 Congratulations! You saved \$${item.price.toStringAsFixed(2)}!'),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  }
+
+  void _addDecisionOption() {
+    if (_decisionInputController.text.trim().isNotEmpty) {
+      setState(() {
+        _decisionOptions.add(_decisionInputController.text.trim());
+        _decisionInputController.clear();
+      });
+    }
+  }
+
+  void _analyzeFriction() {
+    if (_frictionController.text.trim().isEmpty) return;
+    setState(() {
+      _isAnalyzingFriction = true;
+    });
+
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (!mounted) return;
+      final task = _frictionController.text.trim();
+      setState(() {
+        _isAnalyzingFriction = false;
+        _frictionSteps = [
+          {'step': 'Micro Step 1: Clear desk & open "$task" in 30 sec', 'done': false},
+          {'step': 'Micro Step 2: Work on "$task" for strictly 2 minutes', 'done': false},
+          {'step': 'Micro Step 3: Evaluate friction rate (1-10) and continue', 'done': false},
+        ];
+      });
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> pages = [
-      EvaluatorTab(
-        hourlyWage: _hourlyWage,
-        onUpdateWage: (newWage) {
-          setState(() {
-            _hourlyWage = newWage;
-          });
-        },
-        onAddToVault: _addVaultItem,
-      ),
-      BattleArenaTab(
-        hourlyWage: _hourlyWage,
-        coolingVault: _coolingVault,
-      ),
-      CoolingVaultTab(
-        coolingVault: _coolingVault,
-        hourlyWage: _hourlyWage,
-        onMarkSaved: _markAsSaved,
-        onRemoveItem: (id) {
-          setState(() {
-            _coolingVault.removeWhere((element) => element.id == id);
-          });
-        },
-      ),
-      FloatingStudioTab(
-        overlayPermission: _overlayPermissionGranted,
-        notificationPermission: _notificationPermissionGranted,
-        widgetActive: _floatingWidgetActive,
-        onToggleOverlay: (val) => setState(() => _overlayPermissionGranted = val),
-        onToggleNotification: (val) => setState(() => _notificationPermissionGranted = val),
-        onToggleWidget: (val) => setState(() => _floatingWidgetActive = val),
-      ),
-    ];
-
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.teal,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'ValuePulse',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                fontSize: 20,
-              ),
-            ),
-            Text(
-              'Wage: \$${_hourlyWage.toStringAsFixed(2)}/hr • Saved: \$${_totalSavedMoney.toStringAsFixed(0)}',
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.white70,
-                fontWeight: FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.account_balance_wallet, color: Colors.white),
-            tooltip: 'Life Savings Metrics',
-            onPressed: () {
-              _showSavingsSummaryModal(context);
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings, color: Colors.white),
-            tooltip: 'Wage Settings',
-            onPressed: () {
-              _showWageDialog(context);
-            },
-          ),
-        ],
-      ),
       body: SafeArea(
-        child: IndexedStack(
-          index: _currentIndex,
-          children: pages,
-        ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.teal,
-        unselectedItemColor: Colors.grey,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
-        unselectedLabelStyle: const TextStyle(fontSize: 11),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calculate),
-            label: 'Evaluator',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.compare_arrows),
-            label: 'Trade-Off',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shield),
-            label: 'Cooling Vault',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.widgets),
-            label: 'Floating Guard',
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showWageDialog(BuildContext context) {
-    final controller = TextEditingController(text: _hourlyWage.toStringAsFixed(2));
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Set Hourly Wage'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: Stack(
           children: [
-            const Text(
-              'Enter your net hourly earnings after tax. This determines your exact life-time cost for any item.',
-              style: TextStyle(fontSize: 13, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                prefixText: '\$ ',
-                labelText: 'Hourly Wage Rate',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
-            onPressed: () {
-              final parsed = double.tryParse(controller.text);
-              if (parsed != null && parsed > 0) {
-                setState(() {
-                  _hourlyWage = parsed;
-                });
-              }
-              Navigator.pop(ctx);
-            },
-            child: const Text('Save', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showSavingsSummaryModal(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                '🛡️ Life Savings Impact',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _metricTile('Total Money Saved', '\$${_totalSavedMoney.toStringAsFixed(2)}', Colors.green),
-                  _metricTile('Life Hours Reclaimed', '${_totalHoursSaved.toStringAsFixed(1)} hrs', Colors.teal),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.amber.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.amber.shade200),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.trending_up, color: Colors.orange),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'If invested at 8% annual return, your saved total will grow to \$${(_totalSavedMoney * math.pow(1.08, 10)).toStringAsFixed(2)} in 10 years!',
-                        style: TextStyle(fontSize: 12, color: Colors.amber.shade900),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Keep Saving', style: TextStyle(color: Colors.white)),
-                ),
-              )
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _metricTile(String title, String value, Color color) {
-    return Container(
-      width: 140,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 11, color: Colors.black87),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ==========================================================
-// TAB 1: INSTANT EVALUATOR TAB
-// ==========================================================
-class EvaluatorTab extends StatefulWidget {
-  final double hourlyWage;
-  final ValueChanged<double> onUpdateWage;
-  final Function(WishlistItem) onAddToVault;
-
-  const EvaluatorTab({
-    super.key,
-    required this.hourlyWage,
-    required this.onUpdateWage,
-    required this.onAddToVault,
-  });
-
-  @override
-  State<EvaluatorTab> createState() => _EvaluatorTabState();
-}
-
-class _EvaluatorTabState extends State<EvaluatorTab> {
-  final _nameController = TextEditingController(text: 'Sneaker Shoes');
-  double _itemPrice = 120.00;
-  double _urgeRating = 7.0; // 1 - 10
-  String _selectedCategory = 'Fashion';
-
-  final List<String> _categories = [
-    'Fashion',
-    'Electronics',
-    'Gadgets',
-    'Dining/FastFood',
-    'Subscriptions',
-    'Gaming',
-    'Home Decor',
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final double hoursRequired = widget.hourlyWage > 0 ? (_itemPrice / widget.hourlyWage) : 0;
-    final double workDaysRequired = hoursRequired / 8.0; // 8 hr work day
-    final double futureCost10Y = _itemPrice * math.pow(1.08, 10);
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Quick Info Banner
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.teal.shade50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.teal.shade200),
-            ),
-            child: Row(
+            // Main Body Pages
+            Column(
               children: [
-                const Icon(Icons.lightbulb, color: Colors.teal),
-                const SizedBox(width: 10),
+                _buildTopAppBar(),
                 Expanded(
-                  child: Text(
-                    'Before hitting "Buy Now", evaluate what this item actually costs in human hours!',
-                    style: TextStyle(fontSize: 12, color: Colors.teal.shade900),
+                  child: IndexedStack(
+                    index: _selectedTabIndex,
+                    children: [
+                      _buildAmbientHUDTab(),
+                      _buildDecisionResolverTab(),
+                      _buildFrictionDeconstructorTab(),
+                      _buildFloatingDeckSettingsTab(),
+                    ],
                   ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 16),
 
-          // Input Card
-          Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
+            // Draggable Floating Overlay Bubble Assistant
+            Positioned(
+              left: _bubblePosition.dx,
+              top: _bubblePosition.dy,
+              child: GestureDetector(
+                onPanUpdate: (details) {
+                  setState(() {
+                    _bubblePosition += details.delta;
+                  });
+                },
+                onTap: () {
+                  setState(() {
+                    _isFloatingHudExpanded = !_isFloatingHudExpanded;
+                  });
+                },
+                child: _buildFloatingBubbleWidget(),
+              ),
+            ),
+
+            // Expanded Floating Dock Modal Overlay
+            if (_isFloatingHudExpanded) _buildFloatingDockModal(),
+          ],
+        ),
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedTabIndex,
+        onDestinationSelected: (index) {
+          setState(() {
+            _selectedTabIndex = index;
+          });
+        },
+        backgroundColor: const Color(0xFF161524),
+        indicatorColor: Colors.deepPurple,
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.space_dashboard),
+            label: 'Live HUD',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.alt_route),
+            label: 'Decide',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.bolt),
+            label: 'Friction',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.layers),
+            label: 'Deck & Float',
+          ),
+        ],
+      ),
+    );
+  }
+
+  // APP BAR
+  Widget _buildTopAppBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: const BoxDecoration(
+        color: Color(0xFF161524),
+        border: Border(bottom: BorderSide(color: Colors.white70)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.deepPurple,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.widgets, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'LifeHUD Assist Deck',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  'Active Mode: $_activeContext',
+                  style: const TextStyle(
+                    color: Colors.teal,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 12,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.amber.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.amber),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.star, color: Colors.amber, size: 14),
+                SizedBox(width: 4),
+                Text(
+                  'HUD Active',
+                  style: TextStyle(color: Colors.amber, fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // TAB 1: AMBIENT HUD & PULSE ENGINE
+  Widget _buildAmbientHUDTab() {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Context Selector Chips
+            const Text(
+              'DYNAMIC CONTEXT MATRIX',
+              style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.1),
+            ),
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: _contexts.map((ctx) {
+                  final isSelected = _activeContext == ctx;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: ChoiceChip(
+                      label: Text(ctx),
+                      selected: isSelected,
+                      selectedColor: Colors.deepPurple,
+                      backgroundColor: const Color(0xFF222035),
+                      labelStyle: TextStyle(
+                        color: isSelected ? Colors.white : Colors.grey,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      ),
+                      onSelected: (val) {
+                        if (val) {
+                          setState(() {
+                            _activeContext = ctx;
+                          });
+                        }
+                      },
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Live Visualizer Pulse Deck Widget
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF261F42), Color(0xFF161524)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.deepPurple.withOpacity(0.3)),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Ambient Brainwave Pulse',
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                            Text(
+                              _activeVibeMode,
+                              style: const TextStyle(color: Colors.teal, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          setState(() {
+                            _isPulseActive = !_isPulseActive;
+                          });
+                        },
+                        icon: Icon(
+                          _isPulseActive ? Icons.pause_circle_filled : Icons.play_circle_fill,
+                          color: Colors.deepPurpleAccent,
+                          size: 36,
+                        ),
+                      )
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  // Animated Visual Waves Engine Simulation
+                  SizedBox(
+                    height: 60,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: List.generate(12, (index) {
+                        double height = _isPulseActive
+                            ? (20 + (index % 5) * 8 * _pulseSpeed).clamp(12.0, 56.0)
+                            : 8.0;
+                        return AnimatedContainer(
+                          duration: Duration(milliseconds: 300 + (index * 40)),
+                          width: 8,
+                          height: height,
+                          decoration: BoxDecoration(
+                            color: isEvenIndex(index) ? Colors.deepPurpleAccent : Colors.tealAccent,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      const Icon(Icons.tune, color: Colors.grey, size: 16),
+                      const SizedBox(width: 8),
+                      const Text('Pulse Speed:', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                      Expanded(
+                        child: Slider(
+                          value: _pulseSpeed,
+                          min: 0.5,
+                          max: 3.0,
+                          activeColor: Colors.deepPurple,
+                          onChanged: (val) {
+                            setState(() {
+                              _pulseSpeed = val;
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Live Micro-Stats Board (Increases dwell time)
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    title: 'Focus Dwell Time',
+                    value: '42 mins',
+                    icon: Icons.timer,
+                    color: Colors.teal,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildStatCard(
+                    title: 'Micro-Frictions Solved',
+                    value: '8 Today',
+                    icon: Icons.check_circle,
+                    color: Colors.amber,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
+            // Quick Floating Scratchpad Deck
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E1C2E),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white70),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Item Details',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Item Name or Desired Purchase',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.shopping_bag),
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.push_pin, color: Colors.amber, size: 18),
+                          SizedBox(width: 8),
+                          Text(
+                            'Quick HUD Sticky Deck',
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        '${_hudNotes.length} pinned',
+                        style: const TextStyle(color: Colors.grey, fontSize: 11),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
-                        child: DropdownButtonFormField<String>(
-                          value: _selectedCategory,
+                        child: TextField(
+                          controller: _noteController,
                           decoration: const InputDecoration(
-                            labelText: 'Category',
+                            hintText: 'Add quick pin note...',
+                            hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                             border: OutlineInputBorder(),
                           ),
-                          items: _categories.map((cat) {
-                            return DropdownMenuItem(value: cat, child: Text(cat));
-                          }).toList(),
-                          onChanged: (val) {
-                            if (val != null) setState(() => _selectedCategory = val);
-                          },
+                          style: const TextStyle(color: Colors.white, fontSize: 13),
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Item Price:',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      Text(
-                        '\$${_itemPrice.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.teal,
-                        ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: _addQuickNote,
+                        icon: const Icon(Icons.add_circle, color: Colors.deepPurple, size: 32),
                       ),
                     ],
-                  ),
-                  Slider(
-                    value: _itemPrice,
-                    min: 5.0,
-                    max: 1000.0,
-                    divisions: 199,
-                    activeColor: Colors.teal,
-                    label: '\$${_itemPrice.toStringAsFixed(0)}',
-                    onChanged: (val) => setState(() => _itemPrice = val),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Initial Impulse Urge:',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      Chip(
-                        label: Text(
-                          '${_urgeRating.toStringAsFixed(1)} / 10',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
-                        backgroundColor: _getUrgeColor(_urgeRating),
-                      ),
-                    ],
-                  ),
-                  Slider(
-                    value: _urgeRating,
-                    min: 1.0,
-                    max: 10.0,
-                    divisions: 18,
-                    activeColor: _getUrgeColor(_urgeRating),
-                    onChanged: (val) => setState(() => _urgeRating = val),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Real-Life Cost Breakdown Card
-          Card(
-            elevation: 3,
-            color: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.timer, color: Colors.deepOrange),
-                      SizedBox(width: 8),
-                      Text(
-                        'Life-Time Conversion Matrix',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  const Divider(height: 24),
-                  _conversionRow(
-                    icon: Icons.work,
-                    label: 'Life Work Required',
-                    value: '${hoursRequired.toStringAsFixed(1)} Hours',
-                    subtitle: 'Equivalent to ${(workDaysRequired).toStringAsFixed(1)} full 8-hr workdays',
-                    color: Colors.deepOrange,
                   ),
                   const SizedBox(height: 12),
-                  _conversionRow(
-                    icon: Icons.trending_down,
-                    label: 'Lost Wealth in 10 Years',
-                    value: '\$${futureCost10Y.toStringAsFixed(2)}',
-                    subtitle: 'Assuming 8% annual compound growth',
-                    color: Colors.purple,
-                  ),
-                  const SizedBox(height: 12),
-                  _conversionRow(
-                    icon: Icons.health_and_safety,
-                    label: 'Impulse Danger Score',
-                    value: _getDangerLabel(hoursRequired, _urgeRating),
-                    subtitle: _getDangerAdvice(hoursRequired, _urgeRating),
-                    color: _getDangerColor(hoursRequired, _urgeRating),
-                  ),
+                  ..._hudNotes.map((note) => Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF28253B),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.fiber_manual_record, color: Colors.teal, size: 8),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                note,
+                                style: const TextStyle(color: Colors.white70, fontSize: 13),
+                                softWrap: true,
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _hudNotes.remove(note);
+                                });
+                              },
+                              child: const Icon(Icons.close, color: Colors.grey, size: 16),
+                            ),
+                          ],
+                        ),
+                      )),
                 ],
               ),
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Action Buttons
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  icon: const Icon(Icons.shield, color: Colors.white),
-                  label: const Text(
-                    'Put in 30-Day Vault',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                  ),
-                  onPressed: () {
-                    final item = WishlistItem(
-                      id: DateTime.now().millisecondsSinceEpoch.toString(),
-                      name: _nameController.text.trim().isEmpty ? 'Impulse Item' : _nameController.text.trim(),
-                      price: _itemPrice,
-                      category: _selectedCategory,
-                      urgeRating: _urgeRating,
-                      dateAdded: DateTime.now(),
-                    );
-                    widget.onAddToVault(item);
-                  },
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-        ],
-      ),
-    );
-  }
-
-  Color _getUrgeColor(double urge) {
-    if (urge >= 8.0) return Colors.red;
-    if (urge >= 5.0) return Colors.orange;
-    return Colors.green;
-  }
-
-  String _getDangerLabel(double hours, double urge) {
-    if (hours > 10 || urge > 8) return '🚨 HIGH RISK';
-    if (hours > 4 || urge > 5) return '⚠️ MODERATE';
-    return '✅ LOW RISK';
-  }
-
-  Color _getDangerColor(double hours, double urge) {
-    if (hours > 10 || urge > 8) return Colors.red;
-    if (hours > 4 || urge > 5) return Colors.orange;
-    return Colors.green;
-  }
-
-  String _getDangerAdvice(double hours, double urge) {
-    if (hours > 10 || urge > 8) {
-      return 'High work hour sacrifce! Strongly recommended to lock in cooling vault for 30 days.';
-    }
-    if (hours > 4 || urge > 5) {
-      return 'Noticeable cost. Consider comparing with long-term goals in Trade-Off Arena.';
-    }
-    return 'Low work hour trade-off. Safe to buy if within regular budget.';
-  }
-
-  Widget _conversionRow({
-    required IconData icon,
-    required String label,
-    required String value,
-    required String subtitle,
-    required Color color,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        CircleAvatar(
-          backgroundColor: color.withOpacity(0.15),
-          radius: 20,
-          child: Icon(icon, color: color, size: 20),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
-              ),
-              Text(
-                value,
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color),
-              ),
-              Text(
-                subtitle,
-                style: const TextStyle(fontSize: 11, color: Colors.black87),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ==========================================================
-// TAB 2: TRADE-OFF BATTLE ARENA
-// ==========================================================
-class BattleArenaTab extends StatefulWidget {
-  final double hourlyWage;
-  final List<WishlistItem> coolingVault;
-
-  const BattleArenaTab({
-    super.key,
-    required this.hourlyWage,
-    required this.coolingVault,
-  });
-
-  @override
-  State<BattleArenaTab> createState() => _BattleArenaTabState();
-}
-
-class _BattleArenaTabState extends State<BattleArenaTab> {
-  // Option A (Impulse Buy)
-  String _itemAName = 'Designer Sunglasses';
-  double _itemAPrice = 180.00;
-  double _itemAJoyScore = 6.0; // Expected joy in 30 days (1-10)
-
-  // Option B (Dream Goal)
-  String _itemBName = 'Weekend Beach Trip Fund';
-  double _itemBPrice = 180.00;
-  double _itemBJoyScore = 9.5; // Expected joy in 30 days (1-10)
-
-  @override
-  Widget build(BuildContext context) {
-    final double hoursA = widget.hourlyWage > 0 ? (_itemAPrice / widget.hourlyWage) : 0;
-    final double hoursB = widget.hourlyWage > 0 ? (_itemBPrice / widget.hourlyWage) : 0;
-
-    // Joy Efficiency = Joy Score / Work Hours
-    final double joyEfficiencyA = hoursA > 0 ? (_itemAJoyScore / hoursA) : 0;
-    final double joyEfficiencyB = hoursB > 0 ? (_itemBJoyScore / hoursB) : 0;
-
-    final bool bWins = joyEfficiencyB >= joyEfficiencyA;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.indigo.shade50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.indigo.shade200),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.sports_mma, color: Colors.indigo),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Trade-Off Arena: Battle your instant impulse buy against a long-term dream goal to see which delivers true joy per life hour worked!',
-                    style: TextStyle(fontSize: 12, color: Colors.indigo.shade900),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Battle Arena Cards
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Fighter A
-              Expanded(
-                child: _buildFighterCard(
-                  title: '⚔️ Impulse Option A',
-                  name: _itemAName,
-                  price: _itemAPrice,
-                  joy: _itemAJoyScore,
-                  hours: hoursA,
-                  efficiency: joyEfficiencyA,
-                  cardColor: Colors.red.shade50,
-                  accentColor: Colors.red.shade700,
-                  onNameChanged: (val) => setState(() => _itemAName = val),
-                  onPriceChanged: (val) => setState(() => _itemAPrice = val),
-                  onJoyChanged: (val) => setState(() => _itemAJoyScore = val),
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Fighter B
-              Expanded(
-                child: _buildFighterCard(
-                  title: '🌟 Dream Goal B',
-                  name: _itemBName,
-                  price: _itemBPrice,
-                  joy: _itemBJoyScore,
-                  hours: hoursB,
-                  efficiency: joyEfficiencyB,
-                  cardColor: Colors.teal.shade50,
-                  accentColor: Colors.teal.shade800,
-                  onNameChanged: (val) => setState(() => _itemBName = val),
-                  onPriceChanged: (val) => setState(() => _itemBPrice = val),
-                  onJoyChanged: (val) => setState(() => _itemBJoyScore = val),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-
-          // Winner Verdict Banner
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: bWins ? Colors.teal : Colors.deepOrange,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: (bWins ? Colors.teal : Colors.deepOrange).withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                )
-              ],
-            ),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.emoji_events, color: Colors.amber, size: 28),
-                    const SizedBox(width: 8),
-                    Text(
-                      bWins ? 'WINNER: ${_itemBName.toUpperCase()}' : 'WINNER: ${_itemAName.toUpperCase()}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  bWins
-                      ? '"${_itemBName}" yields ${(joyEfficiencyB / (joyEfficiencyA == 0 ? 1 : joyEfficiencyA)).toStringAsFixed(1)}x more happiness per work hour than "${_itemAName}". Skipping Option A secures your goal!'
-                      : '"${_itemAName}" provides higher immediate satisfaction value per hour required.',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white70, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Quick Import from Vault
-          if (widget.coolingVault.isNotEmpty) ...[
-            const Text(
-              'Import Item from Cooling Vault to Compare:',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 40,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: widget.coolingVault.length,
-                itemBuilder: (ctx, idx) {
-                  final item = widget.coolingVault[idx];
-                  return Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    child: ActionChip(
-                      avatar: const Icon(Icons.input, size: 16),
-                      label: Text('${item.name} (\$)'),
-                      onPressed: () {
-                        setState(() {
-                          _itemAName = item.name;
-                          _itemAPrice = item.price;
-                          _itemAJoyScore = item.urgeRating;
-                        });
-                      },
-                    ),
-                  );
-                },
-              ),
-            )
-          ]
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFighterCard({
-    required String title,
-    required String name,
-    required double price,
-    required double joy,
-    required double hours,
-    required double efficiency,
-    required Color cardColor,
-    required Color accentColor,
-    required ValueChanged<String> onNameChanged,
-    required ValueChanged<double> onPriceChanged,
-    required ValueChanged<double> onJoyChanged,
-  }) {
-    return Card(
-      color: cardColor,
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: accentColor),
-            ),
-            const SizedBox(height: 8),
-            TextFormField(
-              initialValue: name,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                isDense: true,
-                border: OutlineInputBorder(),
-              ),
-              onChanged: onNameChanged,
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'Price: \$${price.toStringAsFixed(0)}',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-            ),
-            Slider(
-              value: price,
-              min: 10.0,
-              max: 1000.0,
-              divisions: 99,
-              activeColor: accentColor,
-              onChanged: onPriceChanged,
-            ),
-            Text(
-              '30-Day Happiness: ${joy.toStringAsFixed(1)}/10',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-            ),
-            Slider(
-              value: joy,
-              min: 1.0,
-              max: 10.0,
-              divisions: 18,
-              activeColor: accentColor,
-              onChanged: onJoyChanged,
-            ),
-            const Divider(),
-            Text(
-              'Work Hours: ${hours.toStringAsFixed(1)}h',
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Joy/Hour: ${efficiency.toStringAsFixed(2)}',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: accentColor),
             ),
           ],
         ),
       ),
     );
   }
-}
 
-// ==========================================================
-// TAB 3: COOLING VAULT TAB
-// ==========================================================
-class CoolingVaultTab extends StatelessWidget {
-  final List<WishlistItem> coolingVault;
-  final double hourlyWage;
-  final ValueChanged<WishlistItem> onMarkSaved;
-  final ValueChanged<String> onRemoveItem;
+  bool isEvenIndex(int i) => i % 2 == 0;
 
-  const CoolingVaultTab({
-    super.key,
-    required this.coolingVault,
-    required this.hourlyWage,
-    required this.onMarkSaved,
-    required this.onRemoveItem,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildStatCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1C2E),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white70),
+      ),
+      child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.blue.shade50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.blue.shade200),
+              color: color.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Row(
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.ac_unit, color: Colors.blue),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    '30-Day Cooling Tank: Research shows 70% of impulse urge vanishes within 14 days! Update daily urge scores to watch the urge drop.',
-                    style: TextStyle(fontSize: 12, color: Colors.blue.shade900),
-                  ),
+                Text(
+                  value,
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  title,
+                  style: const TextStyle(color: Colors.grey, fontSize: 11),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
-
-          if (coolingVault.isEmpty)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 40.0),
-                child: Column(
-                  children: [
-                    Icon(Icons.shield_outlined, size: 60, color: Colors.grey.shade400),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Your Cooling Vault is Empty!',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Send potential purchases here from the Evaluator screen to cool off.',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: coolingVault.length,
-              itemBuilder: (ctx, index) {
-                final item = coolingVault[index];
-                final daysPassed = DateTime.now().difference(item.dateAdded).inDays;
-                final workHours = hourlyWage > 0 ? (item.price / hourlyWage) : 0;
-
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(14.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                item.name,
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.teal.shade100,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                '\$${item.price.toStringAsFixed(2)}',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.teal.shade900,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Chip(
-                              labelPadding: const EdgeInsets.symmetric(horizontal: 4),
-                              visualDensity: VisualDensity.compact,
-                              avatar: const Icon(Icons.category, size: 14),
-                              label: Text(item.category, style: const TextStyle(fontSize: 10)),
-                            ),
-                            const SizedBox(width: 6),
-                            Chip(
-                              labelPadding: const EdgeInsets.symmetric(horizontal: 4),
-                              visualDensity: VisualDensity.compact,
-                              avatar: const Icon(Icons.timer, size: 14),
-                              label: Text('${workHours.toStringAsFixed(1)} Work Hrs', style: const TextStyle(fontSize: 10)),
-                            ),
-                            const SizedBox(width: 6),
-                            Chip(
-                              labelPadding: const EdgeInsets.symmetric(horizontal: 4),
-                              visualDensity: VisualDensity.compact,
-                              avatar: const Icon(Icons.today, size: 14),
-                              label: Text('Day $daysPassed / 30', style: const TextStyle(fontSize: 10)),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-
-                        // Urge Decay Visualizer
-                        Row(
-                          children: [
-                            const Text(
-                              'Current Urge Rating:',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                            ),
-                            const Spacer(),
-                            Text(
-                              '${item.urgeRating.toStringAsFixed(1)} / 10',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: item.urgeRating < 4 ? Colors.green : Colors.orange,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Slider(
-                          value: item.urgeRating,
-                          min: 0.0,
-                          max: 10.0,
-                          divisions: 20,
-                          activeColor: item.urgeRating < 4 ? Colors.green : Colors.orange,
-                          onChanged: (val) {
-                            (ctx as Element).markNeedsBuild();
-                            item.urgeRating = val;
-                          },
-                        ),
-
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.green,
-                                  side: const BorderSide(color: Colors.green),
-                                ),
-                                icon: const Icon(Icons.check_circle_outline, size: 18),
-                                label: const Text('I Resisted! Save Money', style: TextStyle(fontSize: 11)),
-                                onPressed: () => onMarkSaved(item),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline, color: Colors.grey),
-                              tooltip: 'Remove',
-                              onPressed: () => onRemoveItem(item.id),
-                            )
-                          ],
-                        )
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
         ],
       ),
     );
   }
-}
 
-// ==========================================================
-// TAB 4: FLOATING COMPANION & PERMISSIONS STUDIO
-// ==========================================================
-class FloatingStudioTab extends StatelessWidget {
-  final bool overlayPermission;
-  final bool notificationPermission;
-  final bool widgetActive;
-  final ValueChanged<bool> onToggleOverlay;
-  final ValueChanged<bool> onToggleNotification;
-  final ValueChanged<bool> onToggleWidget;
-
-  const FloatingStudioTab({
-    super.key,
-    required this.overlayPermission,
-    required this.notificationPermission,
-    required this.widgetActive,
-    required this.onToggleOverlay,
-    required this.onToggleNotification,
-    required this.onToggleWidget,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Banner
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.purple.shade50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.purple.shade200),
+  // TAB 2: MICRO-DECISION RESOLVER MATRIX
+  Widget _buildDecisionResolverTab() {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'MICRO-DECISION MATRIX',
+              style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.1),
             ),
-            child: Row(
-              children: [
-                const Icon(Icons.notifications_active, color: Colors.purple),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Floating Guardian Shield: ValuePulse hovers seamlessly over shopping apps (Amazon, eBay, Chrome) to recalculate checkout prices in real-time!',
-                    style: TextStyle(fontSize: 12, color: Colors.purple.shade900),
+            const SizedBox(height: 6),
+            const Text(
+              'Stuck on what to do next? Let HUD resolve your micro-paralysis.',
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            const SizedBox(height: 20),
+
+            // Result Display Card
+            if (_resolvedDecision != null)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Colors.teal, Colors.deepPurple],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
+                child: Column(
+                  children: [
+                    const Icon(Icons.auto_awesome, color: Colors.amber, size: 36),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'YOUR NEXT IMMEDIATE ACTION:',
+                      style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _resolvedDecision!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
+                      softWrap: true,
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton.icon(
+                      onPressed: _resolveDecision,
+                      icon: const Icon(Icons.refresh, size: 16),
+                      label: const Text('Re-Spin Choice'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black87,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
-          // Permissions Toggles Card
-          Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
+            const SizedBox(height: 20),
+
+            // Options Builder
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E1C2E),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white70),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'System Permissions & Overlay Control',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                    'Active Decision Pool',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                   const SizedBox(height: 12),
-                  SwitchListTile(
-                    title: const Text('Display Above Other Apps Permission', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                    subtitle: const Text('Allows floating impulse widget over browser and store apps', style: TextStyle(fontSize: 11)),
-                    value: overlayPermission,
-                    activeColor: Colors.teal,
-                    onChanged: onToggleOverlay,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _decisionInputController,
+                          decoration: const InputDecoration(
+                            hintText: 'Add option (e.g., Eat Salad, Study, Nap)',
+                            hintStyle: TextStyle(color: Colors.grey, fontSize: 12),
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            border: OutlineInputBorder(),
+                          ),
+                          style: const TextStyle(color: Colors.white, fontSize: 13),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: _addDecisionOption,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.deepPurple,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('Add'),
+                      ),
+                    ],
                   ),
-                  const Divider(),
-                  SwitchListTile(
-                    title: const Text('Smart Shopping Alerts Notifications', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                    subtitle: const Text('Sends quick impulse cooling reminders during shopping', style: TextStyle(fontSize: 11)),
-                    value: notificationPermission,
-                    activeColor: Colors.teal,
-                    onChanged: onToggleNotification,
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _decisionOptions.map((option) {
+                      return Chip(
+                        label: Text(option),
+                        backgroundColor: const Color(0xFF28253B),
+                        labelStyle: const TextStyle(color: Colors.white, fontSize: 12),
+                        deleteIcon: const Icon(Icons.cancel, size: 14, color: Colors.grey),
+                        onDeleted: () {
+                          setState(() {
+                            _decisionOptions.remove(option);
+                          });
+                        },
+                      );
+                    }).toList(),
                   ),
-                  const Divider(),
-                  SwitchListTile(
-                    title: const Text('Activate Floating Guardian Widget', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                    subtitle: const Text('Show floating action shield bubble on screen edge', style: TextStyle(fontSize: 11)),
-                    value: widgetActive,
-                    activeColor: Colors.teal,
-                    onChanged: onToggleWidget,
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      onPressed: _decisionOptions.isEmpty ? null : _resolveDecision,
+                      icon: const Icon(Icons.bolt, color: Colors.amber),
+                      label: const Text(
+                        'RESOLVE DECISION NOW',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepPurple,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
 
-          // Interactive Simulator Preview
-          const Text(
-            'Interactive Live Overlay Preview:',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-
-          Container(
-            width: double.infinity,
-            height: 220,
-            decoration: BoxDecoration(
-              color: Colors.blueGrey.shade900,
-              borderRadius: BorderRadius.circular(16),
-              image: const DecorationImage(
-                image: NetworkImage('https://flutter.github.io/assets-for-api-docs/assets/widgets/owl.jpg'),
-                fit: BoxFit.cover,
-                opacity: 0.15,
-              ),
+  // TAB 3: TASK FRICTION DECONSTRUCTOR
+  Widget _buildFrictionDeconstructorTab() {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'FRICTION DECONSTRUCTOR',
+              style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.1),
             ),
-            child: Stack(
-              children: [
-                const Center(
-                  child: Text(
-                    '[ Simulated Online Shopping Screen ]\n(Browsing Headphones \$149.99)',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
-                ),
+            const SizedBox(height: 6),
+            const Text(
+              'Type what you are resisting right now (e.g., "Doing taxes", "Starting workout").',
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
 
-                // Simulated Floating Bubble
-                if (widgetActive)
-                  Positioned(
-                    top: 40,
-                    right: 20,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.teal,
-                        borderRadius: BorderRadius.circular(25),
-                        boxShadow: const [
-                          BoxShadow(color: Colors.black87, blurRadius: 6, offset: Offset(0, 3)),
-                        ],
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.shield, color: Colors.white, size: 18),
-                          SizedBox(width: 6),
-                          Text(
-                            '6.7 Work Hours!',
-                            style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                          ),
-                        ],
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E1C2E),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white70),
+              ),
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _frictionController,
+                    decoration: const InputDecoration(
+                      labelText: 'What task feels overwhelming?',
+                      labelStyle: TextStyle(color: Colors.grey, fontSize: 13),
+                      hintText: 'e.g. Write essay draft',
+                      border: OutlineInputBorder(),
+                    ),
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _isAnalyzingFriction ? null : _analyzeFriction,
+                      icon: _isAnalyzingFriction
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.psychology),
+                      label: Text(_isAnalyzingFriction ? 'Deconstructing Friction...' : 'Break Down Friction'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.teal,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
                   ),
-
-                // Simulated Bottom Warning Overlay Banner
-                if (widgetActive)
-                  Positioned(
-                    bottom: 12,
-                    left: 12,
-                    right: 12,
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: const [
-                          BoxShadow(color: Colors.black87, blurRadius: 8, offset: Offset(0, 4)),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          const CircleAvatar(
-                            backgroundColor: Colors.orange,
-                            radius: 16,
-                            child: Icon(Icons.warning_amber, color: Colors.white, size: 18),
-                          ),
-                          const SizedBox(width: 10),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'ValuePulse Impulse Alert',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                                ),
-                                Text(
-                                  'This item requires 6.7 hours of work. Pause before paying!',
-                                  style: TextStyle(fontSize: 10, color: Colors.grey),
-                                ),
-                              ],
-                            ),
-                          ),
-                          TextButton(
-                            style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Simulated Vault Lock Triggered!')),
-                              );
-                            },
-                            child: const Text('Lock Vault', style: TextStyle(fontSize: 11, color: Colors.teal)),
-                          )
-                        ],
-                      ),
-                    ),
-                  )
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Test Notification Trigger Button
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ],
               ),
-              icon: const Icon(Icons.notifications, color: Colors.teal),
-              label: const Text('Simulate Floating Impulse Notification', style: TextStyle(color: Colors.teal)),
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('🔔 Notification: 149.99 equals 6.7 hours of your life! Take a breath.'),
-                    backgroundColor: Colors.teal,
-                    behavior: SnackBarBehavior.floating,
+            ),
+
+            const SizedBox(height: 20),
+
+            if (_frictionSteps.isNotEmpty) ...[
+              const Text(
+                'YOUR 2-MINUTE FRICTION BREAKDOWN:',
+                style: TextStyle(color: Colors.teal, fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              ...List.generate(_frictionSteps.length, (index) {
+                final item = _frictionSteps[index];
+                final bool isDone = item['done'];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: isDone ? const Color(0xFF162521) : const Color(0xFF222035),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: isDone ? Colors.teal : Colors.white70),
+                  ),
+                  child: Row(
+                    children: [
+                      Checkbox(
+                        value: isDone,
+                        activeColor: Colors.teal,
+                        onChanged: (val) {
+                          setState(() {
+                            _frictionSteps[index]['done'] = val ?? false;
+                          });
+                        },
+                      ),
+                      Expanded(
+                        child: Text(
+                          item['step'],
+                          style: TextStyle(
+                            color: isDone ? Colors.grey : Colors.white,
+                            decoration: isDone ? TextDecoration.lineThrough : TextDecoration.none,
+                            fontSize: 13,
+                          ),
+                          softWrap: true,
+                        ),
+                      ),
+                    ],
                   ),
                 );
-              },
+              }),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // TAB 4: FLOATING DECK & PERMISSION CONTROL
+  Widget _buildFloatingDeckSettingsTab() {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'FLOATING OVERLAY & SYSTEM DECK CONTROL',
+              style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.1),
             ),
-          )
+            const SizedBox(height: 16),
+
+            // Permission & Active Float Card
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E1C2E),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white70),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.layers, color: Colors.deepPurpleAccent),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Display Over Other Apps Permission',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Allows LifeHUD to stay active as a floating bubble assistant while you browse, study, or work on other apps.',
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Overlay Assistant Active', style: TextStyle(color: Colors.white, fontSize: 13)),
+                      Switch(
+                        value: true,
+                        activeColor: Colors.teal,
+                        onChanged: (val) {},
+                      ),
+                    ],
+                  ),
+                  const Divider(color: Colors.white70, height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Floating HUD Quick Bubble', style: TextStyle(color: Colors.white, fontSize: 13)),
+                      ElevatedButton(
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Floating HUD position reset to top left.')),
+                          );
+                          setState(() {
+                            _bubblePosition = const Offset(20, 160);
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.deepPurple,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('Reset Bubble'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Simulated Notification Launcher Test
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E1C2E),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white70),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Floating Quick Notification Triggers',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Test how HUD dynamic alerts keep you aware during daily routines.',
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ActionChip(
+                        avatar: const Icon(Icons.notifications_active, size: 16, color: Colors.amber),
+                        label: const Text('Test Hydration Alert'),
+                        backgroundColor: const Color(0xFF28253B),
+                        labelStyle: const TextStyle(color: Colors.white, fontSize: 12),
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('HUD Alert: Drink 250ml water now to maintain mental clarity!'),
+                              backgroundColor: Colors.deepPurple,
+                            ),
+                          );
+                        },
+                      ),
+                      ActionChip(
+                        avatar: const Icon(Icons.bolt, size: 16, color: Colors.teal),
+                        label: const Text('Test Context Shift Alert'),
+                        backgroundColor: const Color(0xFF28253B),
+                        labelStyle: const TextStyle(color: Colors.white, fontSize: 12),
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('HUD Context: Time to shift from Deep Focus to Rest Mode.'),
+                              backgroundColor: Colors.teal,
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  )
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // FLOATING BUBBLE ASSISTANT (DRAGGABLE OVERLAY SIMULATION)
+  Widget _buildFloatingBubbleWidget() {
+    return Container(
+      width: 56,
+      height: 56,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const LinearGradient(
+          colors: [Colors.deepPurpleAccent, Colors.tealAccent],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.deepPurple.withOpacity(0.5),
+            blurRadius: 12,
+            spreadRadius: 2,
+            offset: const Offset(0, 4),
+          ),
         ],
+      ),
+      child: const Center(
+        child: Icon(
+          Icons.touch_app,
+          color: Colors.black87,
+          size: 28,
+        ),
+      ),
+    );
+  }
+
+  // EXPANDED FLOATING DOCK MODAL (WHEN BUBBLE IS TAPPED)
+  Widget _buildFloatingDockModal() {
+    return Positioned(
+      left: (_bubblePosition.dx + 60).clamp(10.0, MediaQuery.of(context).size.width - 240),
+      top: (_bubblePosition.dy).clamp(50.0, MediaQuery.of(context).size.height - 300),
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          width: 220,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1F1D33),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.tealAccent.withOpacity(0.5)),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black87,
+                blurRadius: 16,
+                spreadRadius: 4,
+              )
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'HUD Floating Dock',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _isFloatingHudExpanded = false;
+                      });
+                    },
+                    child: const Icon(Icons.close, color: Colors.grey, size: 16),
+                  ),
+                ],
+              ),
+              const Divider(color: Colors.white70),
+              const SizedBox(height: 4),
+              _buildFloatingDockItem(
+                icon: Icons.lightbulb,
+                label: 'Quick Decision Spin',
+                onTap: () {
+                  setState(() {
+                    _isFloatingHudExpanded = false;
+                    _selectedTabIndex = 1;
+                  });
+                },
+              ),
+              _buildFloatingDockItem(
+                icon: Icons.bolt,
+                label: 'Solve Task Friction',
+                onTap: () {
+                  setState(() {
+                    _isFloatingHudExpanded = false;
+                    _selectedTabIndex = 2;
+                  });
+                },
+              ),
+              _buildFloatingDockItem(
+                icon: Icons.push_pin,
+                label: 'View Sticky Deck (${_hudNotes.length})',
+                onTap: () {
+                  setState(() {
+                    _isFloatingHudExpanded = false;
+                    _selectedTabIndex = 0;
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFloatingDockItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.tealAccent, size: 16),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
