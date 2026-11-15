@@ -1,34 +1,66 @@
 import 'package:flutter/material.dart';
-import 'dart:math';
 
 void main() {
-  runApp(const DockPulseApp());
+  runApp(const StealthBubbleApp());
 }
 
-class DockPulseApp extends StatelessWidget {
-  const DockPulseApp({super.key});
+class StealthBubbleApp extends StatelessWidget {
+  const StealthBubbleApp({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext meContext) {
     return MaterialApp(
-      title: 'DockPulse',
+      title: 'StealthBubble',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
-          brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF0F111A),
+        colorScheme: const ColorScheme.dark(
+          primary: Colors.tealAccent,
+          secondary: Colors.indigoAccent,
+          surface: Color(0xFF1A1D2C),
+          background: Color(0xFF0F111A),
         ),
-        scaffoldBackgroundColor: const Color(0xFF12131C),
+        cardTheme: CardThemeData(
+          color: const Color(0xFF1A1D2C),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
       ),
       home: const MainHomeScreen(),
     );
   }
 }
 
+class NotificationModel {
+  final String id;
+  final String appName;
+  final String sender;
+  final String message;
+  final String time;
+  final Color appColor;
+  final IconData icon;
+  final bool isDeletedBySender;
+  bool isStarred;
+
+  NotificationModel({
+    required this.id,
+    required this.appName,
+    required this.sender,
+    required this.message,
+    required this.time,
+    required this.appColor,
+    required this.icon,
+    this.isDeletedBySender = false,
+    this.isStarred = false,
+  });
+}
+
 class MainHomeScreen extends StatefulWidget {
-  const MainHomeScreen({super.key});
+  const MainHomeScreen({Key? key}) : super(key: key);
 
   @override
   State<MainHomeScreen> createState() => _MainHomeScreenState();
@@ -37,940 +69,551 @@ class MainHomeScreen extends StatefulWidget {
 class _MainHomeScreenState extends State<MainHomeScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _pages = const [
-    FloatingOverlayTab(),
-    DecisionEngineTab(),
-    SnippetVaultTab(),
-    PulseAnalyticsTab(),
+  // Global App States
+  bool _isOverlayEnabled = true;
+  bool _isNotificationAccessGranted = true;
+  bool _isFloatingBubbleActive = true;
+  double _curtainOpacity = 0.85;
+  double _curtainHeight = 160.0;
+  Color _curtainColor = Colors.black;
+  String _activeDecoyMode = 'Normal Tint';
+  
+  // Floating Bubble Screen Position State
+  Offset _bubblePosition = const Offset(20, 180);
+
+  // Quick Stealth Notes
+  final List<String> _stealthNotes = [
+    "Secret ATM PIN note: 9482 (simulated)",
+    "Gift idea link: https://example.com/watch",
+  ];
+  final TextEditingController _noteController = TextEditingController();
+
+  // Notification Inbox Data
+  final List<NotificationModel> _notifications = [
+    NotificationModel(
+      id: '1',
+      appName: 'WhatsApp',
+      sender: 'Sarah Jenkins',
+      message: 'Are you coming to the party tonight? Don\'t mention this to Mark yet!',
+      time: '10:42 AM',
+      appColor: Colors.green,
+      icon: Icons.chat_bubble_outline,
+      isStarred: true,
+    ),
+    NotificationModel(
+      id: '2',
+      appName: 'Telegram',
+      sender: 'Alex Developer',
+      message: 'Deleted Message Detected: "The secret server key is root_admin_2025"',
+      time: '10:15 AM',
+      appColor: Colors.blue,
+      icon: Icons.security,
+      isDeletedBySender: true,
+    ),
+    NotificationModel(
+      id: '3',
+      appName: 'Bank Direct',
+      sender: 'Alert Services',
+      message: 'Account credited with \$450.00. Ref: Wire Transfer #88219.',
+      time: '09:05 AM',
+      appColor: Colors.amber,
+      icon: Icons.monetization_on,
+    ),
+    NotificationModel(
+      id: '4',
+      appName: 'Instagram',
+      sender: 'Elena_V',
+      message: 'Sent you a private direct photo message.',
+      time: 'Yesterday',
+      appColor: Colors.purple,
+      icon: Icons.star,
+    ),
   ];
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: IndexedStack(
-          index: _currentIndex,
-          children: _pages,
-        ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: const Color(0xFF1E1E2C),
-        selectedItemColor: Colors.tealAccent,
-        unselectedItemColor: Colors.grey,
-        showUnselectedLabels: true,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.widgets),
-            label: 'Floating Dock',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.psychology),
-            label: 'Decide Hub',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.content_paste),
-            label: 'Quick Vault',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.speed),
-            label: 'Pulse Score',
-          ),
-        ],
-      ),
-    );
-  }
-}
+  String _searchQuery = '';
+  String _selectedFilter = 'All';
 
-// -----------------------------------------------------------------------------
-// TAB 1: FLOATING OVERLAY & QUICK UTILITY DOCK
-// -----------------------------------------------------------------------------
-class FloatingOverlayTab extends StatefulWidget {
-  const FloatingOverlayTab({super.key});
-
-  @override
-  State<FloatingOverlayTab> createState() => _FloatingOverlayTabState();
-}
-
-class _FloatingOverlayTabState extends State<FloatingOverlayTab> {
-  bool _overlayEnabled = true;
-  bool _notificationAlerts = true;
-  double _dockOpacity = 0.9;
-  Offset _dockPosition = const Offset(20, 120);
-
-  // Quick Calculator state
-  String _calcDisplay = '0';
-  double _firstNum = 0;
-  String _operator = '';
-  bool _shouldClear = false;
-
-  void _onCalcBtn(String val) {
+  void _addSimulatedNotification() {
     setState(() {
-      if (val == 'C') {
-        _calcDisplay = '0';
-        _firstNum = 0;
-        _operator = '';
-      } else if (val == '+' || val == '-' || val == 'x' || val == '/') {
-        _firstNum = double.tryParse(_calcDisplay) ?? 0;
-        _operator = val;
-        _shouldClear = true;
-      } else if (val == '=') {
-        double secondNum = double.tryParse(_calcDisplay) ?? 0;
-        double result = 0;
-        if (_operator == '+') result = _firstNum + secondNum;
-        if (_operator == '-') result = _firstNum - secondNum;
-        if (_operator == 'x') result = _firstNum * secondNum;
-        if (_operator == '/') {
-          result = secondNum != 0 ? _firstNum / secondNum : 0;
-        }
-        _calcDisplay = result.toStringAsFixed(result.truncateToDouble() == result ? 0 : 2);
-        _operator = '';
-      } else {
-        if (_calcDisplay == '0' || _shouldClear) {
-          _calcDisplay = val;
-          _shouldClear = false;
-        } else {
-          _calcDisplay += val;
-        }
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF12131C),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(),
-                  const SizedBox(height: 16),
-                  _buildStatusCard(),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Quick Dock Settings & Permissions',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildPermissionsCard(),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Instant Screen Calculator',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildMiniCalculator(),
-                  const SizedBox(height: 80),
-                ],
-              ),
-            ),
-
-            // Simulated Floating Widget Overlay
-            if (_overlayEnabled)
-              Positioned(
-                left: _dockPosition.dx,
-                top: _dockPosition.dy,
-                child: GestureDetector(
-                  onPanUpdate: (details) {
-                    setState(() {
-                      _dockPosition += details.delta;
-                    });
-                  },
-                  child: Opacity(
-                    opacity: _dockOpacity,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.deepPurple.withOpacity(0.9),
-                        borderRadius: BorderRadius.circular(30),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.4),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          )
-                        ],
-                        border: Border.all(color: Colors.tealAccent, width: 1.5),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.drag_indicator, color: Colors.white70, size: 20),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.flash_on, color: Colors.amber, size: 20),
-                          const SizedBox(width: 8),
-                          Flexible(
-                            child: Text(
-                              'Floating Pulse Bar',
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          InkWell(
-                            onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Quick Dock Action Activated!'),
-                                  duration: Duration(seconds: 1),
-                                ),
-                              );
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: const BoxDecoration(
-                                color: Colors.tealAccent,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.touch_app, color: Colors.black, size: 16),
-                            ),
-                          )
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
+      _notifications.insert(
+        0,
+        NotificationModel(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          appName: 'WhatsApp',
+          sender: 'Boss / Manager',
+          message: 'Can you review the secret budget report right now? It is urgent!',
+          time: 'Just Now',
+          appColor: Colors.green,
+          icon: Icons.mark_chat_unread,
         ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Text(
-                'DockPulse Utility',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
-              ),
-              SizedBox(height: 4),
-              Text(
-                'System-Wide Floating Helper Hub',
-                style: TextStyle(fontSize: 13, color: Colors.grey),
-              ),
-            ],
-          ),
-        ),
-        IconButton(
-          icon: const Icon(Icons.info, color: Colors.tealAccent),
-          onPressed: () {
-            showAboutDialog(
-              context: context,
-              applicationName: 'DockPulse',
-              applicationVersion: 'v2.4.0',
-              children: [
-                const Text('DockPulse provides floating micro-tools and decision tools for high daily productivity.'),
-              ],
-            );
-          },
-        )
-      ],
-    );
-  }
-
-  Widget _buildStatusCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E2C),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white70),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: const [
-                  Icon(Icons.layers, color: Colors.tealAccent),
-                  SizedBox(width: 10),
-                  Text(
-                    'Floating Overlay Dock',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
-                  ),
-                ],
-              ),
-              Switch(
-                value: _overlayEnabled,
-                activeColor: Colors.tealAccent,
-                onChanged: (val) {
-                  setState(() {
-                    _overlayEnabled = val;
-                  });
-                },
-              ),
-            ],
-          ),
-          const Divider(color: Colors.white70, height: 20),
-          Row(
-            children: [
-              const Text('Opacity:', style: TextStyle(color: Colors.white70)),
-              Expanded(
-                child: Slider(
-                  value: _dockOpacity,
-                  min: 0.3,
-                  max: 1.0,
-                  activeColor: Colors.tealAccent,
-                  onChanged: (val) {
-                    setState(() {
-                      _dockOpacity = val;
-                    });
-                  },
-                ),
-              ),
-              Text('${(_dockOpacity * 100).toInt()}%', style: const TextStyle(color: Colors.white)),
-            ],
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPermissionsCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E2C),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Expanded(
-                child: Text(
-                  'Display Above Apps (System Overlay)',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-                ),
-              ),
-              Chip(
-                label: Text(_overlayEnabled ? 'Active' : 'Disabled'),
-                backgroundColor: _overlayEnabled ? Colors.green.withOpacity(0.2) : Colors.red.withOpacity(0.2),
-                labelStyle: TextStyle(color: _overlayEnabled ? Colors.green : Colors.red, fontSize: 12),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Expanded(
-                child: Text(
-                  'Smart Micro Notification Alerts',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-                ),
-              ),
-              Switch(
-                value: _notificationAlerts,
-                activeColor: Colors.tealAccent,
-                onChanged: (val) {
-                  setState(() {
-                    _notificationAlerts = val;
-                  });
-                },
-              )
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMiniCalculator() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E2C),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white70),
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            alignment: Alignment.centerRight,
-            decoration: BoxDecoration(
-              color: Colors.black87,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              _calcDisplay,
-              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.tealAccent),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          const SizedBox(height: 12),
-          GridView.count(
-            crossAxisCount: 4,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
-            children: [
-              '7', '8', '9', '/',
-              '4', '5', '6', 'x',
-              '1', '2', '3', '-',
-              'C', '0', '=', '+'
-            ].map((btn) {
-              bool isOp = ['/', 'x', '-', '+', '='].contains(btn);
-              return ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isOp ? Colors.teal.withOpacity(0.3) : const Color(0xFF2A2A3D),
-                  foregroundColor: isOp ? Colors.tealAccent : Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  padding: EdgeInsets.zero,
-                ),
-                onPressed: () => _onCalcBtn(btn),
-                child: Text(
-                  btn,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// -----------------------------------------------------------------------------
-// TAB 2: MICRO-DECISION & CHOICE MATRIX ENGINE
-// -----------------------------------------------------------------------------
-class DecisionEngineTab extends StatefulWidget {
-  const DecisionEngineTab({super.key});
-
-  @override
-  State<DecisionEngineTab> createState() => _DecisionEngineTabState();
-}
-
-class _DecisionEngineTabState extends State<DecisionEngineTab> {
-  final TextEditingController _choiceInputController = TextEditingController();
-  final List<String> _choices = ['Healthy Meal', 'Quick Workout', 'Power Nap', 'Deep Focus Task', 'Micro Break'];
-  String _selectedResult = 'Tap below to decide your next move!';
-  bool _isDeciding = false;
-
-  void _addChoice() {
-    String text = _choiceInputController.text.trim();
-    if (text.isNotEmpty) {
-      setState(() {
-        _choices.add(text);
-        _choiceInputController.clear();
-      });
-    }
-  }
-
-  void _removeChoice(int index) {
-    if (_choices.length > 2) {
-      setState(() {
-        _choices.removeAt(index);
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Keep at least 2 choices for a decision!')),
       );
-    }
-  }
-
-  void _makeRandomDecision() {
-    if (_choices.isEmpty) return;
-    setState(() {
-      _isDeciding = true;
     });
-
-    Future.delayed(const Duration(milliseconds: 600), () {
-      final random = Random();
-      final picked = _choices[random.nextInt(_choices.length)];
-      setState(() {
-        _selectedResult = picked;
-        _isDeciding = false;
-      });
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Micro-Decision Engine',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Eliminate daily decision fatigue instantly.',
-            style: TextStyle(fontSize: 13, color: Colors.grey),
-          ),
-          const SizedBox(height: 20),
-
-          // Result Banner
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.deepPurple.shade900, Colors.teal.shade900],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.tealAccent.withOpacity(0.4)),
-            ),
-            child: Column(
-              children: [
-                const Icon(Icons.lightbulb, color: Colors.amber, size: 40),
-                const SizedBox(height: 10),
-                const Text(
-                  'OPTIMAL NEXT CHOICE:',
-                  style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _isDeciding ? 'Analyzing parameters...' : _selectedResult,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.tealAccent,
-                  ),
-                  softWrap: true,
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: _isDeciding ? null : _makeRandomDecision,
-                  icon: const Icon(Icons.shuffle),
-                  label: const Text('DECIDE FOR ME NOW'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.tealAccent,
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 24),
-          const Text(
-            'Your Active Options Pool',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-          ),
-          const SizedBox(height: 10),
-
-          // Input Row
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _choiceInputController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    hintText: 'Add new option...',
-                    hintStyle: TextStyle(color: Colors.grey),
-                    filled: true,
-                    fillColor: Color(0xFF1E1E2C),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(12)),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton.filled(
-                onPressed: _addChoice,
-                icon: const Icon(Icons.add),
-                style: IconButton.styleFrom(backgroundColor: Colors.tealAccent, foregroundColor: Colors.black),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 14),
-
-          // Options Chips
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAxisAlignment.center,
-            children: List.generate(_choices.length, (index) {
-              return Chip(
-                label: Text(_choices[index], style: const TextStyle(color: Colors.white)),
-                backgroundColor: const Color(0xFF2A2A3D),
-                deleteIcon: const Icon(Icons.delete, size: 16, color: Colors.redAccent),
-                onDeleted: () => _removeChoice(index),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              );
-            }),
-          ),
-        ],
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('⚡ Stealth Alert Captured! Read without blue ticks.'),
+        backgroundColor: Colors.teal,
+        duration: Duration(seconds: 2),
       ),
     );
   }
-}
 
-// -----------------------------------------------------------------------------
-// TAB 3: FAST TEXT & CLIPBOARD VAULT
-// -----------------------------------------------------------------------------
-class SnippetVaultTab extends StatefulWidget {
-  const SnippetVaultTab({super.key});
-
-  @override
-  State<SnippetVaultTab> createState() => _SnippetVaultTabState();
-}
-
-class _SnippetVaultTabState extends State<SnippetVaultTab> {
-  final List<Map<String, String>> _snippets = [
-    {'title': 'Standard Email Sign-off', 'content': 'Best regards,\nSent from my DockPulse Assistant'},
-    {'title': 'Social Hashtag Bundle', 'content': '#Productivity #DailyTech #FlutterDev #SmartUtility #LifeHack'},
-    {'title': 'Quick Bank Details', 'content': 'Account: 1234-5678-9012 | Swift: PULSEUS22'},
-    {'title': 'Micro-Break Reminder', 'content': 'Drink 250ml water, stretch for 2 minutes, reset posture!'},
-  ];
-
-  final TextEditingController _titleCtrl = TextEditingController();
-  final TextEditingController _contentCtrl = TextEditingController();
-
-  void _addSnippet() {
-    if (_titleCtrl.text.isNotEmpty && _contentCtrl.text.isNotEmpty) {
+  void _addStealthNote() {
+    if (_noteController.text.trim().isNotEmpty) {
       setState(() {
-        _snippets.add({
-          'title': _titleCtrl.text.trim(),
-          'content': _contentCtrl.text.trim(),
-        });
-        _titleCtrl.clear();
-        _contentCtrl.clear();
+        _stealthNotes.insert(0, _noteController.text.trim());
+        _noteController.clear();
       });
       Navigator.pop(context);
     }
   }
 
-  void _showAddModal() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFF1E1E2C),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
-          left: 16,
-          right: 16,
-          top: 16,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Add New Snippet',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _titleCtrl,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                labelText: 'Title / Label',
-                labelStyle: TextStyle(color: Colors.grey),
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _contentCtrl,
-              maxLines: 3,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                labelText: 'Snippet Content',
-                labelStyle: TextStyle(color: Colors.grey),
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _addSnippet,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.tealAccent,
-                  foregroundColor: Colors.black,
-                ),
-                child: const Text('SAVE SNIPPET'),
-              ),
-            )
-          ],
-        ),
-      ),
-    );
+  @override
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF12131C),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddModal,
-        backgroundColor: Colors.tealAccent,
-        foregroundColor: Colors.black,
-        child: const Icon(Icons.add),
-      ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16.0),
+        child: Stack(
           children: [
-            const Text(
-              'Quick Snippet Vault',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+            IndexedStack(
+              index: _currentIndex,
+              children: [
+                _buildVaultTab(),
+                _buildCurtainStudioTab(),
+                _buildFloatingSandboxTab(),
+                _buildAuditSettingsTab(),
+              ],
             ),
-            const SizedBox(height: 4),
-            const Text(
-              'Tap any card to instantly copy text for daily use.',
-              style: TextStyle(fontSize: 13, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-
-            ..._snippets.map((snip) {
-              return Card(
-                color: const Color(0xFF1E1E2C),
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  side: const BorderSide(color: Colors.white70),
-                ),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  title: Text(
-                    snip['title'] ?? '',
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
-                  subtitle: Padding(
-                    padding: const EdgeInsets.only(top: 6.0),
-                    child: Text(
-                      snip['content'] ?? '',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.content_copy, color: Colors.tealAccent),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Copied: "${snip['title']}"'),
-                          duration: const Duration(seconds: 1),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              );
-            }).toList(),
+            // Floating Stealth Bubble Overlay Simulation inside App
+            if (_isFloatingBubbleActive) _buildDraggableFloatingBubble(),
+            // Floating Anti-Peeking Curtain Overlay Simulation
+            if (_isOverlayEnabled && _activeDecoyMode != 'Hidden') _buildLiveCurtainOverlay(),
           ],
         ),
       ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) => setState(() => _currentIndex = index),
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: const Color(0xFF141622),
+        selectedItemColor: Colors.tealAccent,
+        unselectedItemColor: Colors.grey,
+        showUnselectedLabels: true,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.mark_chat_unread),
+            label: 'Stealth Inbox',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.layers),
+            label: 'Privacy Curtain',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.bubble_chart),
+            label: 'Assistant',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.shield),
+            label: 'Audit & Setup',
+          ),
+        ],
+      ),
     );
   }
-}
 
-// -----------------------------------------------------------------------------
-// TAB 4: DAILY PULSE & FOCUS ENGAGEMENT ANALYTICS
-// -----------------------------------------------------------------------------
-class PulseAnalyticsTab extends StatefulWidget {
-  const PulseAnalyticsTab({super.key});
+  // --- TAB 1: STEALTH INBOX (Notification Vault) ---
+  Widget _buildVaultTab() {
+    final filteredList = _notifications.where((item) {
+      final matchesSearch = item.sender.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          item.message.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          item.appName.toLowerCase().contains(_searchQuery.toLowerCase());
+      if (_selectedFilter == 'Starred') return matchesSearch && item.isStarred;
+      if (_selectedFilter == 'Deleted') return matchesSearch && item.isDeletedBySender;
+      return matchesSearch;
+    }).toList();
 
-  @override
-  State<PulseAnalyticsTab> createState() => _PulseAnalyticsTabState();
-}
-
-class _PulseAnalyticsTabState extends State<PulseAnalyticsTab> {
-  int _microTaskCount = 7;
-  double _energyLevel = 0.8;
-  double _screenBudgetHours = 4.5;
-
-  @override
-  Widget build(BuildContext context) {
     return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Stealth Inbox',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Read notifications secretly without sending receipts',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                      softWrap: true,
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: _addSimulatedNotification,
+                icon: const Icon(Icons.add_alert, color: Colors.tealAccent),
+                tooltip: 'Simulate Incoming Message',
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Search box
+          TextField(
+            onChanged: (val) => setState(() => _searchQuery = val),
+            decoration: InputDecoration(
+              hintText: 'Search private messages, senders...',
+              prefixIcon: const Icon(Icons.search, color: Colors.grey),
+              filled: true,
+              fillColor: const Color(0xFF1A1D2C),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Quick Filter Chips
+          Wrap(
+            spacing: 8,
+            crossAxisAlignment: WrapCrossAxisAlignment.center,
+            children: [
+              _buildFilterChip('All'),
+              _buildFilterChip('Starred'),
+              _buildFilterChip('Deleted'),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (filteredList.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Column(
+                  children: const [
+                    Icon(Icons.mark_email_read, size: 48, color: Colors.grey),
+                    SizedBox(height: 12),
+                    Text(
+                      'No stealth notifications found.',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: filteredList.length,
+              itemBuilder: (context, index) {
+                final item = filteredList[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    leading: CircleAvatar(
+                      backgroundColor: item.appColor.withOpacity(0.2),
+                      child: Icon(item.icon, color: item.appColor),
+                    ),
+                    title: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            item.sender,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Text(
+                          item.time,
+                          style: const TextStyle(fontSize: 11, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 4),
+                        Text(
+                          item.message,
+                          style: TextStyle(
+                            color: item.isDeletedBySender ? Colors.redAccent : Colors.white70,
+                            fontSize: 13,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: item.appColor.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                item.appName,
+                                style: TextStyle(fontSize: 10, color: item.appColor, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            if (item.isDeletedBySender) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'SAVED DELETED MSG',
+                                  style: TextStyle(fontSize: 9, color: Colors.redAccent, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                    trailing: IconButton(
+                      icon: Icon(
+                        item.isStarred ? Icons.star : Icons.star_border,
+                        color: item.isStarred ? Colors.amber : Colors.grey,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          item.isStarred = !item.isStarred;
+                        });
+                      },
+                    ),
+                    onTap: () => _showNotificationDetailModal(item),
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label) {
+    final isSelected = _selectedFilter == label;
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      selectedColor: Colors.tealAccent.withOpacity(0.2),
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.tealAccent : Colors.white70,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+      backgroundColor: const Color(0xFF1A1D2C),
+      onSelected: (selected) {
+        if (selected) setState(() => _selectedFilter = label);
+      },
+    );
+  }
+
+  void _showNotificationDetailModal(NotificationModel item) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1D2C),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: item.appColor.withOpacity(0.2),
+                        child: Icon(item.icon, color: item.appColor),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.sender,
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              'Via ${item.appName} • ${item.time}',
+                              style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 24, color: Colors.white70),
+                  const Text(
+                    'Stealth Vault Message View:',
+                    style: TextStyle(fontSize: 12, color: Colors.tealAccent, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    item.message,
+                    style: const TextStyle(fontSize: 15, height: 1.4, color: Colors.white),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.teal,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Copied text to secret clipboard!')),
+                          );
+                          Navigator.pop(context);
+                        },
+                        icon: const Icon(Icons.copy, size: 18),
+                        label: const Text('Copy Text'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.check, size: 18),
+                        label: const Text('Close Privately'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // --- TAB 2: ANTI-PEEKING CURTAIN STUDIO ---
+  Widget _buildCurtainStudioTab() {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Daily Pulse Score',
+            'Anti-Peeking Screen Shield',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
           ),
           const SizedBox(height: 4),
           const Text(
-            'Track your daily efficiency and micro-goal performance.',
-            style: TextStyle(fontSize: 13, color: Colors.grey),
+            'Block nosy onlookers in buses or public areas from reading your screen',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+            softWrap: true,
           ),
           const SizedBox(height: 20),
-
-          // Pulse Gauge Card
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E1E2C),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white70),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Today\'s Pulse Rating', style: TextStyle(color: Colors.white70)),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.teal.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        'HIGH PERFORMANCE',
-                        style: TextStyle(color: Colors.tealAccent, fontSize: 11, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    SizedBox(
-                      width: 130,
-                      height: 130,
-                      child: CircularProgressIndicator(
-                        value: (_microTaskCount / 10).clamp(0.1, 1.0),
-                        strokeWidth: 12,
-                        backgroundColor: Colors.white70,
-                        color: Colors.tealAccent,
-                      ),
-                    ),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '${(_microTaskCount * 12.5).toInt()}%',
-                          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
-                        ),
-                        const Text('Efficiency', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildMiniStat('Tasks Met', '$_microTaskCount/10', Icons.check_circle),
-                    _buildMiniStat('Est. Saved', '42 min', Icons.schedule),
-                    _buildMiniStat('Ad Rewards', '\$1.20', Icons.monetization_on),
-                  ],
-                ),
-              ],
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  SwitchListTile(
+                    title: const Text('Activate Privacy Curtain Overlay', style: TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: const Text('Displays customizable privacy filter over your screen'),
+                    value: _isOverlayEnabled,
+                    activeColor: Colors.tealAccent,
+                    onChanged: (val) => setState(() => _isOverlayEnabled = val),
+                  ),
+                  const Divider(color: Colors.white70),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Curtain Opacity:'),
+                      Text('${(_curtainOpacity * 100).toInt()}%', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.tealAccent)),
+                    ],
+                  ),
+                  Slider(
+                    value: _curtainOpacity,
+                    min: 0.2,
+                    max: 0.98,
+                    activeColor: Colors.tealAccent,
+                    onChanged: (val) => setState(() => _curtainOpacity = val),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Curtain Mask Height:'),
+                      Text('${_curtainHeight.toInt()} px', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.tealAccent)),
+                    ],
+                  ),
+                  Slider(
+                    value: _curtainHeight,
+                    min: 60.0,
+                    max: 350.0,
+                    activeColor: Colors.tealAccent,
+                    onChanged: (val) => setState(() => _curtainHeight = val),
+                  ),
+                ],
+              ),
             ),
           ),
-
+          const SizedBox(height: 16),
+          const Text('Select Decoy Cover Mode:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _buildDecoyButton('Normal Tint', Icons.color_lens, Colors.black),
+              _buildDecoyButton('Fake Low Battery', Icons.battery_alert, Colors.red),
+              _buildDecoyButton('Fake Update', Icons.system_update_tv, Colors.indigo),
+              _buildDecoyButton('Hidden', Icons.visibility_off, Colors.grey),
+            ],
+          ),
           const SizedBox(height: 20),
-          const Text(
-            'Interactive Energy & Budget Check',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-          ),
-          const SizedBox(height: 12),
-
-          // Interactive Energy Controls
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E1E2C),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Current Energy Meter:', style: TextStyle(color: Colors.white)),
-                    Text('${(_energyLevel * 100).toInt()}%', style: const TextStyle(color: Colors.tealAccent, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-                Slider(
-                  value: _energyLevel,
-                  min: 0.1,
-                  max: 1.0,
-                  activeColor: Colors.tealAccent,
-                  onChanged: (val) {
-                    setState(() {
-                      _energyLevel = val;
-                    });
-                  },
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Daily Utility Hours:', style: TextStyle(color: Colors.white)),
-                    Text('${_screenBudgetHours.toStringAsFixed(1)} hrs', style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-                Slider(
-                  value: _screenBudgetHours,
-                  min: 0.5,
-                  max: 12.0,
-                  activeColor: Colors.amber,
-                  onChanged: (val) {
-                    setState(() {
-                      _screenBudgetHours = val;
-                    });
-                  },
-                ),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _microTaskCount = (_microTaskCount + 1).clamp(0, 10);
-                      });
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Pulse Score updated successfully!')),
-                      );
-                    },
-                    icon: const Icon(Icons.add),
-                    label: const Text('Log Completed Micro-Goal'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepPurple,
-                      foregroundColor: Colors.white,
+          Card(
+            color: const Color(0xFF141622),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: const [
+                  Icon(Icons.lightbulb, color: Colors.amber),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Tip: You can drag the floating curtain handle on the screen to reposition the privacy shield over sensitive chat areas!',
+                      style: TextStyle(fontSize: 12, color: Colors.white70),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -978,14 +621,358 @@ class _PulseAnalyticsTabState extends State<PulseAnalyticsTab> {
     );
   }
 
-  Widget _buildMiniStat(String label, String value, IconData icon) {
-    return Column(
-      children: [
-        Icon(icon, color: Colors.tealAccent, size: 22),
-        const SizedBox(height: 4),
-        Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-        Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-      ],
+  Widget _buildDecoyButton(String modeName, IconData icon, Color color) {
+    final isSelected = _activeDecoyMode == modeName;
+    return InkWell(
+      onTap: () => setState(() => _activeDecoyMode = modeName),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withOpacity(0.3) : const Color(0xFF1A1D2C),
+          border: Border.all(
+            color: isSelected ? Colors.tealAccent : Colors.transparent,
+            width: 1.5,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: isSelected ? Colors.tealAccent : Colors.grey),
+            const SizedBox(width: 8),
+            Text(
+              modeName,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.white70,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- TAB 3: FLOATING ASSISTANT SANDBOX ---
+  Widget _buildFloatingSandboxTab() {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Floating Assistant & Secret Notes',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Keep secret notes & quick privacy utilities floating over any application',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+            softWrap: true,
+          ),
+          const SizedBox(height: 20),
+          Card(
+            child: SwitchListTile(
+              title: const Text('Show Draggable Stealth Bubble', style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: const Text('Interactive floating launcher bubble on your screen'),
+              value: _isFloatingBubbleActive,
+              activeColor: Colors.tealAccent,
+              onChanged: (val) => setState(() => _isFloatingBubbleActive = val),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Stealth Quick Notes Vault', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: _showAddNoteDialog,
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Add Note'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _stealthNotes.length,
+            itemBuilder: (context, index) {
+              return Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: const Icon(Icons.lock, color: Colors.tealAccent),
+                  title: Text(
+                    _stealthNotes[index],
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete, size: 18, color: Colors.grey),
+                    onPressed: () {
+                      setState(() {
+                        _stealthNotes.removeAt(index);
+                      });
+                    },
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddNoteDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1A1D2C),
+          title: const Text('Add Private Stealth Note'),
+          content: TextField(
+            controller: _noteController,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              hintText: 'Type sensitive info, codes, passwords...',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+              onPressed: _addStealthNote,
+              child: const Text('Save Note', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // --- TAB 4: AUDIT & SETTINGS ---
+  Widget _buildAuditSettingsTab() {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Privacy Audit & Status',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'System permissions and security status breakdown',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+            softWrap: true,
+          ),
+          const SizedBox(height: 20),
+          // Security Gauge Card
+          Card(
+            color: const Color(0xFF141622),
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Row(
+                children: [
+                  Container(
+                    width: 70,
+                    height: 70,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.tealAccent, width: 4),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        '98%',
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.tealAccent),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          'Privacy Score: Excellent',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Anti-Peeking active. Read-receipt bypass fully operational.',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                          softWrap: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text('System Permissions Setup', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
+          Card(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: const Text('Notification Listener Permission'),
+                  subtitle: const Text('Allows capturing incoming chats without triggering blue ticks'),
+                  value: _isNotificationAccessGranted,
+                  activeColor: Colors.tealAccent,
+                  onChanged: (val) => setState(() => _isNotificationAccessGranted = val),
+                ),
+                const Divider(color: Colors.white70, height: 1),
+                SwitchListTile(
+                  title: const Text('Display Over Other Apps'),
+                  subtitle: const Text('Required for screen privacy curtain and floating assistant bubble'),
+                  value: _isOverlayEnabled,
+                  activeColor: Colors.tealAccent,
+                  onChanged: (val) => setState(() => _isOverlayEnabled = val),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text('Daily Anti-Peeking Stats', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatCard('42', 'Captured Msgs', Colors.blue),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildStatCard('3', 'Deleted Msgs', Colors.redAccent),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildStatCard('4.5 h', 'Shield Active', Colors.tealAccent),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String value, String title, Color color) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14.0),
+        child: Column(
+          children: [
+            Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: color)),
+            const SizedBox(height: 4),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 11, color: Colors.grey),
+              softWrap: true,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- FLOATING SIMULATED COMPONENTS ---
+  Widget _buildDraggableFloatingBubble() {
+    return Positioned(
+      left: _bubblePosition.dx,
+      top: _bubblePosition.dy,
+      child: GestureDetector(
+        onPanUpdate: (details) {
+          setState(() {
+            _bubblePosition += details.delta;
+          });
+        },
+        onTap: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('⚡ Stealth Floating Assistant: Quick Privacy Shield Toggled!'),
+              duration: Duration(seconds: 1),
+            ),
+          );
+        },
+        child: Container(
+          width: 54,
+          height: 54,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.teal,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.tealAccent.withOpacity(0.4),
+                blurRadius: 10,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: const Icon(Icons.shield, color: Colors.white, size: 28),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLiveCurtainOverlay() {
+    return Positioned(
+      top: 100,
+      left: 0,
+      right: 0,
+      child: IgnorePointer(
+        ignoring: false,
+        child: Container(
+          height: _curtainHeight,
+          color: _curtainColor.withOpacity(_curtainOpacity),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (_activeDecoyMode == 'Fake Low Battery') ...[
+                const Icon(Icons.battery_alert, color: Colors.redAccent, size: 36),
+                const SizedBox(height: 4),
+                const Text(
+                  'Battery Critical: 1% Remaining',
+                  style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+              ] else if (_activeDecoyMode == 'Fake Update') ...[
+                const CircularProgressIndicator(color: Colors.indigoAccent),
+                const SizedBox(height: 8),
+                const Text(
+                  'System Installing Update (48%)... Do Not Turn Off',
+                  style: TextStyle(color: Colors.white, fontSize: 12),
+                ),
+              ] else ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    Icon(Icons.visibility_off, color: Colors.tealAccent, size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      'ANTI-PEEKING SCREEN MASK ACTIVE',
+                      style: TextStyle(color: Colors.tealAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
