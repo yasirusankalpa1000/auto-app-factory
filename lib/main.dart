@@ -1,462 +1,415 @@
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(const OmniOverlayApp());
+  runApp(const SmartHudApp());
 }
 
-class OmniOverlayApp extends StatelessWidget {
-  const OmniOverlayApp({super.key});
+class SmartHudApp extends StatelessWidget {
+  const SmartHudApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'OmniOverlay',
+      title: 'SmartHUD Assistant',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.indigo,
-          brightness: Brightness.dark,
+        brightness: Brightness.dark,
+        colorSchemeSeed: Colors.deepPurple,
+        scaffoldBackgroundColor: const Color(0xFF121212),
+        cardTheme: CardThemeData(
+          color: const Color(0xFF1E1E2C),
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
-        scaffoldBackgroundColor: const Color(0xFF0F172A),
       ),
-      home: const MainHomeScreen(),
+      home: const MainHudScreen(),
     );
   }
 }
 
-class MainHomeScreen extends StatefulWidget {
-  const MainHomeScreen({super.key});
+class MainHudScreen extends StatefulWidget {
+  const MainHudScreen({Key? key}) : super(key: key);
 
   @override
-  State<MainHomeScreen> createState() => _MainHomeScreenState();
+  State<MainHudScreen> createState() => _MainHudScreenState();
 }
 
-class _MainHomeScreenState extends State<MainHomeScreen> {
+class _MainHudScreenState extends State<MainHudScreen> {
   int _currentIndex = 0;
-
-  // Floating Overlay Control States
-  bool _isOverlayEnabled = true;
-  bool _isNotificationTickerActive = true;
-  bool _isDisplayAboveAppsPermitted = true;
-  bool _isAccessibilityPermitted = false;
-  String _selectedFloatingTool = 'Quick Scratchpad';
-
-  // Text Sanitizer States
-  final TextEditingController _rawTextController = TextEditingController();
-  String _sanitizedResult = '';
-  int _charCount = 0;
-  int _wordCount = 0;
-
-  // Micro-Decision States
-  final TextEditingController _decisionInputController = TextEditingController();
-  final List<String> _decisionOptions = ['Pizza', 'Tacos', 'Sushi', 'Burger', 'Salad'];
-  String _selectedDecision = 'Tap Spin to Decide!';
-  bool _isSpinning = false;
-
-  // Utility Splitter States
-  final TextEditingController _billAmountController = TextEditingController();
-  double _tipPercentage = 15.0;
-  int _splitPeople = 2;
-  double _perPersonTotal = 0.0;
-
-  // Scratchpad Notes
-  final TextEditingController _scratchNoteController = TextEditingController();
-  final List<String> _savedScratchNotes = [
-    'Order code: #9842',
-    'Meeting link snippet saved',
+  
+  // Floating HUD Overlay State
+  bool _hudOverlayActive = true;
+  bool _screenTintActive = false;
+  double _tintOpacity = 0.25;
+  Color _tintColor = Colors.amber;
+  Offset _bubblePosition = const Offset(20, 120);
+  
+  // Dynamic Sticky Notes State
+  final List<String> _stickyNotes = [
+    '⚡ Remember to pay electricity bill by 5 PM',
+    '🛒 Buy milk, eggs & coffee beans',
+    '📞 Call back client regarding proposal',
   ];
+  final TextEditingController _noteController = TextEditingController();
+
+  // Smart Reply Generator State
+  String _inputMessage = '';
+  String _generatedReply = '';
+  String _selectedTone = 'Professional';
+  final TextEditingController _msgController = TextEditingController();
+
+  // Micro Decision Engine State
+  double _necessityScore = 5.0;
+  double _affordabilityScore = 5.0;
+  double _longTermValueScore = 5.0;
+  double _itemPrice = 50.0;
+  final TextEditingController _priceController = TextEditingController(text: '50.00');
+
+  // Quick Math / Splitter State
+  double _billAmount = 120.0;
+  int _peopleCount = 3;
+  double _tipPercentage = 10.0;
+  final TextEditingController _billController = TextEditingController(text: '120.00');
 
   @override
-  void initState() {
-    super.initState();
-    _calculateSplit();
+  void dispose() {
+    _noteController.dispose();
+    _msgController.dispose();
+    _priceController.dispose();
+    _billController.dispose();
+    super.dispose();
   }
 
-  void _calculateSplit() {
-    final double bill = double.tryParse(_billAmountController.text) ?? 50.0;
-    final double totalTip = bill * (_tipPercentage / 100.0);
-    final double grandTotal = bill + totalTip;
-    setState(() {
-      _perPersonTotal = grandTotal / (_splitPeople > 0 ? _splitPeople : 1);
-    });
-  }
-
-  void _sanitizeText(String mode) {
-    String text = _rawTextController.text;
-    if (text.isEmpty) {
+  void _addStickyNote() {
+    if (_noteController.text.trim().isNotEmpty) {
       setState(() {
-        _sanitizedResult = 'Please enter or paste some text first!';
+        _stickyNotes.add(_noteController.text.trim());
+        _noteController.clear();
       });
-      return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sticky Note pinned to Floating HUD!')),
+      );
     }
-
-    if (mode == 'clean') {
-      text = text.replaceAll(RegExp(r'[^\w\s\.\,\!\?\-]'), '');
-      text = text.replaceAll(RegExp(r'\s+'), ' ').trim();
-    } else if (mode == 'bullets') {
-      List<String> lines = text.split('\n');
-      final sb = StringBuffer();
-      for (var line in lines) {
-        if (line.trim().isNotEmpty) {
-          sb.writeln('• ${line.trim()}');
-        }
-      }
-      text = sb.toString();
-    } else if (mode == 'uppercase') {
-      text = text.toUpperCase();
-    } else if (mode == 'lowercase') {
-      text = text.toLowerCase();
-    } else if (mode == 'strip_urls') {
-      text = text.replaceAll(RegExp(r'https?://\S+'), '[LINK REMOVED]');
-    }
-
-    setState(() {
-      _sanitizedResult = text;
-      _charCount = text.length;
-      _wordCount = text.trim().isEmpty ? 0 : text.trim().split(RegExp(r'\s+')).length;
-    });
   }
 
-  void _spinDecision() async {
-    if (_decisionOptions.isEmpty) return;
+  void _generateSmartReply() {
+    if (_msgController.text.trim().isEmpty) return;
+    final text = _msgController.text.trim();
     setState(() {
-      _isSpinning = true;
-      _selectedDecision = 'Spinning options...';
-    });
-    await Future.delayed(const Duration(milliseconds: 900));
-    final randomIndex = (DateTime.now().millisecondsSinceEpoch) % _decisionOptions.length;
-    setState(() {
-      _selectedDecision = _decisionOptions[randomIndex];
-      _isSpinning = false;
+      if (_selectedTone == 'Professional') {
+        _generatedReply = 'Thank you for reaching out. Regarding "$text", I will review the details and get back to you shortly.';
+      } else if (_selectedTone == 'Polite Decline') {
+        _generatedReply = 'I appreciate you bringing "$text" to my attention, but unfortunately I won\'t be able to commit to this right now.';
+      } else if (_selectedTone == 'Casual / Friendly') {
+        _generatedReply = 'Hey! Got it regarding "$text". Sounds awesome, let\'s catch up soon!';
+      } else {
+        _generatedReply = 'Understood regarding "$text". Let\'s finalize this as soon as possible.';
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
-        elevation: 2,
-        title: Row(
-          children: [
-            const Icon(Icons.widgets, color: Colors.teal),
-            const SizedBox(width: 8),
-            const Expanded(
-              child: Text(
-                'OmniOverlay Studio',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                overflow: TextOverflow.ellipsis,
+      body: Stack(
+        children: [
+          // Screen Tint Simulation Overlay
+          if (_screenTintActive)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Container(
+                  color: _tintColor.withOpacity(_tintOpacity),
+                ),
               ),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: _isOverlayEnabled ? Colors.teal : Colors.grey,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                _isOverlayEnabled ? 'ACTIVE' : 'OFF',
-                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
-              ),
-            ),
-          ],
-        ),
-      ),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            IndexedStack(
-              index: _currentIndex,
+
+          SafeArea(
+            child: Column(
               children: [
-                _buildOverlayStudioTab(),
-                _buildTextSanitizerTab(),
-                _buildDecisionHelperTab(),
-                _buildQuickUtilityTab(),
+                // Top Floating Status Banner
+                _buildSystemNotificationBanner(),
+
+                // Main Navigation Screen Content
+                Expanded(
+                  child: IndexedStack(
+                    index: _currentIndex,
+                    children: [
+                      _buildFloatingHudStudioTab(),
+                      _buildSmartReplyTab(),
+                      _buildMicroDecisionTab(),
+                      _buildQuickUtilityTab(),
+                    ],
+                  ),
+                ),
               ],
             ),
-            if (_isOverlayEnabled) _buildInteractiveFloatingHUD(),
-          ],
-        ),
+          ),
+
+          // Interactive Draggable Floating Dynamic Bubble Widget
+          if (_hudOverlayActive)
+            Positioned(
+              left: _bubblePosition.dx,
+              top: _bubblePosition.dy,
+              child: GestureDetectingWidget(
+                onPanUpdate: (details) {
+                  setState(() {
+                    _bubblePosition += details.delta;
+                  });
+                },
+                child: _buildDraggableFloatingBubble(),
+              ),
+            ),
+        ],
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
+        onTap: (idx) => setState(() => _currentIndex = idx),
         type: BottomNavigationBarType.fixed,
-        backgroundColor: const Color(0xFF1E293B),
-        selectedItemColor: Colors.teal,
+        backgroundColor: const Color(0xFF1E1E2C),
+        selectedItemColor: Colors.tealAccent,
         unselectedItemColor: Colors.grey,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.layers),
-            label: 'Overlay',
+            icon: Icon(Icons.widgets),
+            label: 'Floating HUD',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.cleaning_services),
-            label: 'Sanitizer',
+            icon: Icon(Icons.chat_bubble_outline),
+            label: 'Smart Reply',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.touch_app),
-            label: 'Decide',
+            icon: Icon(Icons.psychology),
+            label: 'Decision Wheel',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.calculate),
-            label: 'Utilities',
+            label: 'Split & Math',
           ),
         ],
       ),
     );
   }
 
-  Widget _buildInteractiveFloatingHUD() {
-    return Positioned(
-      top: 15,
-      right: 15,
-      child: Material(
-        elevation: 8,
-        borderRadius: BorderRadius.circular(24),
-        color: Colors.indigo,
-        child: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.teal, width: 1.5),
+  Widget _buildSystemNotificationBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: _hudOverlayActive ? Colors.teal.withOpacity(0.2) : Colors.grey.withOpacity(0.1),
+      child: Row(
+        children: [
+          Icon(
+            _hudOverlayActive ? Icons.sensors : Icons.sensors_off,
+            color: _hudOverlayActive ? Colors.tealAccent : Colors.grey,
+            size: 20,
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.bolt, color: Colors.amber, size: 20),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  'Float: $_selectedFloatingTool',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
-                  overflow: TextOverflow.ellipsis,
-                ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _hudOverlayActive
+                  ? 'SmartHUD Floating Assistant: ACTIVE on Top'
+                  : 'SmartHUD Assistant: PAUSED',
+              style: TextStyle(
+                color: _hudOverlayActive ? Colors.tealAccent : Colors.grey,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
               ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Floating Widget: $_selectedFloatingTool opened!'),
-                      duration: const Duration(seconds: 1),
-                    ),
-                  );
-                },
-                child: const CircleAvatar(
-                  radius: 12,
-                  backgroundColor: Colors.teal,
-                  child: Icon(Icons.play_arrow, size: 14, color: Colors.white),
-                ),
-              ),
-            ],
+              softWrap: true,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
+          Switch(
+            value: _hudOverlayActive,
+            activeColor: Colors.tealAccent,
+            onChanged: (val) {
+              setState(() {
+                _hudOverlayActive = val;
+              });
+            },
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDraggableFloatingBubble() {
+    return Material(
+      elevation: 10,
+      borderRadius: BorderRadius.circular(30),
+      color: Colors.deepPurple,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: Colors.tealAccent, width: 2),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.stars, color: Colors.tealAccent, size: 24),
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'SmartHUD Active',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+                Text(
+                  '${_stickyNotes.length} pinned items',
+                  style: const TextStyle(fontSize: 9, color: Colors.white70),
+                ),
+              ],
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: () {
+                _showQuickHudModal(context);
+              },
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  color: Colors.black87,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.open_in_full, size: 14, color: Colors.white),
+              ),
+            )
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildOverlayStudioTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Card(
-            color: const Color(0xFF1E293B),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
+  void _showQuickHudModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E2C),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: SingleChildScrollView(
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.notifications_active, color: Colors.teal),
-                      const SizedBox(width: 8),
-                      const Expanded(
-                        child: Text(
-                          'Floating Notification & Overlay Control',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Switch(
-                        value: _isOverlayEnabled,
-                        onChanged: (val) => setState(() => _isOverlayEnabled = val),
-                        activeColor: Colors.teal,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Keep essential micro-tools floating above all your favorite social, news, and messaging apps.',
-                    style: TextStyle(fontSize: 13, color: Colors.grey),
-                  ),
-                  const Divider(height: 24, color: Colors.blueGrey),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Persistent Notification Ticker', style: TextStyle(fontSize: 14)),
-                      Switch(
-                        value: _isNotificationTickerActive,
-                        onChanged: (val) => setState(() => _isNotificationTickerActive = val),
-                        activeColor: Colors.teal,
+                      const Text(
+                        '⚡ Dynamic Floating Notes Feed',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.tealAccent),
                       ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(ctx),
+                      )
                     ],
                   ),
+                  const Divider(),
+                  if (_stickyNotes.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Text('No notes currently pinned to HUD.'),
+                    )
+                  else
+                    ..._stickyNotes.map(
+                      (note) => ListTile(
+                        leading: const Icon(Icons.push_pin, color: Colors.amber),
+                        title: Text(note, style: const TextStyle(fontSize: 14)),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
+                          onPressed: () {
+                            setState(() {
+                              _stickyNotes.remove(note);
+                            });
+                            Navigator.pop(ctx);
+                          },
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'Select Quick Floating Tool Preset',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              'Quick Scratchpad',
-              'Instant Sanitizer',
-              'Micro Decision Wheel',
-              'Bill & Tip Splitter'
-            ].map((tool) {
-              final isSelected = _selectedFloatingTool == tool;
-              return ChoiceChip(
-                label: Text(tool),
-                selected: isSelected,
-                selectedColor: Colors.teal,
-                onSelected: (selected) {
-                  if (selected) {
-                    setState(() => _selectedFloatingTool = tool);
-                  }
-                },
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            color: const Color(0xFF1E293B),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'System Permission Dashboard',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  ListTile(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.layers, color: Colors.blue),
-                    title: const Text('Display Over Other Apps'),
-                    subtitle: const Text('Allows floating quick action bar'),
-                    trailing: Icon(
-                      _isDisplayAboveAppsPermitted ? Icons.check_circle : Icons.error,
-                      color: _isDisplayAboveAppsPermitted ? Colors.green : Colors.orange,
-                    ),
-                    onTap: () {
-                      setState(() {
-                        _isDisplayAboveAppsPermitted = !_isDisplayAboveAppsPermitted;
-                      });
-                    },
-                  ),
-                  const Divider(height: 1, color: Colors.blueGrey),
-                  ListTile(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.security, color: Colors.purple),
-                    title: const Text('Notification Listener Permission'),
-                    subtitle: const Text('Enables interactive action bar notifications'),
-                    trailing: Icon(
-                      _isAccessibilityPermitted ? Icons.check_circle : Icons.radio_button_unchecked,
-                      color: _isAccessibilityPermitted ? Colors.green : Colors.grey,
-                    ),
-                    onTap: () {
-                      setState(() {
-                        _isAccessibilityPermitted = !_isAccessibilityPermitted;
-                      });
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildTextSanitizerTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Instant Text Sanitizer & Formatter',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Clean copied text, strip emojis/URLs, or auto-format before sharing.',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _rawTextController,
-            maxLines: 4,
-            decoration: const InputDecoration(
-              hintText: 'Paste messy raw text here...',
-              border: OutlineInputBorder(),
-              filled: true,
-              fillColor: Color(0xFF1E293B),
+  // TAB 1: Floating HUD & Notes Studio
+  Widget _buildFloatingHudStudioTab() {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Floating HUD & Sticky Studio',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
             ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              ElevatedButton.icon(
-                onPressed: () => _sanitizeText('clean'),
-                icon: const Icon(Icons.cleaning_services, size: 16),
-                label: const Text('Strip Emojis & Symbols'),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
-              ),
-              ElevatedButton.icon(
-                onPressed: () => _sanitizeText('bullets'),
-                icon: const Icon(Icons.format_list_bulleted, size: 16),
-                label: const Text('Auto-Bullet Lines'),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo),
-              ),
-              ElevatedButton.icon(
-                onPressed: () => _sanitizeText('strip_urls'),
-                icon: const Icon(Icons.link_off, size: 16),
-                label: const Text('Remove Web Links'),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.blueGrey),
-              ),
-              ElevatedButton.icon(
-                onPressed: () => _sanitizeText('uppercase'),
-                icon: const Icon(Icons.text_fields, size: 16),
-                label: const Text('UPPERCASE'),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.purple),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          if (_sanitizedResult.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            const Text(
+              'Keep important reminders permanently accessible over your apps.',
+              style: TextStyle(color: Colors.grey, fontSize: 13),
+            ),
+            const SizedBox(height: 20),
+
+            // Card 1: Add New Sticky Note
             Card(
-              color: const Color(0xFF1E293B),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.edit_note, color: Colors.tealAccent),
+                        SizedBox(width: 8),
+                        Text(
+                          'Pin Note to Screen HUD',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _noteController,
+                      decoration: const InputDecoration(
+                        hintText: 'Enter dynamic task or reminder...',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.teal,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: _addStickyNote,
+                        icon: const Icon(Icons.push_pin),
+                        label: const Text('Pin to Overlay HUD'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Card 2: Screen Tint Helper (Eye Protector / Focus Tint)
+            Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -465,48 +418,483 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Sanitized Output',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.teal),
-                        ),
-                        Row(
+                        const Row(
                           children: [
-                            IconButton(
-                              icon: const Icon(Icons.content_copy, size: 18, color: Colors.amber),
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Sanitized text copied to clipboard!')),
-                                );
-                              },
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.share, size: 18, color: Colors.white),
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Sharing sanitized text...')),
-                                );
-                              },
+                            Icon(Icons.remove_red_eye, color: Colors.amber),
+                            SizedBox(width: 8),
+                            Text(
+                              'Screen Comfort Tint HUD',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
+                        Switch(
+                          value: _screenTintActive,
+                          activeColor: Colors.amber,
+                          onChanged: (val) {
+                            setState(() {
+                              _screenTintActive = val;
+                            });
+                          },
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    SelectableText(
-                      _sanitizedResult,
-                      style: const TextStyle(fontSize: 14, color: Colors.white),
+                    if (_screenTintActive) ...[
+                      const SizedBox(height: 12),
+                      const Text('Tint Opacity Intensity', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      Slider(
+                        value: _tintOpacity,
+                        min: 0.1,
+                        max: 0.6,
+                        activeColor: Colors.amber,
+                        onChanged: (val) => setState(() => _tintOpacity = val),
+                      ),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          ChoiceChip(
+                            label: const Text('Warm Amber'),
+                            selected: _tintColor == Colors.amber,
+                            onSelected: (_) => setState(() => _tintColor = Colors.amber),
+                          ),
+                          ChoiceChip(
+                            label: const Text('Soft Red'),
+                            selected: _tintColor == Colors.red,
+                            onSelected: (_) => setState(() => _tintColor = Colors.red),
+                          ),
+                          ChoiceChip(
+                            label: const Text('Cool Teal'),
+                            selected: _tintColor == Colors.teal,
+                            onSelected: (_) => setState(() => _tintColor = Colors.teal),
+                          ),
+                        ],
+                      )
+                    ]
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+            // Pinned Notes List Display
+            const Text(
+              'Active Pinned Notes:',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.tealAccent),
+            ),
+            const SizedBox(height: 10),
+            if (_stickyNotes.isEmpty)
+              const Text('No sticky notes pinned yet.', style: TextStyle(color: Colors.grey))
+            else
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _stickyNotes.length,
+                itemBuilder: (ctx, idx) {
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: Colors.teal.withOpacity(0.2),
+                        child: Text('${idx + 1}', style: const TextStyle(color: Colors.tealAccent)),
+                      ),
+                      title: Text(
+                        _stickyNotes[idx],
+                        style: const TextStyle(fontSize: 14),
+                        softWrap: true,
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.grey, size: 20),
+                        onPressed: () {
+                          setState(() {
+                            _stickyNotes.removeAt(idx);
+                          });
+                        },
+                      ),
                     ),
-                    const Divider(height: 16, color: Colors.blueGrey),
+                  );
+                },
+              )
+          ],
+        ),
+      ),
+    );
+  }
+
+  // TAB 2: Smart AI-Style Reply Helper
+  Widget _buildSmartReplyTab() {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Smart Instant Message Polish',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Paste any draft text or received message to instantly draft a perfect response.',
+              style: TextStyle(color: Colors.grey, fontSize: 13),
+            ),
+            const SizedBox(height: 20),
+
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Received Message or Rough Thought:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _msgController,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        hintText: 'e.g., Can you send the project report by today?',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Select Tone Strategy:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        'Professional',
+                        'Polite Decline',
+                        'Casual / Friendly',
+                        'Assertive Direct',
+                      ].map((tone) {
+                        return ChoiceChip(
+                          label: Text(tone),
+                          selected: _selectedTone == tone,
+                          activeColor: Colors.deepPurpleAccent,
+                          onSelected: (selected) {
+                            if (selected) {
+                              setState(() {
+                                _selectedTone = tone;
+                              });
+                            }
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.deepPurpleAccent,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: _generateSmartReply,
+                        icon: const Icon(Icons.auto_awesome),
+                        label: const Text('Generate Instant Reply'),
+                      ),
+                    )
+                  ],
+                ),
+              ),
+            ),
+
+            if (_generatedReply.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              Card(
+                color: const Color(0xFF26263A),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Generated Response:',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.tealAccent),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.copy, size: 20, color: Colors.tealAccent),
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Copied response to clipboard!')),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      SelectableText(
+                        _generatedReply,
+                        style: const TextStyle(fontSize: 15, height: 1.4),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ]
+          ],
+        ),
+      ),
+    );
+  }
+
+  // TAB 3: Micro Decision Evaluator
+  Widget _buildMicroDecisionTab() {
+    double totalScore = (_necessityScore * 0.4) + (_affordabilityScore * 0.3) + (_longTermValueScore * 0.3);
+    String decisionResult = 'MAYBE';
+    Color resultColor = Colors.amber;
+
+    if (totalScore >= 7.0) {
+      decisionResult = 'YES! GOOD BUY / DECISION';
+      resultColor = Colors.greenAccent;
+    } else if (totalScore < 4.5) {
+      decisionResult = 'NO! SKIP / RECONSIDER';
+      resultColor = Colors.redAccent;
+    }
+
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Micro Decision Engine',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Unsure whether to buy something or make a quick daily choice? Calculate dynamic score.',
+              style: TextStyle(color: Colors.grey, fontSize: 13),
+            ),
+            const SizedBox(height: 20),
+
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Row(
                       children: [
-                        Chip(
-                          label: Text('Chars: $_charCount'),
-                          backgroundColor: const Color(0xFF0F172A),
-                        ),
+                        const Text('Estimated Cost: \$', style: TextStyle(fontWeight: FontWeight.bold)),
                         const SizedBox(width: 8),
-                        Chip(
-                          label: Text('Words: $_wordCount'),
-                          backgroundColor: const Color(0xFF0F172A),
+                        Expanded(
+                          child: TextField(
+                            controller: _priceController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              isDense: true,
+                              border: OutlineInputBorder(),
+                            ),
+                            onChanged: (val) {
+                              setState(() {
+                                _itemPrice = double.tryParse(val) ?? 0.0;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    Text('How urgent/necessary is this? (${_necessityScore.toStringAsFixed(1)}/10)'),
+                    Slider(
+                      value: _necessityScore,
+                      min: 1,
+                      max: 10,
+                      divisions: 9,
+                      activeColor: Colors.tealAccent,
+                      onChanged: (val) => setState(() => _necessityScore = val),
+                    ),
+
+                    Text('How comfortable is your current budget for this? (${_affordabilityScore.toStringAsFixed(1)}/10)'),
+                    Slider(
+                      value: _affordabilityScore,
+                      min: 1,
+                      max: 10,
+                      divisions: 9,
+                      activeColor: Colors.tealAccent,
+                      onChanged: (val) => setState(() => _affordabilityScore = val),
+                    ),
+
+                    Text('Long-term value / utility score? (${_longTermValueScore.toStringAsFixed(1)}/10)'),
+                    Slider(
+                      value: _longTermValueScore,
+                      min: 1,
+                      max: 10,
+                      divisions: 9,
+                      activeColor: Colors.tealAccent,
+                      onChanged: (val) => setState(() => _longTermValueScore = val),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: resultColor.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: resultColor, width: 2),
+              ),
+              child: Column(
+                children: [
+                  const Text('DECISION SCORE EVALUATION', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${totalScore.toStringAsFixed(1)} / 10',
+                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: resultColor),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    decisionResult,
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: resultColor),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Estimated Item Price: \$${_itemPrice.toStringAsFixed(2)}',
+                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  )
+                ],
+              ),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  // TAB 4: Instant Split & Quick Math Utility
+  Widget _buildQuickUtilityTab() {
+    double tipAmount = (_billAmount * _tipPercentage) / 100;
+    double totalBill = _billAmount + tipAmount;
+    double perPerson = totalBill / (_peopleCount > 0 ? _peopleCount : 1);
+
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Instant Split & Math Suite',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Split bills instantly with custom tips and live headcounts.',
+              style: TextStyle(color: Colors.grey, fontSize: 13),
+            ),
+            const SizedBox(height: 20),
+
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Total Bill Amount (\$)'),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: _billController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        prefixText: '\$ ',
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (val) {
+                        setState(() {
+                          _billAmount = double.tryParse(val) ?? 0.0;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Tip Percentage: ${_tipPercentage.toInt()}%'),
+                        Text('Tip: \$${tipAmount.toStringAsFixed(2)}', style: const TextStyle(color: Colors.tealAccent)),
+                      ],
+                    ),
+                    Slider(
+                      value: _tipPercentage,
+                      min: 0,
+                      max: 30,
+                      divisions: 6,
+                      activeColor: Colors.tealAccent,
+                      onChanged: (val) => setState(() => _tipPercentage = val),
+                    ),
+
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Split Between People:'),
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.remove_circle_outline),
+                              onPressed: () {
+                                if (_peopleCount > 1) {
+                                  setState(() => _peopleCount--);
+                                }
+                              },
+                            ),
+                            Text(
+                              '$_peopleCount',
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.add_circle_outline),
+                              onPressed: () {
+                                setState(() => _peopleCount++);
+                              },
+                            ),
+                          ],
+                        )
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            Card(
+              color: const Color(0xFF1E293B),
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Total with Tip:'),
+                        Text(
+                          '\$${totalBill.toStringAsFixed(2)}',
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Each Person Pays:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        Text(
+                          '\$${perPerson.toStringAsFixed(2)}',
+                          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.tealAccent),
                         ),
                       ],
                     ),
@@ -515,290 +903,28 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
               ),
             ),
           ],
-          const SizedBox(height: 20),
-        ],
+        ),
       ),
     );
   }
+}
 
-  Widget _buildDecisionHelperTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Micro-Decision Studio',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Can\'t decide what to eat, watch, or do? Let the overlay pick instant micro-choices!',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            color: const Color(0xFF1E293B),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                children: [
-                  const Icon(Icons.touch_app, size: 48, color: Colors.amber),
-                  const SizedBox(height: 12),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    child: Text(
-                      _selectedDecision,
-                      key: ValueKey<String>(_selectedDecision),
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: _isSpinning ? Colors.grey : Colors.teal,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: _isSpinning ? null : _spinDecision,
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Spin & Decide Now'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _decisionInputController,
-                  decoration: const InputDecoration(
-                    hintText: 'Add new choice (e.g., Movie)',
-                    border: OutlineInputBorder(),
-                    filled: true,
-                    fillColor: Color(0xFF1E293B),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(Icons.add_circle, color: Colors.teal, size: 36),
-                onPressed: () {
-                  final text = _decisionInputController.text.trim();
-                  if (text.isNotEmpty) {
-                    setState(() {
-                      _decisionOptions.add(text);
-                      _decisionInputController.clear();
-                    });
-                  }
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Text('Active Choices Pool:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _decisionOptions.map((option) {
-              return Chip(
-                label: Text(option),
-                backgroundColor: const Color(0xFF1E293B),
-                onDeleted: _decisionOptions.length > 2
-                    ? () {
-                        setState(() {
-                          _decisionOptions.remove(option);
-                        });
-                      }
-                    : null,
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 20),
-        ],
-      ),
-    );
-  }
+// Wrapper for draggable gesture detection
+class GestureDetectingWidget extends StatelessWidget {
+  final Widget child;
+  final GestureDragUpdateCallback onPanUpdate;
 
-  Widget _buildQuickUtilityTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Quick Bill & Tip Splitter',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          Card(
-            color: const Color(0xFF1E293B),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  TextField(
-                    controller: _billAmountController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Total Bill Amount (\$)',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.monetization_on, color: Colors.teal),
-                    ),
-                    onChanged: (val) => _calculateSplit(),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      const Text('Tip: ', style: TextStyle(fontSize: 14)),
-                      Expanded(
-                        child: Slider(
-                          value: _tipPercentage,
-                          min: 0,
-                          max: 30,
-                          divisions: 6,
-                          activeColor: Colors.teal,
-                          label: '${_tipPercentage.round()}%',
-                          onChanged: (val) {
-                            setState(() => _tipPercentage = val);
-                            _calculateSplit();
-                          },
-                        ),
-                      ),
-                      Text('${_tipPercentage.round()}%', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      const Text('Split between: ', style: TextStyle(fontSize: 14)),
-                      IconButton(
-                        icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
-                        onPressed: _splitPeople > 1
-                            ? () {
-                                setState(() => _splitPeople--);
-                                _calculateSplit();
-                              }
-                            : null,
-                      ),
-                      Text('$_splitPeople people', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      IconButton(
-                        icon: const Icon(Icons.add_circle_outline, color: Colors.teal),
-                        onPressed: () {
-                          setState(() => _splitPeople++);
-                          _calculateSplit();
-                        },
-                      ),
-                    ],
-                  ),
-                  const Divider(height: 20, color: Colors.blueGrey),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Each Person Pays:', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                      Text(
-                        '\$${_perPersonTotal.toStringAsFixed(2)}',
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.amber),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Floating Scratchpad Notes',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              IconButton(
-                icon: const Icon(Icons.add, color: Colors.teal),
-                onPressed: () {
-                  _showAddNoteDialog();
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _savedScratchNotes.length,
-            itemBuilder: (context, index) {
-              return Card(
-                color: const Color(0xFF1E293B),
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  dense: true,
-                  leading: const Icon(Icons.edit_note, color: Colors.teal),
-                  title: Text(
-                    _savedScratchNotes[index],
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.grey, size: 18),
-                    onPressed: () {
-                      setState(() {
-                        _savedScratchNotes.removeAt(index);
-                      });
-                    },
-                  ),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 20),
-        ],
-      ),
-    );
-  }
+  const GestureDetectingWidget({
+    Key? key,
+    required this.child,
+    required this.onPanUpdate,
+  }) : super(key: key);
 
-  void _showAddNoteDialog() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1E293B),
-          title: const Text('Add Scratch Note'),
-          content: TextField(
-            controller: _scratchNoteController,
-            decoration: const InputDecoration(
-              hintText: 'Enter quick temporary note...',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (_scratchNoteController.text.trim().isNotEmpty) {
-                  setState(() {
-                    _savedScratchNotes.add(_scratchNoteController.text.trim());
-                    _scratchNoteController.clear();
-                  });
-                  Navigator.pop(context);
-                }
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
-              child: const Text('Save Note'),
-            ),
-          ],
-        );
-      },
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onPanUpdate: onPanUpdate,
+      child: child,
     );
   }
 }
