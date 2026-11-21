@@ -1,518 +1,873 @@
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(const QuickDeckApp());
+  runApp(const BubbleDockApp());
 }
 
-class QuickDeckApp extends StatelessWidget {
-  const QuickDeckApp({Key? key}) : super(key: key);
+class BubbleDockApp extends StatelessWidget {
+  const BubbleDockApp({super.key});
 
   @override
-  Widget build(BuildContext meContext) {
+  Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'QuickDeck',
+      title: 'BubbleDock Assistant',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        colorSchemeSeed: Colors.indigo,
-        brightness: Brightness.light,
-      ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: Colors.indigo,
         brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF0F172A),
+        colorScheme: const ColorScheme.dark(
+          primary: Colors.tealAccent,
+          secondary: Colors.teal,
+          surface: Color(0xFF1E293B),
+        ),
       ),
-      themeMode: ThemeMode.system,
-      home: const MainDeckScreen(),
+      home: const MainHomeScreen(),
     );
   }
 }
 
-class SnippetItem {
-  final String id;
-  final String title;
-  final String content;
-  final String category;
-  final IconData icon;
-
-  SnippetItem({
-    required this.id,
-    required this.title,
-    required this.content,
-    required this.category,
-    required this.icon,
-  });
-}
-
-class MainDeckScreen extends StatefulWidget {
-  const MainDeckScreen({Key? key}) : super(key: key);
+class MainHomeScreen extends StatefulWidget {
+  const MainHomeScreen({super.key});
 
   @override
-  State<MainDeckScreen> createState() => _MainDeckScreenState();
+  State<MainHomeScreen> createState() => _MainHomeScreenState();
 }
 
-class _MainDeckScreenState extends State<MainDeckScreen> {
+class _MainHomeScreenState extends State<MainHomeScreen> {
   int _currentIndex = 0;
-  bool _isFloatingHudEnabled = true;
-  double _totalSavedMoney = 145.50;
-  int _streakDays = 5;
 
-  // Impulse Guard state
-  final TextEditingController _itemPriceController = TextEditingController(text: "45.00");
-  final TextEditingController _hourlyWageController = TextEditingController(text: "15.00");
-  double _calculatedHours = 3.0;
-  String _regretLevel = "Moderate Risk";
+  // Global App States
+  bool _overlayPermission = true;
+  bool _notificationPermission = true;
+  bool _autoClipboard = true;
+  bool _isBubbleVisible = true;
 
-  // Splitter state
-  final TextEditingController _totalAmountController = TextEditingController(text: "120.00");
-  int _peopleCount = 4;
-  double _tipPercentage = 10.0;
+  // Floating Bubble Simulated Coordinates
+  double _bubbleX = 20.0;
+  double _bubbleY = 120.0;
+  String _activeWidgetTool = 'Clipboard';
 
-  // Snippets state
-  final List<SnippetItem> _snippets = [
-    SnippetItem(
-      id: "1",
-      title: "Bank Account Details",
-      content: "Bank of Ceylon\nAcc: 8492019482\nBranch: Colombo Central",
-      category: "Finance",
-      icon: Icons.monetization_on,
-    ),
-    SnippetItem(
-      id: "2",
-      title: "Delivery Address",
-      content: "No. 45/2, Main Street, Nugegoda, Sri Lanka (Zip: 10250)",
-      category: "Personal",
-      icon: Icons.home,
-    ),
-    SnippetItem(
-      id: "3",
-      title: "Quick Polite Reply",
-      content: "Thank you for reaching out! I've received your request and will get back to you shortly.",
-      category: "Work",
-      icon: Icons.chat_bubble_outline,
-    ),
-    SnippetItem(
-      id: "4",
-      title: "Home Wi-Fi Key",
-      content: "Network: Fiber_Home_Guest | Key: SecurePass2025!",
-      category: "Tech",
-      icon: Icons.wifi,
-    ),
+  // Notes List
+  final List<Map<String, String>> _notes = [
+    {
+      'title': 'Wi-Fi Password Home',
+      'content': 'SkyNet_5G_Secure#99',
+      'tag': 'Important',
+      'color': 'teal'
+    },
+    {
+      'title': 'Grocery List',
+      'content': 'Almond Milk, Organic Eggs, Oats',
+      'tag': 'Personal',
+      'color': 'amber'
+    },
   ];
 
-  String _snippetSearchQuery = "";
-  String _selectedCategory = "All";
+  // Clipboard Text
+  String _clipboardText =
+      "Contact support@bubbledock.io or visit https://bubbledock.io for live updates. Total bill estimate was \$45.50 for order #8821.";
 
-  // Decision Maker state
-  final List<String> _foodOptions = ["Rice & Curry", "Kottu", "Burger", "Pasta", "Salad", "Fried Rice"];
-  String _selectedDecision = "Tap button to decide!";
-
-  @override
-  void dispose() {
-    _itemPriceController.dispose();
-    _hourlyWageController.dispose();
-    _totalAmountController.dispose();
-    super.dispose();
-  }
-
-  void _recalculateImpulse() {
-    final double price = double.tryParse(_itemPriceController.text) ?? 0.0;
-    final double wage = double.tryParse(_hourlyWageController.text) ?? 1.0;
-    setState(() {
-      _calculatedHours = wage > 0 ? price / wage : 0.0;
-      if (_calculatedHours > 10) {
-        _regretLevel = "HIGH REGRET RISK (Think 48 hrs!)";
-      } else if (_calculatedHours > 3) {
-        _regretLevel = "Moderate Risk (Sleep on it)";
-      } else {
-        _regretLevel = "Safe / Low Risk";
-      }
-    });
-  }
-
-  void _showNotification(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
-
-  void _addNewSnippetModal() {
-    final titleCtrl = TextEditingController();
-    final contentCtrl = TextEditingController();
-    String category = "Personal";
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-            top: 20,
-            left: 20,
-            right: 20,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "Add New Quick Snippet",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 15),
-                TextField(
-                  controller: titleCtrl,
-                  decoration: const InputDecoration(
-                    labelText: "Title (e.g. NIC Number)",
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: contentCtrl,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: "Snippet Content / Text",
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 15),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    onPressed: () {
-                      if (titleCtrl.text.isNotEmpty && contentCtrl.text.isNotEmpty) {
-                        setState(() {
-                          _snippets.insert(
-                            0,
-                            SnippetItem(
-                              id: DateTime.now().toString(),
-                              title: titleCtrl.text,
-                              content: contentCtrl.text,
-                              category: category,
-                              icon: Icons.star,
-                            ),
-                          );
-                        });
-                        Navigator.pop(ctx);
-                        _showNotification("Snippet saved to QuickDeck Vault!");
-                      }
-                    },
-                    child: const Text("Save Snippet", style: TextStyle(fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
+  // Speed Math State
+  double _billAmount = 85.0;
+  double _tipPercentage = 15.0;
+  int _peopleCount = 3;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Row(
-          children: [
-            Icon(Icons.bolt, color: Colors.amber),
-            SizedBox(width: 8),
-            Text('QuickDeck Companion', style: TextStyle(fontWeight: FontWeight.bold)),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(_isFloatingHudEnabled ? Icons.widgets : Icons.widgets_outlined),
-            tooltip: 'Toggle Floating HUD',
-            onPressed: () {
-              setState(() {
-                _isFloatingHudEnabled = !_isFloatingHudEnabled;
-              });
-              _showNotification(
-                _isFloatingHudEnabled
-                    ? "Floating Assistant Overlay active!"
-                    : "Floating Assistant Overlay hidden.",
-              );
-            },
-          ),
-        ],
-      ),
       body: SafeArea(
         child: Stack(
           children: [
             IndexedStack(
               index: _currentIndex,
               children: [
-                _buildDashboardTab(),
-                _buildSnippetVaultTab(),
-                _buildImpulseGuardTab(),
-                _buildSplitterAndToolsTab(),
+                _buildFloatingHubTab(),
+                _buildClipboardTab(),
+                _buildSpeedMathTab(),
+                _buildFloatingNotesTab(),
               ],
             ),
-            if (_isFloatingHudEnabled) _buildFloatingHudOverlay(),
+            if (_isBubbleVisible) _buildDraggableFloatingBubble(),
           ],
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.indigo,
+        backgroundColor: const Color(0xFF1E293B),
+        selectedItemColor: Colors.tealAccent,
         unselectedItemColor: Colors.grey,
+        type: BottomNavigationBarType.fixed,
         items: const [
-          BottomNavigationBarThemeData(
-            data: BottomNavigationBarThemeData(),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.widgets),
+            label: 'Overlay Dock',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Deck'),
-          BottomNavigationBarItem(icon: Icon(Icons.content_copy), label: 'Vault'),
-          BottomNavigationBarItem(icon: Icon(Icons.monetization_on), label: 'Guard'),
-          BottomNavigationBarItem(icon: Icon(Icons.calculate), label: 'Tools'),
-        ],
-      ),
-    );
-  }
-
-  // --- FLOATING HUD SIMULATION OVERLAY ---
-  Widget _buildFloatingHudOverlay() {
-    return Positioned(
-      bottom: 20,
-      right: 16,
-      child: Material(
-        elevation: 8,
-        borderRadius: BorderRadius.circular(30),
-        color: Colors.indigo,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(30),
-          onTap: () {
-            _showQuickFloatingMenu();
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.bolt, color: Colors.amber, size: 20),
-                SizedBox(width: 6),
-                Text(
-                  "Quick HUD",
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-              ],
-            ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.content_paste),
+            label: 'Clipboard',
           ),
-        ),
-      ),
-    );
-  }
-
-  void _showQuickFloatingMenu() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.bolt, color: Colors.indigo),
-            SizedBox(width: 8),
-            Text("Floating Quick HUD"),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.copy, color: Colors.indigo),
-              title: const Text("Copy Bank Account"),
-              onTap: () {
-                Navigator.pop(ctx);
-                _showNotification("Copied: Bank of Ceylon - 8492019482");
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.home, color: Colors.teal),
-              title: const Text("Copy Delivery Address"),
-              onTap: () {
-                Navigator.pop(ctx);
-                _showNotification("Copied: No. 45/2, Main Street, Nugegoda");
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.shopping_bag_outlined, color: Colors.deepOrange),
-              title: const Text("Quick Impulse Check"),
-              onTap: () {
-                Navigator.pop(ctx);
-                setState(() => _currentIndex = 2);
-              },
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Close"),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calculate),
+            label: 'Speed Math',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.push_pin),
+            label: 'Notes HUD',
           ),
         ],
       ),
     );
   }
 
-  // --- TAB 1: DASHBOARD ---
-  Widget _buildDashboardTab() {
+  // TAB 1: Floating Hub & System Overlay Controls
+  Widget _buildFloatingHubTab() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Banner Card
+          _buildHeaderCard(),
+          const SizedBox(height: 16),
+          _buildPermissionStatusCard(),
+          const SizedBox(height: 16),
+          _buildFloatingBubbleControls(),
+          const SizedBox(height: 16),
+          _buildQuickActionGrid(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0D9488), Color(0xFF115E59)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [
+          Text(
+            'BubbleDock Assistant',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          SizedBox(height: 6),
+          Text(
+            'Always-on floating utility bubble for instant text cleaning, calculations, and floating notes without app switching.',
+            style: TextStyle(fontSize: 13, color: Colors.white70),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPermissionStatusCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white70),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.security, color: Colors.tealAccent),
+              SizedBox(width: 8),
+              Text(
+                'System Overlay & Services',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SwitchListTile(
+            value: _overlayPermission,
+            activeColor: Colors.tealAccent,
+            title: const Text('Display Over Other Apps',
+                style: TextStyle(fontSize: 14)),
+            subtitle: const Text(
+                'Allows floating bubble preview over system apps',
+                style: TextStyle(fontSize: 12, color: Colors.grey)),
+            onChanged: (val) => setState(() => _overlayPermission = val),
+          ),
+          const Divider(color: Colors.white70),
+          SwitchListTile(
+            value: _notificationPermission,
+            activeColor: Colors.tealAccent,
+            title: const Text('Floating System Notifications',
+                style: TextStyle(fontSize: 14)),
+            subtitle: const Text('Quick actions menu inside notification shade',
+                style: TextStyle(fontSize: 12, color: Colors.grey)),
+            onChanged: (val) => setState(() => _notificationPermission = val),
+          ),
+          const Divider(color: Colors.white70),
+          SwitchListTile(
+            value: _autoClipboard,
+            activeColor: Colors.tealAccent,
+            title: const Text('Auto-Listen Clipboard Text',
+                style: TextStyle(fontSize: 14)),
+            subtitle: const Text('Detect links, emails & prices automatically',
+                style: TextStyle(fontSize: 12, color: Colors.grey)),
+            onChanged: (val) => setState(() => _autoClipboard = val),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFloatingBubbleControls() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white70),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Floating Bubble HUD',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              Switch(
+                value: _isBubbleVisible,
+                activeColor: Colors.tealAccent,
+                onChanged: (val) => setState(() => _isBubbleVisible = val),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Drag the floating bubble around the screen area to position your instant workspace tool.',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildToolChip('Clipboard'),
+              _buildToolChip('Calculator'),
+              _buildToolChip('Sticky Note'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToolChip(String label) {
+    bool isSelected = _activeWidgetTool == label;
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      selectedColor: Colors.teal,
+      backgroundColor: const Color(0xFF0F172A),
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : Colors.white70,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+      onSelected: (selected) {
+        if (selected) {
+          setState(() {
+            _activeWidgetTool = label;
+          });
+        }
+      },
+    );
+  }
+
+  Widget _buildQuickActionGrid() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Instant Screen Utilities',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionTile(
+                icon: Icons.cleaning_services,
+                title: 'Clean Text',
+                subtitle: 'Strip formatting',
+                color: Colors.teal,
+                onTap: () {
+                  setState(() {
+                    _clipboardText = _clipboardText.trim().replaceAll(RegExp(r'\s+'), ' ');
+                  });
+                  _showToast('Text formatting cleaned!');
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildActionTile(
+                icon: Icons.attach_money,
+                title: 'Extract Prices',
+                subtitle: 'Find amounts',
+                color: Colors.green,
+                onTap: () {
+                  RegExp regExp = RegExp(r'\$\d+(?:\.\d+)?');
+                  Iterable<Match> matches = regExp.allMatches(_clipboardText);
+                  List<String> prices = matches.map((m) => m.group(0)!).toList();
+                  _showToast(prices.isEmpty ? 'No prices found' : 'Found: ${prices.join(', ')}');
+                },
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white70),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CircleAvatar(
+              backgroundColor: color.withOpacity(0.2),
+              child: Icon(icon, color: color),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                  fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: const TextStyle(fontSize: 11, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // TAB 2: Smart Clipboard & Text Processor
+  Widget _buildClipboardTab() {
+    int wordCount = _clipboardText.trim().isEmpty
+        ? 0
+        : _clipboardText.trim().split(RegExp(r'\s+')).length;
+    int charCount = _clipboardText.length;
+    int lineCount =
+        _clipboardText.isEmpty ? 0 : '\n'.allMatches(_clipboardText).length + 1;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Smart Clipboard Suite',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Paste, clean, format, or extract dynamic info live.',
+            style: TextStyle(fontSize: 13, color: Colors.grey),
+          ),
+          const SizedBox(height: 16),
+
+          // Real-time Text Stats Bar
+          Row(
+            children: [
+              _buildStatChip('Words', '$wordCount'),
+              const SizedBox(width: 8),
+              _buildStatChip('Chars', '$charCount'),
+              const SizedBox(width: 8),
+              _buildStatChip('Lines', '$lineCount'),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Main Text Box
+          TextField(
+            maxLines: 6,
+            controller: TextEditingController(text: _clipboardText)
+              ..selection = TextSelection.fromPosition(
+                TextPosition(offset: _clipboardText.length),
+              ),
+            onChanged: (val) {
+              _clipboardText = val;
+              setState(() {});
+            },
+            decoration: const InputDecoration(
+              hintText: 'Type or paste clipboard content here...',
+              fillColor: Color(0xFF1E293B),
+              filled: true,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(12)),
+                borderSide: BorderSide(color: Colors.white70),
+              ),
+            ),
+            style: const TextStyle(fontSize: 14, color: Colors.white),
+          ),
+          const SizedBox(height: 16),
+
+          // Smart Action Tools
+          const Text(
+            'Text Formatters & Extractors',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildToolButton(
+                icon: Icons.title,
+                label: 'UPPERCASE',
+                onTap: () {
+                  setState(() {
+                    _clipboardText = _clipboardText.toUpperCase();
+                  });
+                },
+              ),
+              _buildToolButton(
+                icon: Icons.text_fields,
+                label: 'lowercase',
+                onTap: () {
+                  setState(() {
+                    _clipboardText = _clipboardText.toLowerCase();
+                  });
+                },
+              ),
+              _buildToolButton(
+                icon: Icons.email,
+                label: 'Extract Emails',
+                onTap: () {
+                  RegExp regExp = RegExp(
+                      r"[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*");
+                  Iterable<Match> matches = regExp.allMatches(_clipboardText);
+                  List<String> emails = matches.map((m) => m.group(0)!).toList();
+                  _showToast(emails.isEmpty ? 'No emails found' : 'Emails: ${emails.join(', ')}');
+                },
+              ),
+              _buildToolButton(
+                icon: Icons.link,
+                label: 'Extract URLs',
+                onTap: () {
+                  RegExp regExp = RegExp(
+                      r'https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)');
+                  Iterable<Match> matches = regExp.allMatches(_clipboardText);
+                  List<String> urls = matches.map((m) => m.group(0)!).toList();
+                  _showToast(urls.isEmpty ? 'No URLs found' : 'URLs: ${urls.join(', ')}');
+                },
+              ),
+              _buildToolButton(
+                icon: Icons.content_copy,
+                label: 'Copy Clean Text',
+                onTap: () {
+                  _showToast('Copied to system clipboard!');
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatChip(String label, String value) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white70),
+        ),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.tealAccent,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 11, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildToolButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return ElevatedButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 16, color: Colors.tealAccent),
+      label: Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF1E293B),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  // TAB 3: Floating Speed Math & Splitter Overlay
+  Widget _buildSpeedMathTab() {
+    double totalTip = _billAmount * (_tipPercentage / 100);
+    double grandTotal = _billAmount + totalTip;
+    double perPerson = _peopleCount > 0 ? grandTotal / _peopleCount : grandTotal;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Floating Speed Math & Splitter',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Instantly calculate bills, tips, and group splits on the fly.',
+            style: TextStyle(fontSize: 13, color: Colors.grey),
+          ),
+          const SizedBox(height: 16),
+
+          // Display Result Card
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Colors.indigo, Colors.blueAccent],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              color: const Color(0xFF1E293B),
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.teal.withOpacity(0.5)),
             ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.stars, color: Colors.amber, size: 28),
+                const Text(
+                  'Per Person Share',
+                  style: TextStyle(fontSize: 13, color: Colors.grey),
+                ),
+                const SizedBox(height: 6),
+                FittedBox(
+                  child: Text(
+                    '\$${perPerson.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.tealAccent,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            "Impulse Savings Guard",
-                            style: TextStyle(color: Colors.white70, fontSize: 13),
-                          ),
-                          Text(
-                            "\$${_totalSavedMoney.toStringAsFixed(2)} Saved",
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Chip(
-                      label: Text("🔥 $_streakDays Day Streak"),
-                      backgroundColor: Colors.amber,
-                      labelStyle: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
-                    ),
-                  ],
+                  ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
-                  "You avoided 3 impulse purchases this week! Keep your companion floating for fast daily shortcuts.",
-                  style: TextStyle(color: Colors.white, fontSize: 13),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    Column(
+                      children: [
+                        const Text('Total Bill',
+                            style: TextStyle(fontSize: 11, color: Colors.grey)),
+                        Text('\$${_billAmount.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white)),
+                      ],
+                    ),
+                    Column(
+                      children: [
+                        const Text('Tip Amount',
+                            style: TextStyle(fontSize: 11, color: Colors.grey)),
+                        Text('\$${totalTip.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.amberAccent)),
+                      ],
+                    ),
+                    Column(
+                      children: [
+                        const Text('Grand Total',
+                            style: TextStyle(fontSize: 11, color: Colors.grey)),
+                        Text('\$${grandTotal.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white)),
+                      ],
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-
           const SizedBox(height: 20),
-          const Text(
-            "Quick Launch Utility Deck",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+
+          // Bill Input Slider
+          Text('Base Bill Amount: \$${_billAmount.toStringAsFixed(0)}',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+          Slider(
+            value: _billAmount,
+            min: 5,
+            max: 500,
+            divisions: 99,
+            activeColor: Colors.tealAccent,
+            inactiveColor: Colors.white70,
+            onChanged: (val) => setState(() => _billAmount = val),
           ),
           const SizedBox(height: 12),
 
-          // Quick Grid
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 1.4,
+          // Tip Percentage Slider
+          Text('Tip Percentage: ${_tipPercentage.toInt()}%',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+          Slider(
+            value: _tipPercentage,
+            min: 0,
+            max: 30,
+            divisions: 30,
+            activeColor: Colors.amber,
+            inactiveColor: Colors.white70,
+            onChanged: (val) => setState(() => _tipPercentage = val),
+          ),
+          const SizedBox(height: 12),
+
+          // People Splitter Controls
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildQuickCard(
-                title: "Text Vault",
-                subtitle: "4 Saved Snippets",
-                icon: Icons.content_copy,
-                color: Colors.indigo,
-                onTap: () => setState(() => _currentIndex = 1),
-              ),
-              _buildQuickCard(
-                title: "Work-Hour Cost",
-                subtitle: "Impulse Evaluator",
-                icon: Icons.monetization_on,
-                color: Colors.teal,
-                onTap: () => setState(() => _currentIndex = 2),
-              ),
-              _buildQuickCard(
-                title: "Bill Splitter",
-                subtitle: "Group Cost Tally",
-                icon: Icons.calculate,
-                color: Colors.orange,
-                onTap: () => setState(() => _currentIndex = 3),
-              ),
-              _buildQuickCard(
-                title: "Meal Picker",
-                subtitle: "Random Decider",
-                icon: Icons.lightbulb,
-                color: Colors.blueGrey,
-                onTap: () => setState(() => _currentIndex = 3),
+              const Text('Split Between People:',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+              Row(
+                children: [
+                  IconButton(
+                    onPressed: () {
+                      if (_peopleCount > 1) {
+                        setState(() => _peopleCount--);
+                      }
+                    },
+                    icon: const Icon(Icons.remove_circle_outline, color: Colors.tealAccent),
+                  ),
+                  Text(
+                    '$_peopleCount',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      setState(() => _peopleCount++);
+                    },
+                    icon: const Icon(Icons.add_circle_outline, color: Colors.tealAccent),
+                  ),
+                ],
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
 
-          const SizedBox(height: 24),
-          const Text(
-            "Pinned Frequent Snippets",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+  // TAB 4: Floating Sticky Notes Overlay
+  Widget _buildFloatingNotesTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    'Floating Sticky HUD',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Pin notes directly onto your floating dock.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+              IconButton(
+                onPressed: _addNewNoteDialog,
+                icon: const Icon(Icons.add_circle, color: Colors.tealAccent, size: 32),
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
-
+          const SizedBox(height: 16),
           ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: _snippets.length > 2 ? 2 : _snippets.length,
+            itemCount: _notes.length,
             itemBuilder: (context, index) {
-              final item = _snippets[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 10),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.indigo.withOpacity(0.1),
-                    child: Icon(item.icon, color: Colors.indigo),
+              final note = _notes[index];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E293B),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: note['color'] == 'teal'
+                        ? Colors.teal.withOpacity(0.5)
+                        : Colors.amber.withOpacity(0.5),
                   ),
-                  title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(
-                    item.content,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.copy, color: Colors.indigo),
-                    onPressed: () => _showNotification("Copied '${item.title}' to Clipboard!"),
-                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            note['title'] ?? '',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: note['color'] == 'teal'
+                                ? Colors.teal.withOpacity(0.2)
+                                : Colors.amber.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            note['tag'] ?? 'Note',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: note['color'] == 'teal'
+                                  ? Colors.tealAccent
+                                  : Colors.amber,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      note['content'] ?? '',
+                      style: const TextStyle(fontSize: 13, color: Colors.white70),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        InkWell(
+                          onTap: () {
+                            _showToast('Copied note content to clipboard!');
+                          },
+                          child: Row(
+                            children: const [
+                              Icon(Icons.copy, size: 14, color: Colors.grey),
+                              SizedBox(width: 4),
+                              Text('Copy',
+                                  style: TextStyle(fontSize: 11, color: Colors.grey)),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        InkWell(
+                          onTap: () {
+                            setState(() {
+                              _notes.removeAt(index);
+                            });
+                          },
+                          child: Row(
+                            children: const [
+                              Icon(Icons.delete, size: 14, color: Colors.redAccent),
+                              SizedBox(width: 4),
+                              Text('Delete',
+                                  style: TextStyle(
+                                      fontSize: 11, color: Colors.redAccent)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    )
+                  ],
                 ),
               );
             },
@@ -522,39 +877,45 @@ class _MainDeckScreenState extends State<MainDeckScreen> {
     );
   }
 
-  Widget _buildQuickCard({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.all(14.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: color, size: 28),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+  // Draggable Dynamic Floating Bubble Overlay Simulator
+  Widget _buildDraggableFloatingBubble() {
+    return Positioned(
+      left: _bubbleX,
+      top: _bubbleY,
+      child: GestureDetector(
+        onPanUpdate: (details) {
+          setState(() {
+            _bubbleX += details.delta.dx;
+            _bubbleY += details.delta.dy;
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Colors.teal, Color(0xFF0F766E)],
+            ),
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black87,
+                blurRadius: 10,
+                offset: Offset(0, 4),
               ),
-              const SizedBox(height: 2),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.bubble_chart, color: Colors.tealAccent, size: 20),
+              const SizedBox(width: 8),
               Text(
-                subtitle,
-                style: const TextStyle(color: Colors.grey, fontSize: 11),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                '$_activeWidgetTool Active',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
               ),
             ],
           ),
@@ -563,453 +924,74 @@ class _MainDeckScreenState extends State<MainDeckScreen> {
     );
   }
 
-  // --- TAB 2: SMART SNIPPET VAULT ---
-  Widget _buildSnippetVaultTab() {
-    final filteredSnippets = _snippets.where((item) {
-      final matchesSearch = item.title.toLowerCase().contains(_snippetSearchQuery.toLowerCase()) ||
-          item.content.toLowerCase().contains(_snippetSearchQuery.toLowerCase());
-      final matchesCategory = _selectedCategory == "All" || item.category == _selectedCategory;
-      return matchesSearch && matchesCategory;
-    }).toList();
+  // Add Note Dialog
+  void _addNewNoteDialog() {
+    final titleController = TextEditingController();
+    final contentController = TextEditingController();
 
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          color: Theme.of(context).cardColor,
-          child: Column(
-            children: [
-              TextField(
-                decoration: InputDecoration(
-                  hintText: "Search addresses, accounts, text...",
-                  prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                ),
-                onChanged: (val) => setState(() => _snippetSearchQuery = val),
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const Text('Add Sticky Pin Note', style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              decoration: const InputDecoration(
+                labelText: 'Title',
+                labelStyle: TextStyle(color: Colors.grey),
+                border: OutlineInputBorder(),
               ),
-              const SizedBox(height: 12),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: ["All", "Finance", "Personal", "Work", "Tech"].map((cat) {
-                    final isSelected = _selectedCategory == cat;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: FilterChip(
-                        selected: isSelected,
-                        label: Text(cat),
-                        onSelected: (bool selected) {
-                          setState(() => _selectedCategory = cat);
-                        },
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: filteredSnippets.isEmpty
-              ? const Center(
-                  child: Text("No snippets found. Tap '+' to create one!"),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: filteredSnippets.length,
-                  itemBuilder: (context, index) {
-                    final item = filteredSnippets[index];
-                    return Card(
-                      elevation: 2,
-                      margin: const EdgeInsets.only(bottom: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(14.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(item.icon, color: Colors.indigo, size: 20),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    item.title,
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                  ),
-                                ),
-                                Chip(
-                                  label: Text(
-                                    item.category,
-                                    style: const TextStyle(fontSize: 10),
-                                  ),
-                                  visualDensity: VisualDensity.compact,
-                                ),
-                              ],
-                            ),
-                            const Divider(),
-                            Text(
-                              item.content,
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                OutlinedButton.icon(
-                                  icon: const Icon(Icons.share, size: 16),
-                                  label: const Text("Share"),
-                                  onPressed: () => _showNotification("Sharing snippet..."),
-                                ),
-                                const SizedBox(width: 8),
-                                ElevatedButton.icon(
-                                  icon: const Icon(Icons.copy, size: 16),
-                                  label: const Text("1-Tap Copy"),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.indigo,
-                                    foregroundColor: Colors.white,
-                                  ),
-                                  onPressed: () => _showNotification("Copied content to clipboard!"),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-        ),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          child: ElevatedButton.icon(
-            icon: const Icon(Icons.add),
-            label: const Text("Add New Quick Snippet"),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              style: const TextStyle(color: Colors.white),
             ),
-            onPressed: _addNewSnippetModal,
-          ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: contentController,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Content',
+                labelStyle: TextStyle(color: Colors.grey),
+                border: OutlineInputBorder(),
+              ),
+              style: const TextStyle(color: Colors.white),
+            ),
+          ],
         ),
-      ],
-    );
-  }
-
-  // --- TAB 3: IMPULSE BUY GUARD ---
-  Widget _buildImpulseGuardTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Card(
-            color: Colors.amber.shade100,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: const Padding(
-              padding: EdgeInsets.all(14.0),
-              child: Row(
-                children: [
-                  Icon(Icons.lightbulb_outline, color: Colors.black87),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      "Impulse Guard evaluates item prices into the exact HOURS of your life required to pay for it.",
-                      style: TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
-          const SizedBox(height: 16),
-
-          Card(
-            elevation: 3,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Impulse Purchase Calculator",
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: _itemPriceController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: "Item Price (\$)",
-                      prefixIcon: Icon(Icons.shopping_cart),
-                      border: OutlineInputBorder(),
-                    ),
-                    onChanged: (_) => _recalculateImpulse(),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _hourlyWageController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: "Your Hourly Income (\$/hr)",
-                      prefixIcon: Icon(Icons.monetization_on),
-                      border: OutlineInputBorder(),
-                    ),
-                    onChanged: (_) => _recalculateImpulse(),
-                  ),
-                  const SizedBox(height: 20),
-
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.indigo.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      children: [
-                        const Text(
-                          "This item costs you:",
-                          style: TextStyle(fontSize: 13, color: Colors.grey),
-                        ),
-                        const SizedBox(height: 6),
-                        FittedBox(
-                          child: Text(
-                            "${_calculatedHours.toStringAsFixed(1)} HOURS",
-                            style: const TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.indigo,
-                            ),
-                          ),
-                        ),
-                        const Text(
-                          "of real hard work!",
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 10),
-                        Chip(
-                          label: Text(_regretLevel),
-                          backgroundColor: _calculatedHours > 5 ? Colors.red.shade100 : Colors.green.shade100,
-                          labelStyle: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: _calculatedHours > 5 ? Colors.red.shade900 : Colors.green.shade900,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            setState(() {
-                              _totalSavedMoney += double.tryParse(_itemPriceController.text) ?? 0.0;
-                            });
-                            _showNotification("Awesome! Added to your saved money score!");
-                          },
-                          child: const Text("I Skipped Buying!"),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+            onPressed: () {
+              if (titleController.text.isNotEmpty) {
+                setState(() {
+                  _notes.add({
+                    'title': titleController.text,
+                    'content': contentController.text,
+                    'tag': 'Quick Note',
+                    'color': 'teal',
+                  });
+                });
+                Navigator.pop(ctx);
+              }
+            },
+            child: const Text('Pin Note', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
   }
 
-  // --- TAB 4: QUICK SPLITTER & TOOLS ---
-  Widget _buildSplitterAndToolsTab() {
-    final double total = double.tryParse(_totalAmountController.text) ?? 0.0;
-    final double tip = (total * _tipPercentage) / 100;
-    final double grandTotal = total + tip;
-    final double perPerson = _peopleCount > 0 ? grandTotal / _peopleCount : 0.0;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Bill Splitter Card
-          Card(
-            elevation: 3,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.calculate, color: Colors.orange),
-                      SizedBox(width: 8),
-                      Text(
-                        "Group Expense & Bill Splitter",
-                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: _totalAmountController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: "Total Bill Amount (\$)",
-                      border: OutlineInputBorder(),
-                    ),
-                    onChanged: (_) => setState(() {}),
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      const Text("People: ", style: TextStyle(fontWeight: FontWeight.bold)),
-                      IconButton(
-                        icon: const Icon(Icons.remove_circle_outline),
-                        onPressed: () {
-                          if (_peopleCount > 1) setState(() => _peopleCount--);
-                        },
-                      ),
-                      Text("$_peopleCount", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      IconButton(
-                        icon: const Icon(Icons.add_circle_outline),
-                        onPressed: () => setState(() => _peopleCount++),
-                      ),
-                      const Spacer(),
-                      Text("Tip: ${_tipPercentage.toInt()}%", style: const TextStyle(fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                  Slider(
-                    value: _tipPercentage,
-                    min: 0,
-                    max: 30,
-                    divisions: 6,
-                    label: "${_tipPercentage.toInt()}%",
-                    onChanged: (val) => setState(() => _tipPercentage = val),
-                  ),
-                  const SizedBox(height: 10),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text("Each Person Pays:"),
-                            Text(
-                              "\$${perPerson.toStringAsFixed(2)}",
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.deepOrange,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text("Total Bill incl. tip (${_tipPercentage.toInt()}%):", style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                            Text("\$${grandTotal.toStringAsFixed(2)}", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.share),
-                      label: const Text("Copy Bill Summary Text"),
-                      onPressed: () {
-                        _showNotification("Copied: 'Total: \$${grandTotal.toStringAsFixed(2)} | \$${perPerson.toStringAsFixed(2)} per person'");
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          // Micro Decision Wheel Card
-          Card(
-            elevation: 3,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.lightbulb, color: Colors.teal),
-                      SizedBox(width: 8),
-                      Text(
-                        "Micro Decision Resolver",
-                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    "Stuck deciding what to eat or do? Let QuickDeck pick instantly!",
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 14),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    decoration: BoxDecoration(
-                      color: Colors.teal.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Center(
-                      child: Text(
-                        _selectedDecision,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.teal,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.refresh),
-                      label: const Text("Pick Meal For Me!"),
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.teal, foregroundColor: Colors.white),
-                      onPressed: () {
-                        setState(() {
-                          _selectedDecision = (_foodOptions..shuffle()).first;
-                        });
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+  void _showToast(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.teal,
+        duration: const Duration(seconds: 2),
       ),
     );
   }
