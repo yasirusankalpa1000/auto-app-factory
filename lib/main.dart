@@ -1,997 +1,1158 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(const BubbleDockApp());
+  runApp(const ImpulseGuardApp());
 }
 
-class BubbleDockApp extends StatelessWidget {
-  const BubbleDockApp({super.key});
+class ImpulseGuardApp extends StatelessWidget {
+  const ImpulseGuardApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'BubbleDock Assistant',
+      title: 'ImpulseGuard',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0F172A),
-        colorScheme: const ColorScheme.dark(
-          primary: Colors.tealAccent,
-          secondary: Colors.teal,
-          surface: Color(0xFF1E293B),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.teal,
+          brightness: Brightness.dark,
+          primary: Colors.teal,
+          secondary: Colors.amber,
+          surface: const Color(0xFF1E293B),
         ),
+        scaffoldBackgroundColor: const Color(0xFF0F172A),
       ),
-      home: const MainHomeScreen(),
+      home: const MainNavigationScreen(),
     );
   }
 }
 
-class MainHomeScreen extends StatefulWidget {
-  const MainHomeScreen({super.key});
+class MainNavigationScreen extends StatefulWidget {
+  const MainNavigationScreen({super.key});
 
   @override
-  State<MainHomeScreen> createState() => _MainHomeScreenState();
+  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
-class _MainHomeScreenState extends State<MainHomeScreen> {
-  int _currentIndex = 0;
+class _MainNavigationScreenState extends State<MainNavigationScreen> {
+  int _selectedIndex = 0;
 
-  // Global App States
-  bool _overlayPermission = true;
-  bool _notificationPermission = true;
-  bool _autoClipboard = true;
-  bool _isBubbleVisible = true;
+  // Global State
+  double hourlyWage = 25.0;
+  double totalSavedMoney = 485.0;
+  double totalHoursSaved = 19.4;
+  int defeatedImpulsesCount = 14;
 
-  // Floating Bubble Simulated Coordinates
-  double _bubbleX = 20.0;
-  double _bubbleY = 120.0;
-  String _activeWidgetTool = 'Clipboard';
+  bool isFloatingOverlayActive = true;
+  bool isNotificationShieldActive = true;
+  bool isAutoInterceptActive = true;
 
-  // Notes List
-  final List<Map<String, String>> _notes = [
+  final List<Map<String, dynamic>> impulseHistory = [
     {
-      'title': 'Wi-Fi Password Home',
-      'content': 'SkyNet_5G_Secure#99',
-      'tag': 'Important',
-      'color': 'teal'
+      'title': 'Wireless Earbuds',
+      'price': 79.99,
+      'hours': 3.2,
+      'date': 'Yesterday',
+      'saved': true,
     },
     {
-      'title': 'Grocery List',
-      'content': 'Almond Milk, Organic Eggs, Oats',
-      'tag': 'Personal',
-      'color': 'amber'
+      'title': 'Designer Sneakers',
+      'price': 149.50,
+      'hours': 6.0,
+      'date': '3 days ago',
+      'saved': true,
+    },
+    {
+      'title': 'Late Night Fast Food',
+      'price': 24.00,
+      'hours': 1.0,
+      'date': '5 days ago',
+      'saved': true,
     },
   ];
 
-  // Clipboard Text
-  String _clipboardText =
-      "Contact support@bubbledock.io or visit https://bubbledock.io for live updates. Total bill estimate was \$45.50 for order #8821.";
-
-  // Speed Math State
-  double _billAmount = 85.0;
-  double _tipPercentage = 15.0;
-  int _peopleCount = 3;
+  void _addSavedImpulse(String title, double price, double hours) {
+    setState(() {
+      totalSavedMoney += price;
+      totalHoursSaved += hours;
+      defeatedImpulsesCount += 1;
+      impulseHistory.insert(0, {
+        'title': title,
+        'price': price,
+        'hours': hours,
+        'date': 'Just Now',
+        'saved': true,
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Stack(
-          children: [
-            IndexedStack(
-              index: _currentIndex,
-              children: [
-                _buildFloatingHubTab(),
-                _buildClipboardTab(),
-                _buildSpeedMathTab(),
-                _buildFloatingNotesTab(),
-              ],
-            ),
-            if (_isBubbleVisible) _buildDraggableFloatingBubble(),
-          ],
-        ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        backgroundColor: const Color(0xFF1E293B),
-        selectedItemColor: Colors.tealAccent,
-        unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.widgets),
-            label: 'Overlay Dock',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.content_paste),
-            label: 'Clipboard',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calculate),
-            label: 'Speed Math',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.push_pin),
-            label: 'Notes HUD',
-          ),
-        ],
-      ),
-    );
-  }
-
-  // TAB 1: Floating Hub & System Overlay Controls
-  Widget _buildFloatingHubTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeaderCard(),
-          const SizedBox(height: 16),
-          _buildPermissionStatusCard(),
-          const SizedBox(height: 16),
-          _buildFloatingBubbleControls(),
-          const SizedBox(height: 16),
-          _buildQuickActionGrid(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeaderCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0D9488), Color(0xFF115E59)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          Text(
-            'BubbleDock Assistant',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          SizedBox(height: 6),
-          Text(
-            'Always-on floating utility bubble for instant text cleaning, calculations, and floating notes without app switching.',
-            style: TextStyle(fontSize: 13, color: Colors.white70),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPermissionStatusCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white70),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: const [
-              Icon(Icons.security, color: Colors.tealAccent),
-              SizedBox(width: 8),
-              Text(
-                'System Overlay & Services',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SwitchListTile(
-            value: _overlayPermission,
-            activeColor: Colors.tealAccent,
-            title: const Text('Display Over Other Apps',
-                style: TextStyle(fontSize: 14)),
-            subtitle: const Text(
-                'Allows floating bubble preview over system apps',
-                style: TextStyle(fontSize: 12, color: Colors.grey)),
-            onChanged: (val) => setState(() => _overlayPermission = val),
-          ),
-          const Divider(color: Colors.white70),
-          SwitchListTile(
-            value: _notificationPermission,
-            activeColor: Colors.tealAccent,
-            title: const Text('Floating System Notifications',
-                style: TextStyle(fontSize: 14)),
-            subtitle: const Text('Quick actions menu inside notification shade',
-                style: TextStyle(fontSize: 12, color: Colors.grey)),
-            onChanged: (val) => setState(() => _notificationPermission = val),
-          ),
-          const Divider(color: Colors.white70),
-          SwitchListTile(
-            value: _autoClipboard,
-            activeColor: Colors.tealAccent,
-            title: const Text('Auto-Listen Clipboard Text',
-                style: TextStyle(fontSize: 14)),
-            subtitle: const Text('Detect links, emails & prices automatically',
-                style: TextStyle(fontSize: 12, color: Colors.grey)),
-            onChanged: (val) => setState(() => _autoClipboard = val),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFloatingBubbleControls() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white70),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Floating Bubble HUD',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              Switch(
-                value: _isBubbleVisible,
-                activeColor: Colors.tealAccent,
-                onChanged: (val) => setState(() => _isBubbleVisible = val),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Drag the floating bubble around the screen area to position your instant workspace tool.',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _buildToolChip('Clipboard'),
-              _buildToolChip('Calculator'),
-              _buildToolChip('Sticky Note'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildToolChip(String label) {
-    bool isSelected = _activeWidgetTool == label;
-    return ChoiceChip(
-      label: Text(label),
-      selected: isSelected,
-      selectedColor: Colors.teal,
-      backgroundColor: const Color(0xFF0F172A),
-      labelStyle: TextStyle(
-        color: isSelected ? Colors.white : Colors.white70,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-      ),
-      onSelected: (selected) {
-        if (selected) {
+    final List<Widget> pages = [
+      ShieldHubTab(
+        hourlyWage: hourlyWage,
+        onWageChanged: (newWage) {
           setState(() {
-            _activeWidgetTool = label;
+            hourlyWage = newWage;
           });
-        }
-      },
-    );
-  }
+        },
+        onImpulseDefeated: _addSavedImpulse,
+        onStartCoolDown: () {
+          setState(() {
+            _selectedIndex = 1;
+          });
+        },
+      ),
+      CoolDownZoneTab(
+        hourlyWage: hourlyWage,
+        onCompleteCoolDown: (title, price, hours) {
+          _addSavedImpulse(title, price, hours);
+        },
+      ),
+      OverlayNotificationTab(
+        isFloatingActive: isFloatingOverlayActive,
+        isNotificationActive: isNotificationShieldActive,
+        isAutoIntercept: isAutoInterceptActive,
+        onToggleFloating: (val) => setState(() => isFloatingOverlayActive = val),
+        onToggleNotification: (val) => setState(() => isNotificationShieldActive = val),
+        onToggleIntercept: (val) => setState(() => isAutoInterceptActive = val),
+      ),
+      VaultStatsTab(
+        totalSaved: totalSavedMoney,
+        hoursSaved: totalHoursSaved,
+        count: defeatedImpulsesCount,
+        history: impulseHistory,
+      ),
+    ];
 
-  Widget _buildQuickActionGrid() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Instant Screen Utilities',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+    return Scaffold(
+      body: pages[_selectedIndex],
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.shield),
+            label: 'Shield',
           ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildActionTile(
-                icon: Icons.cleaning_services,
-                title: 'Clean Text',
-                subtitle: 'Strip formatting',
-                color: Colors.teal,
-                onTap: () {
-                  setState(() {
-                    _clipboardText = _clipboardText.trim().replaceAll(RegExp(r'\s+'), ' ');
-                  });
-                  _showToast('Text formatting cleaned!');
-                },
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildActionTile(
-                icon: Icons.attach_money,
-                title: 'Extract Prices',
-                subtitle: 'Find amounts',
-                color: Colors.green,
-                onTap: () {
-                  RegExp regExp = RegExp(r'\$\d+(?:\.\d+)?');
-                  Iterable<Match> matches = regExp.allMatches(_clipboardText);
-                  List<String> prices = matches.map((m) => m.group(0)!).toList();
-                  _showToast(prices.isEmpty ? 'No prices found' : 'Found: ${prices.join(', ')}');
-                },
-              ),
-            ),
-          ],
-        ),
-      ],
+          NavigationDestination(
+            icon: Icon(Icons.timer),
+            label: 'Cool-Down',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.widgets),
+            label: 'Floating Bar',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.savings),
+            label: 'Vault',
+          ),
+        ],
+      ),
     );
   }
+}
 
-  Widget _buildActionTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E293B),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white70),
-        ),
+// ==========================================
+// TAB 1: SHIELD HUB (CALCULATOR & INTERCEPT)
+// ==========================================
+class ShieldHubTab extends StatefulWidget {
+  final double hourlyWage;
+  final ValueChanged<double> onWageChanged;
+  final Function(String, double, double) onImpulseDefeated;
+  final VoidCallback onStartCoolDown;
+
+  const ShieldHubTab({
+    super.key,
+    required this.hourlyWage,
+    required this.onWageChanged,
+    required this.onImpulseDefeated,
+    required this.onStartCoolDown,
+  });
+
+  @override
+  State<ShieldHubTab> createState() => _ShieldHubTabState();
+}
+
+class _ShieldHubTabState extends State<ShieldHubTab> {
+  final TextEditingController _itemController = TextEditingController(text: 'Smart Watch');
+  final TextEditingController _priceController = TextEditingController(text: '120');
+
+  double calculatedHours = 4.8;
+  double fiveYearLoss = 168.30;
+
+  @override
+  void initState() {
+    super.initState();
+    _recalculate();
+  }
+
+  void _recalculate() {
+    double price = double.tryParse(_priceController.text) ?? 0.0;
+    setState(() {
+      calculatedHours = widget.hourlyWage > 0 ? (price / widget.hourlyWage) : 0.0;
+      // 5 years at 7% annual compounding interest simulator formula
+      fiveYearLoss = price * 1.4025;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CircleAvatar(
-              backgroundColor: color.withOpacity(0.2),
-              child: Icon(icon, color: color),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: const TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: const TextStyle(fontSize: 11, color: Colors.grey),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // TAB 2: Smart Clipboard & Text Processor
-  Widget _buildClipboardTab() {
-    int wordCount = _clipboardText.trim().isEmpty
-        ? 0
-        : _clipboardText.trim().split(RegExp(r'\s+')).length;
-    int charCount = _clipboardText.length;
-    int lineCount =
-        _clipboardText.isEmpty ? 0 : '\n'.allMatches(_clipboardText).length + 1;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Smart Clipboard Suite',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Paste, clean, format, or extract dynamic info live.',
-            style: TextStyle(fontSize: 13, color: Colors.grey),
-          ),
-          const SizedBox(height: 16),
-
-          // Real-time Text Stats Bar
-          Row(
-            children: [
-              _buildStatChip('Words', '$wordCount'),
-              const SizedBox(width: 8),
-              _buildStatChip('Chars', '$charCount'),
-              const SizedBox(width: 8),
-              _buildStatChip('Lines', '$lineCount'),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Main Text Box
-          TextField(
-            maxLines: 6,
-            controller: TextEditingController(text: _clipboardText)
-              ..selection = TextSelection.fromPosition(
-                TextPosition(offset: _clipboardText.length),
-              ),
-            onChanged: (val) {
-              _clipboardText = val;
-              setState(() {});
-            },
-            decoration: const InputDecoration(
-              hintText: 'Type or paste clipboard content here...',
-              fillColor: Color(0xFF1E293B),
-              filled: true,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.all(Radius.circular(12)),
-                borderSide: BorderSide(color: Colors.white70),
-              ),
-            ),
-            style: const TextStyle(fontSize: 14, color: Colors.white),
-          ),
-          const SizedBox(height: 16),
-
-          // Smart Action Tools
-          const Text(
-            'Text Formatters & Extractors',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _buildToolButton(
-                icon: Icons.title,
-                label: 'UPPERCASE',
-                onTap: () {
-                  setState(() {
-                    _clipboardText = _clipboardText.toUpperCase();
-                  });
-                },
-              ),
-              _buildToolButton(
-                icon: Icons.text_fields,
-                label: 'lowercase',
-                onTap: () {
-                  setState(() {
-                    _clipboardText = _clipboardText.toLowerCase();
-                  });
-                },
-              ),
-              _buildToolButton(
-                icon: Icons.email,
-                label: 'Extract Emails',
-                onTap: () {
-                  RegExp regExp = RegExp(
-                      r"[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*");
-                  Iterable<Match> matches = regExp.allMatches(_clipboardText);
-                  List<String> emails = matches.map((m) => m.group(0)!).toList();
-                  _showToast(emails.isEmpty ? 'No emails found' : 'Emails: ${emails.join(', ')}');
-                },
-              ),
-              _buildToolButton(
-                icon: Icons.link,
-                label: 'Extract URLs',
-                onTap: () {
-                  RegExp regExp = RegExp(
-                      r'https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)');
-                  Iterable<Match> matches = regExp.allMatches(_clipboardText);
-                  List<String> urls = matches.map((m) => m.group(0)!).toList();
-                  _showToast(urls.isEmpty ? 'No URLs found' : 'URLs: ${urls.join(', ')}');
-                },
-              ),
-              _buildToolButton(
-                icon: Icons.content_copy,
-                label: 'Copy Clean Text',
-                onTap: () {
-                  _showToast('Copied to system clipboard!');
-                },
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatChip(String label, String value) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E293B),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white70),
-        ),
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.tealAccent,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 11, color: Colors.grey),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildToolButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return ElevatedButton.icon(
-      onPressed: onTap,
-      icon: Icon(icon, size: 16, color: Colors.tealAccent),
-      label: Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF1E293B),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
-
-  // TAB 3: Floating Speed Math & Splitter Overlay
-  Widget _buildSpeedMathTab() {
-    double totalTip = _billAmount * (_tipPercentage / 100);
-    double grandTotal = _billAmount + totalTip;
-    double perPerson = _peopleCount > 0 ? grandTotal / _peopleCount : grandTotal;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Floating Speed Math & Splitter',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Instantly calculate bills, tips, and group splits on the fly.',
-            style: TextStyle(fontSize: 13, color: Colors.grey),
-          ),
-          const SizedBox(height: 16),
-
-          // Display Result Card
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E293B),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.teal.withOpacity(0.5)),
-            ),
-            child: Column(
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Per Person Share',
-                  style: TextStyle(fontSize: 13, color: Colors.grey),
-                ),
-                const SizedBox(height: 6),
-                FittedBox(
-                  child: Text(
-                    '\$${perPerson.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.tealAccent,
-                    ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        'ImpulseGuard',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.teal,
+                        ),
+                        softWrap: true,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        'Instant Spending Interceptor',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                        softWrap: true,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    Column(
-                      children: [
-                        const Text('Total Bill',
-                            style: TextStyle(fontSize: 11, color: Colors.grey)),
-                        Text('\$${_billAmount.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white)),
-                      ],
-                    ),
-                    Column(
-                      children: [
-                        const Text('Tip Amount',
-                            style: TextStyle(fontSize: 11, color: Colors.grey)),
-                        Text('\$${totalTip.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.amberAccent)),
-                      ],
-                    ),
-                    Column(
-                      children: [
-                        const Text('Grand Total',
-                            style: TextStyle(fontSize: 11, color: Colors.grey)),
-                        Text('\$${grandTotal.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white)),
-                      ],
-                    ),
-                  ],
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.teal.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.teal),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(Icons.security, size: 16, color: Colors.teal),
+                      SizedBox(width: 4),
+                      Text(
+                        'SHIELD ACTIVE',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.teal),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 20),
+            const SizedBox(height: 20),
 
-          // Bill Input Slider
-          Text('Base Bill Amount: \$${_billAmount.toStringAsFixed(0)}',
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-          Slider(
-            value: _billAmount,
-            min: 5,
-            max: 500,
-            divisions: 99,
-            activeColor: Colors.tealAccent,
-            inactiveColor: Colors.white70,
-            onChanged: (val) => setState(() => _billAmount = val),
-          ),
-          const SizedBox(height: 12),
-
-          // Tip Percentage Slider
-          Text('Tip Percentage: ${_tipPercentage.toInt()}%',
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-          Slider(
-            value: _tipPercentage,
-            min: 0,
-            max: 30,
-            divisions: 30,
-            activeColor: Colors.amber,
-            inactiveColor: Colors.white70,
-            onChanged: (val) => setState(() => _tipPercentage = val),
-          ),
-          const SizedBox(height: 12),
-
-          // People Splitter Controls
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Split Between People:',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-              Row(
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      if (_peopleCount > 1) {
-                        setState(() => _peopleCount--);
-                      }
-                    },
-                    icon: const Icon(Icons.remove_circle_outline, color: Colors.tealAccent),
-                  ),
-                  Text(
-                    '$_peopleCount',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      setState(() => _peopleCount++);
-                    },
-                    icon: const Icon(Icons.add_circle_outline, color: Colors.tealAccent),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // TAB 4: Floating Sticky Notes Overlay
-  Widget _buildFloatingNotesTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    'Floating Sticky HUD',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Pin notes directly onto your floating dock.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                ],
-              ),
-              IconButton(
-                onPressed: _addNewNoteDialog,
-                icon: const Icon(Icons.add_circle, color: Colors.tealAccent, size: 32),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _notes.length,
-            itemBuilder: (context, index) {
-              final note = _notes[index];
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E293B),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: note['color'] == 'teal'
-                        ? Colors.teal.withOpacity(0.5)
-                        : Colors.amber.withOpacity(0.5),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            // Hourly Wage Setup Box
+            Card(
+              color: const Color(0xFF1E293B),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(14.0),
+                child: Row(
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            note['title'] ?? '',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                            overflow: TextOverflow.ellipsis,
+                    const Icon(Icons.monetization_on, color: Colors.amber, size: 28),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Your Hourly Take-Home Wage',
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
                           ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: note['color'] == 'teal'
-                                ? Colors.teal.withOpacity(0.2)
-                                : Colors.amber.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(6),
+                          Text(
+                            '\$${widget.hourlyWage.toStringAsFixed(2)} / hour',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           ),
-                          child: Text(
-                            note['tag'] ?? 'Note',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: note['color'] == 'teal'
-                                  ? Colors.tealAccent
-                                  : Colors.amber,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      note['content'] ?? '',
-                      style: const TextStyle(fontSize: 13, color: Colors.white70),
+                    IconButton(
+                      icon: const Icon(Icons.edit, color: Colors.teal),
+                      onPressed: () => _showWageDialog(context),
                     ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        InkWell(
-                          onTap: () {
-                            _showToast('Copied note content to clipboard!');
-                          },
-                          child: Row(
-                            children: const [
-                              Icon(Icons.copy, size: 14, color: Colors.grey),
-                              SizedBox(width: 4),
-                              Text('Copy',
-                                  style: TextStyle(fontSize: 11, color: Colors.grey)),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        InkWell(
-                          onTap: () {
-                            setState(() {
-                              _notes.removeAt(index);
-                            });
-                          },
-                          child: Row(
-                            children: const [
-                              Icon(Icons.delete, size: 14, color: Colors.redAccent),
-                              SizedBox(width: 4),
-                              Text('Delete',
-                                  style: TextStyle(
-                                      fontSize: 11, color: Colors.redAccent)),
-                            ],
-                          ),
-                        ),
-                      ],
-                    )
                   ],
                 ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Draggable Dynamic Floating Bubble Overlay Simulator
-  Widget _buildDraggableFloatingBubble() {
-    return Positioned(
-      left: _bubbleX,
-      top: _bubbleY,
-      child: GestureDetector(
-        onPanUpdate: (details) {
-          setState(() {
-            _bubbleX += details.delta.dx;
-            _bubbleY += details.delta.dy;
-          });
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Colors.teal, Color(0xFF0F766E)],
+              ),
             ),
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: const [
-              BoxShadow(
-                color: Colors.black87,
-                blurRadius: 10,
-                offset: Offset(0, 4),
+            const SizedBox(height: 20),
+
+            const Text(
+              'Evaluate Micro-Purchase',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+
+            // Input Fields
+            TextField(
+              controller: _itemController,
+              decoration: const InputDecoration(
+                labelText: 'Item Name / Desired Purchase',
+                prefixIcon: Icon(Icons.shopping_cart),
+                border: OutlineInputBorder(),
               ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.bubble_chart, color: Colors.tealAccent, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                '$_activeWidgetTool Active',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _priceController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: 'Price (\$ USD)',
+                prefixIcon: Icon(Icons.attach_money),
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (_) => _recalculate(),
+            ),
+            const SizedBox(height: 20),
+
+            // Real Life Impact Card
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.teal.shade900, const Color(0xFF0F172A)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.teal.shade700),
               ),
-            ],
-          ),
+              child: Column(
+                children: [
+                  const Text(
+                    'REAL COST IN LIFE HOURS',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.tealAccent),
+                  ),
+                  const SizedBox(height: 8),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '${calculatedHours.toStringAsFixed(1)} Hours',
+                      style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'You must work ${calculatedHours.toStringAsFixed(1)} hours of your life solely to pay for this.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 12, color: Colors.white70),
+                    softWrap: true,
+                  ),
+                  const Divider(height: 24, color: Colors.white70),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      Flexible(
+                        child: Column(
+                          children: [
+                            const Text('5-Year Opportunity Loss', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                            const SizedBox(height: 2),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                '\$${fiveYearLoss.toStringAsFixed(2)}',
+                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.redAccent),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(height: 30, width: 1, color: Colors.white70),
+                      Flexible(
+                        child: Column(
+                          children: [
+                            const Text('Impulse Severity', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                            const SizedBox(height: 2),
+                            Text(
+                              calculatedHours > 5.0 ? 'HIGH RISK' : 'MODERATE',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: calculatedHours > 5.0 ? Colors.redAccent : Colors.amber,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Action Buttons
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: const Icon(Icons.timer_outlined),
+                label: const Text(
+                  'START 60s COOL-DOWN SHIELD',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+                onPressed: () {
+                  widget.onStartCoolDown();
+                },
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.green,
+                      side: const BorderSide(color: Colors.green),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    icon: const Icon(Icons.check_circle, size: 18),
+                    label: const FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text('I Defeated It!'),
+                    ),
+                    onPressed: () {
+                      double price = double.tryParse(_priceController.text) ?? 0.0;
+                      widget.onImpulseDefeated(
+                        _itemController.text.isEmpty ? 'Impulse Defeated' : _itemController.text,
+                        price,
+                        calculatedHours,
+                      );
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Saved \$${price.toStringAsFixed(2)}! Added to Vault.'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.grey,
+                      side: const BorderSide(color: Colors.grey),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    icon: const Icon(Icons.close, size: 18),
+                    label: const FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text('I Bought It'),
+                    ),
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Logged purchase. Try cooling down next time!'),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
 
-  // Add Note Dialog
-  void _addNewNoteDialog() {
-    final titleController = TextEditingController();
-    final contentController = TextEditingController();
-
+  void _showWageDialog(BuildContext context) {
+    final wageInput = TextEditingController(text: widget.hourlyWage.toString());
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        title: const Text('Add Sticky Pin Note', style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(
-                labelText: 'Title',
-                labelStyle: TextStyle(color: Colors.grey),
-                border: OutlineInputBorder(),
-              ),
-              style: const TextStyle(color: Colors.white),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: contentController,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Content',
-                labelStyle: TextStyle(color: Colors.grey),
-                border: OutlineInputBorder(),
-              ),
-              style: const TextStyle(color: Colors.white),
-            ),
-          ],
+        title: const Text('Set Take-Home Hourly Wage'),
+        content: TextField(
+          controller: wageInput,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(
+            labelText: 'Hourly Rate (\$)',
+            border: OutlineInputBorder(),
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
             onPressed: () {
-              if (titleController.text.isNotEmpty) {
-                setState(() {
-                  _notes.add({
-                    'title': titleController.text,
-                    'content': contentController.text,
-                    'tag': 'Quick Note',
-                    'color': 'teal',
-                  });
-                });
-                Navigator.pop(ctx);
+              double val = double.tryParse(wageInput.text) ?? widget.hourlyWage;
+              if (val > 0) {
+                widget.onWageChanged(val);
+                _recalculate();
               }
+              Navigator.pop(ctx);
             },
-            child: const Text('Pin Note', style: TextStyle(color: Colors.white)),
+            child: const Text('Save'),
           ),
         ],
       ),
     );
   }
+}
 
-  void _showToast(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.teal,
-        duration: const Duration(seconds: 2),
+// ==========================================
+// TAB 2: COOL-DOWN & DOPAMINE RESET GAME
+// ==========================================
+class CoolDownZoneTab extends StatefulWidget {
+  final double hourlyWage;
+  final Function(String, double, double) onCompleteCoolDown;
+
+  const CoolDownZoneTab({
+    super.key,
+    required this.hourlyWage,
+    required this.onCompleteCoolDown,
+  });
+
+  @override
+  State<CoolDownZoneTab> createState() => _CoolDownZoneTabState();
+}
+
+class _CoolDownZoneTabState extends State<CoolDownZoneTab> {
+  int _secondsRemaining = 60;
+  Timer? _timer;
+  bool _isRunning = false;
+  int _dopamineTaps = 0;
+  final int _targetTaps = 10;
+
+  final List<String> _reflectionQuestions = [
+    "Will this item matter to you in 30 days?",
+    "Are you buying this out of stress, boredom, or actual need?",
+    "What else could you invest this money into right now?",
+    "Can you wait 24 hours before pressing buy?",
+  ];
+
+  int _questionIndex = 0;
+
+  void _startTimer() {
+    _timer?.cancel();
+    setState(() {
+      _secondsRemaining = 60;
+      _isRunning = true;
+      _dopamineTaps = 0;
+    });
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_secondsRemaining > 0) {
+        setState(() {
+          _secondsRemaining--;
+          if (_secondsRemaining % 15 == 0) {
+            _questionIndex = (_questionIndex + 1) % _reflectionQuestions.length;
+          }
+        });
+      } else {
+        _timer?.cancel();
+        setState(() {
+          _isRunning = false;
+        });
+      }
+    });
+  }
+
+  void _handleShieldTap() {
+    if (_isRunning && _dopamineTaps < _targetTaps) {
+      setState(() {
+        _dopamineTaps++;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Row(
+              children: const [
+                Icon(Icons.psychology, color: Colors.amber, size: 28),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Dopamine Cool-Down Zone',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    softWrap: true,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Break the instant dopamine loop by taking a mandatory 60-second mindfulness buffer.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 20),
+
+            // Timer Circle Display
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF1E293B),
+                border: Border.all(
+                  color: _isRunning ? Colors.teal : Colors.grey.shade700,
+                  width: 4,
+                ),
+                boxShadow: [
+                  if (_isRunning)
+                    BoxShadow(
+                      color: Colors.teal.withOpacity(0.4),
+                      blurRadius: 20,
+                      spreadRadius: 2,
+                    ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    '$_secondsRemaining',
+                    style: TextStyle(
+                      fontSize: 48,
+                      fontWeight: FontWeight.bold,
+                      color: _secondsRemaining <= 10 ? Colors.redAccent : Colors.tealAccent,
+                    ),
+                  ),
+                  const Text(
+                    'SECONDS',
+                    style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Reflection Question Card
+            Card(
+              color: const Color(0xFF1E293B),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.lightbulb, color: Colors.amber, size: 18),
+                        SizedBox(width: 6),
+                        Text(
+                          'MIND RESET QUESTION',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.amber),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      _reflectionQuestions[_questionIndex],
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                      softWrap: true,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Interactive Dopamine Reset Tap Game
+            Card(
+              color: Colors.teal.shade900.withOpacity(0.4),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: const BorderSide(color: Colors.teal),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    const Text(
+                      'STRESS TAPPER MINI-GAME',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.tealAccent),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Tap the shield below $_targetTaps times to dissipate impulse urges.',
+                      style: const TextStyle(fontSize: 11, color: Colors.white70),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 14),
+                    GestureDetector(
+                      onTap: _handleShieldTap,
+                      child: CircleAvatar(
+                        radius: 36,
+                        backgroundColor: _dopamineTaps >= _targetTaps ? Colors.green : Colors.teal,
+                        child: Icon(
+                          _dopamineTaps >= _targetTaps ? Icons.check : Icons.touch_app,
+                          size: 36,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Taps: $_dopamineTaps / $_targetTaps',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Control Buttons
+            if (!_isRunning)
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: const Icon(Icons.play_arrow),
+                  label: const Text('START 60s COOL-DOWN TIMER'),
+                  onPressed: _startTimer,
+                ),
+              )
+            else
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.redAccent,
+                    side: const BorderSide(color: Colors.redAccent),
+                  ),
+                  icon: const Icon(Icons.close),
+                  label: const Text('CANCEL COOL-DOWN'),
+                  onPressed: () {
+                    _timer?.cancel();
+                    setState(() {
+                      _isRunning = false;
+                    });
+                  },
+                ),
+              ),
+
+            const SizedBox(height: 12),
+            if (_secondsRemaining == 0 || _dopamineTaps >= _targetTaps)
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: const Icon(Icons.star),
+                  label: const Text('IMPULSE DEFEATED! CLAIM SAVINGS'),
+                  onPressed: () {
+                    widget.onCompleteCoolDown('Cool-Down Victory', 45.0, 1.8);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Awesome job! \$45.00 saved and added to your Vault.'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ==========================================
+// TAB 3: FLOATING OVERLAY & NOTIFICATION HUB
+// ==========================================
+class OverlayNotificationTab extends StatelessWidget {
+  final bool isFloatingActive;
+  final bool isNotificationActive;
+  final bool isAutoIntercept;
+  final ValueChanged<bool> onToggleFloating;
+  final ValueChanged<bool> onToggleNotification;
+  final ValueChanged<bool> onToggleIntercept;
+
+  const OverlayNotificationTab({
+    super.key,
+    required this.isFloatingActive,
+    required this.isNotificationActive,
+    required this.isAutoIntercept,
+    required this.onToggleFloating,
+    required this.onToggleNotification,
+    required this.onToggleIntercept,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: const [
+                Icon(Icons.widgets, color: Colors.teal, size: 28),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Active Overlay & Floating Bar',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    softWrap: true,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'ImpulseGuard works dynamically over other apps when you open Amazon, eBay, or shopping browsers.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 20),
+
+            // Live Simulator Card
+            Card(
+              color: const Color(0xFF1E293B),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: isFloatingActive ? Colors.teal : Colors.grey.shade800),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'FLOATING OVERLAY BUBBLE PREVIEW',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 12),
+                    // Floating Bubble Mock UI
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.85),
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(color: Colors.tealAccent.withOpacity(0.6)),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black87, blurRadius: 10, offset: Offset(0, 4)),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const CircleAvatar(
+                            radius: 12,
+                            backgroundColor: Colors.teal,
+                            child: Icon(Icons.shield, size: 14, color: Colors.white),
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              isFloatingActive ? 'ImpulseGuard Active | Wage: \$25/hr' : 'Overlay Disabled',
+                              style: const TextStyle(fontSize: 12, color: Colors.white),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.flash_on, size: 16, color: Colors.amber),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Simulates system "Display Over Other Apps" permission. Tap the floating bubble while shopping anywhere on your phone to open instant evaluation.',
+                      style: TextStyle(fontSize: 11, color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Permission Controls
+            const Text(
+              'System Shield Controls',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+
+            SwitchListTile(
+              value: isFloatingActive,
+              onChanged: onToggleFloating,
+              activeColor: Colors.teal,
+              title: const Text('Floating Widget Bubble (Display Over Apps)'),
+              subtitle: const Text('Displays quick impulse cost badge over active shopping apps.'),
+            ),
+            const Divider(color: Colors.white70),
+
+            SwitchListTile(
+              value: isNotificationActive,
+              onChanged: onToggleNotification,
+              activeColor: Colors.teal,
+              title: const Text('Persistent Notification Bar Shield'),
+              subtitle: const Text('Keep quick action buttons in top notification shade for fast entry.'),
+            ),
+            const Divider(color: Colors.white70),
+
+            SwitchListTile(
+              value: isAutoIntercept,
+              onChanged: onToggleIntercept,
+              activeColor: Colors.teal,
+              title: const Text('Smart Shopping App Auto-Detector'),
+              subtitle: const Text('Automatically alerts when e-commerce applications are opened.'),
+            ),
+            const SizedBox(height: 16),
+
+            // Notification Shade Mock
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white70),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: const [
+                      Icon(Icons.notifications, size: 16, color: Colors.teal),
+                      SizedBox(width: 6),
+                      Text(
+                        'NOTIFICATION SHADE BAR PREVIEW',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    '🛡️ ImpulseGuard - Shopping Mode Guarded',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Tap to evaluate your current online cart before checking out.',
+                    style: TextStyle(fontSize: 11, color: Colors.white70),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ==========================================
+// TAB 4: SAVINGS VAULT & LIFETIME STATS
+// ==========================================
+class VaultStatsTab extends StatelessWidget {
+  final double totalSaved;
+  final double hoursSaved;
+  final int count;
+  final List<Map<String, dynamic>> history;
+
+  const VaultStatsTab({
+    super.key,
+    required this.totalSaved,
+    required this.hoursSaved,
+    required this.count,
+    required this.history,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: const [
+                Icon(Icons.savings, color: Colors.green, size: 28),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Impulse Savings Vault',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    softWrap: true,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Track total wealth protected and life hours reclaimed from avoided impulse buys.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 20),
+
+            // Highlight Banner Cards
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade900.withOpacity(0.4),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.green.shade700),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('TOTAL SAVED', style: TextStyle(fontSize: 11, color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 6),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            '\$${totalSaved.toStringAsFixed(2)}',
+                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.teal.shade900.withOpacity(0.4),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.teal.shade700),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('HOURS RECLAIMED', style: TextStyle(fontSize: 11, color: Colors.tealAccent, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 6),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            '${hoursSaved.toStringAsFixed(1)} hrs',
+                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Defeated count badge
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Defeated Impulse Urges', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.amber,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '$count VICTORIES',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            const Text(
+              'Victory History Log',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+
+            // History List
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: history.length,
+              itemBuilder: (context, index) {
+                final item = history[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  color: const Color(0xFF1E293B),
+                  child: ListTile(
+                    leading: const CircleAvatar(
+                      backgroundColor: Colors.teal,
+                      child: Icon(Icons.shield_outlined, color: Colors.white, size: 20),
+                    ),
+                    title: Text(
+                      item['title'],
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      softWrap: true,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(
+                      'Reclaimed ${item['hours'].toStringAsFixed(1)} life hours • ${item['date']}',
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                    trailing: Text(
+                      '+\$${item['price'].toStringAsFixed(2)}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green, fontSize: 15),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
