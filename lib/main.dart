@@ -1,482 +1,732 @@
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(const BubbleLensApp());
+  runApp(const FlowDockApp());
 }
 
-class BubbleLensApp extends StatefulWidget {
-  const BubbleLensApp({super.key});
-
-  @override
-  State<BubbleLensApp> createState() => _BubbleLensAppState();
-}
-
-class _BubbleLensAppState extends State<BubbleLensApp> {
-  ThemeMode _themeMode = ThemeMode.dark;
-  Color _hudColor = Colors.indigo;
-
-  void _changeHudColor(Color color) {
-    setState(() {
-      _hudColor = color;
-    });
-  }
-
-  void _toggleTheme() {
-    setState(() {
-      _themeMode =
-          _themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
-    });
-  }
+class FlowDockApp extends StatelessWidget {
+  const FlowDockApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'BubbleLens HUD',
+      title: 'FlowDock Utility',
       debugShowCheckedModeBanner: false,
-      themeMode: _themeMode,
       theme: ThemeData(
         useMaterial3: true,
-        brightness: Brightness.light,
-        colorSchemeSeed: _hudColor,
-        scaffoldBackgroundColor: const Color(0xFFF5F7FA),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.indigo,
+          brightness: Brightness.light,
+        ),
+        scaffoldBackgroundColor: const Color(0xFFF4F6F9),
       ),
       darkTheme: ThemeData(
         useMaterial3: true,
-        brightness: Brightness.dark,
-        colorSchemeSeed: _hudColor,
-        scaffoldBackgroundColor: const Color(0xFF12141D),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.indigo,
+          brightness: Brightness.dark,
+        ),
+        scaffoldBackgroundColor: const Color(0xFF121418),
       ),
-      home: MainHUDHomeScreen(
-        currentHudColor: _hudColor,
-        onColorChanged: _changeHudColor,
-        onToggleTheme: _toggleTheme,
-        isDarkMode: _themeMode == ThemeMode.dark,
-      ),
+      themeMode: ThemeMode.system,
+      home: const MainHomeScreen(),
     );
   }
 }
 
-// Model classes
-class SnippetItem {
+// Model for Clipboard Items
+class ClipboardItem {
+  final String id;
+  final String content;
+  final String type; // 'link', 'phone', 'price', 'text'
+  final DateTime timestamp;
+  bool isPinned;
+
+  ClipboardItem({
+    required this.id,
+    required this.content,
+    required this.type,
+    required this.timestamp,
+    this.isPinned = false,
+  });
+}
+
+// Model for Sticky Notes
+class StickyNote {
   final String id;
   String title;
-  String content;
-  String category;
-  Color badgeColor;
-  bool isPinned;
-  DateTime timestamp;
+  String text;
+  Color color;
+  bool isPinnedToBubble;
 
-  SnippetItem({
+  StickyNote({
     required this.id,
     required this.title,
-    required this.content,
-    required this.category,
-    required this.badgeColor,
-    this.isPinned = false,
-    required this.timestamp,
+    required this.text,
+    required this.color,
+    this.isPinnedToBubble = false,
   });
 }
 
-class SoundTrack {
-  final String title;
-  final String category;
-  final IconData icon;
-  bool isPlaying;
-
-  SoundTrack({
-    required this.title,
-    required this.category,
-    required this.icon,
-    this.isPlaying = false,
-  });
-}
-
-class MainHUDHomeScreen extends StatefulWidget {
-  final Color currentHudColor;
-  final ValueChanged<Color> onColorChanged;
-  final VoidCallback onToggleTheme;
-  final bool isDarkMode;
-
-  const MainHUDHomeScreen({
-    super.key,
-    required this.currentHudColor,
-    required this.onColorChanged,
-    required this.onToggleTheme,
-    required this.isDarkMode,
-  });
+class MainHomeScreen extends StatefulWidget {
+  const MainHomeScreen({super.key});
 
   @override
-  State<MainHUDHomeScreen> createState() => _MainHUDHomeScreenState();
+  State<MainHomeScreen> createState() => _MainHomeScreenState();
 }
 
-class _MainHUDHomeScreenState extends State<MainHUDHomeScreen> {
-  int _currentTab = 0;
-
-  // Floating Overlay State Simulation
-  Offset _bubblePosition = const Offset(280, 220);
-  bool _isBubbleExpanded = false;
+class _MainHomeScreenState extends State<MainHomeScreen> {
+  int _currentIndex = 0;
+  
+  // App-wide State
   bool _overlayPermissionGranted = true;
   bool _notificationPermissionGranted = true;
+  bool _isFloatingBubbleEnabled = true;
   double _bubbleOpacity = 0.9;
-  double _bubbleSize = 58.0;
+  Color _bubbleColor = Colors.indigo;
+  
+  // Position of Floating Overlay Bubble inside the viewport
+  Offset _bubblePosition = const Offset(20, 200);
+  bool _isBubbleExpanded = false;
+  String _activeToolInBubble = 'quick_calc';
 
-  // Notification simulation popup
-  String? _floatingNotificationText;
+  // Eye Care Filter state
+  bool _isScreenFilterActive = false;
+  double _filterOpacity = 0.25;
+  Color _filterColor = Colors.amber;
 
-  // Sample Snippets / Quick Notes Stash
-  final List<SnippetItem> _snippets = [
-    SnippetItem(
+  // Efficiency / Gamification Stats
+  int _dailyActions = 14;
+  int _streakDays = 5;
+
+  // Data Stores
+  final List<ClipboardItem> _clipboardHistory = [
+    ClipboardItem(
       id: '1',
-      title: 'Price Comparison - Laptop',
-      content: 'Store A: \$899 | Store B: \$849 with coupon code SAVE50',
-      category: 'Shopping',
-      badgeColor: Colors.blue,
+      content: 'https://flutter.dev/docs/get-started',
+      type: 'link',
+      timestamp: DateTime.now().subtract(const Duration(minutes: 12)),
       isPinned: true,
-      timestamp: DateTime.now().subtract(const Duration(minutes: 25)),
     ),
-    SnippetItem(
+    ClipboardItem(
       id: '2',
-      title: 'Research Paper Highlight',
-      content:
-          'Neural screen parsing reduces context-switching delay by up to 64%.',
-      category: 'Study',
-      badgeColor: Colors.purple,
-      isPinned: true,
-      timestamp: DateTime.now().subtract(const Duration(hours: 2)),
+      content: '\$149.99 sale discount item',
+      type: 'price',
+      timestamp: DateTime.now().subtract(const Duration(hours: 1)),
     ),
-    SnippetItem(
+    ClipboardItem(
       id: '3',
-      title: 'Quick Verification Code',
-      content: 'OTP: 849201 - Expires in 10 minutes',
-      category: 'Security',
-      badgeColor: Colors.amber,
-      isPinned: false,
+      content: '+1 (555) 019-2834',
+      type: 'phone',
+      timestamp: DateTime.now().subtract(const Duration(hours: 3)),
+    ),
+    ClipboardItem(
+      id: '4',
+      content: 'Remember to check the quarterly budget metrics before meeting.',
+      type: 'text',
       timestamp: DateTime.now().subtract(const Duration(hours: 5)),
     ),
   ];
 
-  // Soundscape Tracks
-  final List<SoundTrack> _soundTracks = [
-    SoundTrack(
-        title: 'Deep Focus Rain',
-        category: 'Atmosphere',
-        icon: Icons.water_drop),
-    SoundTrack(
-        title: 'Lo-Fi Night Vibes',
-        category: 'Relax',
-        icon: Icons.music_note),
-    SoundTrack(
-        title: 'Cyber Cafe Ambience',
-        category: 'Work',
-        icon: Icons.local_cafe),
-    SoundTrack(
-        title: 'Forest Wind & Birds',
-        category: 'Nature',
-        icon: Icons.park),
+  final List<StickyNote> _notes = [
+    StickyNote(
+      id: 'n1',
+      title: 'Shopping List',
+      text: 'Milk, Eggs, Whole Wheat Bread, Almond Milk',
+      color: Colors.amber,
+      isPinnedToBubble: true,
+    ),
+    StickyNote(
+      id: 'n2',
+      title: 'Meeting Key Points',
+      text: '1. Review design guidelines\n2. Finalize AdMob layout\n3. Launch beta test',
+      color: Colors.teal,
+    ),
   ];
 
-  double _ambientVolume = 0.7;
+  // Quick Calculator State inside Floating Tool
+  double _billAmount = 85.0;
+  double _discountPercent = 15.0;
+  int _splitPeople = 2;
 
-  // Add Snippet Dialog
-  void _openAddSnippetDialog({SnippetItem? existingItem}) {
-    final titleController =
-        TextEditingController(text: existingItem?.title ?? '');
-    final contentController =
-        TextEditingController(text: existingItem?.content ?? '');
-    String category = existingItem?.category ?? 'General';
+  final TextEditingController _clipInputController = TextEditingController();
+  final TextEditingController _noteTitleController = TextEditingController();
+  final TextEditingController _noteTextController = TextEditingController();
 
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(existingItem == null
-            ? 'Add Floating Snippet'
-            : 'Edit Snippet'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Snippet Label',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: contentController,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Text Content / Snippet',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: category,
-                items: ['General', 'Shopping', 'Study', 'Security', 'Work']
-                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                    .toList(),
-                onChanged: (val) {
-                  if (val != null) category = val;
-                },
-                decoration: const InputDecoration(
-                  labelText: 'Category Tag',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
+  @override
+  void dispose() {
+    _clipInputController.dispose();
+    _noteTitleController.dispose();
+    _noteTextController.dispose();
+    super.dispose();
+  }
+
+  void _addClipboardItem(String text) {
+    if (text.trim().isEmpty) return;
+    String detectedType = 'text';
+    if (text.startsWith('http://') || text.startsWith('https://')) {
+      detectedType = 'link';
+    } else if (text.contains('\$') || RegExp(r'^\d+(\.\d+)?$').hasMatch(text.trim())) {
+      detectedType = 'price';
+    } else if (RegExp(r'^[+]*[(]?[0-9]{1,4}[)]?[-\s./0-9]*$').hasMatch(text.trim())) {
+      detectedType = 'phone';
+    }
+
+    setState(() {
+      _clipboardHistory.insert(
+        0,
+        ClipboardItem(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          content: text.trim(),
+          type: detectedType,
+          timestamp: DateTime.now(),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (contentController.text.trim().isEmpty) return;
-              setState(() {
-                if (existingItem != null) {
-                  existingItem.title = titleController.text.isEmpty
-                      ? 'Quick Note'
-                      : titleController.text;
-                  existingItem.content = contentController.text;
-                  existingItem.category = category;
-                } else {
-                  _snippets.insert(
-                    0,
-                    SnippetItem(
-                      id: DateTime.now().millisecondsSinceEpoch.toString(),
-                      title: titleController.text.isEmpty
-                          ? 'Quick Snippet'
-                          : titleController.text,
-                      content: contentController.text,
-                      category: category,
-                      badgeColor: category == 'Shopping'
-                          ? Colors.blue
-                          : category == 'Study'
-                              ? Colors.purple
-                              : category == 'Security'
-                                  ? Colors.amber
-                                  : Colors.teal,
-                      timestamp: DateTime.now(),
-                    ),
-                  );
-                }
-              });
-              Navigator.pop(ctx);
-              _triggerFloatingNotification('Snippet saved to Lens Vault');
-            },
-            child: const Text('Save Snippet'),
-          ),
-        ],
-      ),
+      );
+      _dailyActions++;
+    });
+    _clipInputController.clear();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Item added to FlowDock Clipboard!'), duration: Duration(seconds: 2)),
     );
   }
 
-  void _triggerFloatingNotification(String message) {
+  void _addStickyNote() {
+    if (_noteTitleController.text.trim().isEmpty) return;
     setState(() {
-      _floatingNotificationText = message;
+      _notes.insert(
+        0,
+        StickyNote(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          title: _noteTitleController.text.trim(),
+          text: _noteTextController.text.trim(),
+          color: Colors.teal,
+        ),
+      );
+      _dailyActions++;
     });
-    Future.delayed(const Duration(seconds: 4), () {
-      if (mounted) {
-        setState(() {
-          _floatingNotificationText = null;
-        });
-      }
-    });
+    _noteTitleController.clear();
+    _noteTextController.clear();
+    Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
+      body: Stack(
+        children: [
+          // Main Body Navigator Screens
+          SafeArea(
+            child: IndexedStack(
+              index: _currentIndex,
               children: [
-                _buildTopAppBar(),
-                Expanded(
-                  child: IndexedStack(
-                    index: _currentTab,
-                    children: [
-                      _buildOverlayStudioTab(),
-                      _buildSnippetStashTab(),
-                      _buildSoundscapeTab(),
-                      _buildSettingsTab(),
-                    ],
-                  ),
-                ),
+                _buildDashboardTab(),
+                _buildClipboardTab(),
+                _buildToolsTab(),
+                _buildNotesTab(),
               ],
             ),
+          ),
 
-            // Interactive Simulated Floating Bubble HUD Overlay
-            if (_overlayPermissionGranted) _buildInteractiveFloatingBubble(),
+          // Optional Screen Dimmer / Eye Care Overlay Simulator
+          if (_isScreenFilterActive)
+            IgnorePointer(
+              child: Container(
+                color: _filterColor.withOpacity(_filterOpacity),
+              ),
+            ),
 
-            // Interactive Floating Notification HUD Banner
-            if (_floatingNotificationText != null)
-              _buildFloatingNotificationBanner(),
-          ],
-        ),
+          // Interactive Draggable Floating Bubble System
+          if (_isFloatingBubbleEnabled) _buildDraggableFloatingDock(),
+        ],
       ),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentTab,
+        selectedIndex: _currentIndex,
         onDestinationSelected: (idx) {
           setState(() {
-            _currentTab = idx;
+            _currentIndex = idx;
           });
         },
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.layers),
-            selectedIcon: Icon(Icons.layers),
-            label: 'HUD Studio',
+            icon: Icon(Icons.dashboard_outlined),
+            selectedIcon: Icon(Icons.dashboard),
+            label: 'Dock',
           ),
           NavigationDestination(
-            icon: Icon(Icons.copy),
-            selectedIcon: Icon(Icons.copy),
-            label: 'Snippets',
+            icon: Icon(Icons.content_copy_outlined),
+            selectedIcon: Icon(Icons.content_copy),
+            label: 'Clipboard',
           ),
           NavigationDestination(
-            icon: Icon(Icons.volume_up),
-            selectedIcon: Icon(Icons.volume_up),
-            label: 'Ambience',
+            icon: Icon(Icons.calculate_outlined),
+            selectedIcon: Icon(Icons.calculate),
+            label: 'Tools',
           ),
           NavigationDestination(
-            icon: Icon(Icons.tune),
-            selectedIcon: Icon(Icons.tune),
-            label: 'Settings',
+            icon: Icon(Icons.note_alt_outlined),
+            selectedIcon: Icon(Icons.note_alt),
+            label: 'Stickies',
           ),
         ],
       ),
     );
   }
 
-  Widget _buildTopAppBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
+  // Floating Overlay Bubble Widget Logic
+  Widget _buildDraggableFloatingDock() {
+    return Positioned(
+      left: _bubblePosition.dx,
+      top: _bubblePosition.dy,
+      child: GestureDetector(
+        onPanUpdate: (details) {
+          setState(() {
+            double newX = _bubblePosition.dx + details.delta.dx;
+            double newY = _bubblePosition.dy + details.delta.dy;
+            // Screen boundary clamping logic
+            final screenSize = MediaQuery.of(context).size;
+            newX = newX.clamp(10.0, screenSize.width - 70.0);
+            newY = newY.clamp(40.0, screenSize.height - 120.0);
+            _bubblePosition = Offset(newX, newY);
+          });
+        },
+        child: Material(
+          elevation: 8,
+          borderRadius: BorderRadius.circular(28),
+          color: Colors.transparent,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOutCubic,
+            width: _isBubbleExpanded ? 280 : 56,
+            height: _isBubbleExpanded ? 340 : 56,
             decoration: BoxDecoration(
-              color: widget.currentHudColor.withOpacity(0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.widgets,
-              color: widget.currentHudColor,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'BubbleLens HUD',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  _overlayPermissionGranted
-                      ? 'HUD Bubble Active on Screen'
-                      : 'HUD Overlay Disabled',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: _overlayPermissionGranted
-                            ? Colors.green
-                            : Colors.orange,
-                        fontWeight: FontWeight.w600,
-                      ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              color: _bubbleColor.withOpacity(_bubbleOpacity),
+              borderRadius: BorderRadius.circular(_isBubbleExpanded ? 20 : 28),
+              boxShadow: [
+                BoxShadow(
+                  color: _bubbleColor.withOpacity(0.4),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
+            child: _isBubbleExpanded ? _buildExpandedBubbleContent() : _buildCollapsedBubbleIcon(),
           ),
-          IconButton(
-            icon: Icon(
-              widget.isDarkMode ? Icons.light_mode : Icons.dark_mode,
-            ),
-            tooltip: 'Toggle Theme',
-            onPressed: widget.onToggleTheme,
-          ),
-          IconButton(
-            icon: const Icon(Icons.notifications_active),
-            tooltip: 'Test Floating Banner',
-            onPressed: () {
-              _triggerFloatingNotification(
-                  'Quick HUD Alert: Lens captured 1 new clipboard text!');
-            },
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  // TAB 1: HUD OVERLAY STUDIO (Interactive Playground & Bubble Control)
-  Widget _buildOverlayStudioTab() {
+  Widget _buildCollapsedBubbleIcon() {
+    return InkWell(
+      borderRadius: BorderRadius.circular(28),
+      onTap: () {
+        setState(() {
+          _isBubbleExpanded = true;
+        });
+      },
+      child: const Center(
+        child: Icon(
+          Icons.widgets,
+          color: Colors.white,
+          size: 28,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpandedBubbleContent() {
+    double discountedTotal = _billAmount * (1 - (_discountPercent / 100));
+    double perPerson = discountedTotal / (_splitPeople > 0 ? _splitPeople : 1);
+
     return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Bubble Header Bar
+            Row(
+              children: [
+                const Icon(Icons.flash_on, color: Colors.amber, size: 20),
+                const SizedBox(width: 6),
+                const Expanded(
+                  child: Text(
+                    'FlowDock Overlay',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white, size: 18),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () {
+                    setState(() {
+                      _isBubbleExpanded = false;
+                    });
+                  },
+                ),
+              ],
+            ),
+            const Divider(color: Colors.white70, height: 12),
+
+            // Quick Tool Mode Selector Tabs
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _bubbleTabButton(Icons.calculate, 'quick_calc'),
+                _bubbleTabButton(Icons.content_copy, 'clipboard'),
+                _bubbleTabButton(Icons.note, 'notes'),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            // Inner Active Tool Payload
+            if (_activeToolInBubble == 'quick_calc') ...[
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black87,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Price \$:', style: TextStyle(color: Colors.white, fontSize: 12)),
+                        SizedBox(
+                          width: 80,
+                          height: 30,
+                          child: TextField(
+                            style: const TextStyle(color: Colors.white, fontSize: 12),
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+                              border: OutlineInputBorder(),
+                            ),
+                            onChanged: (val) {
+                              setState(() {
+                                _billAmount = double.tryParse(val) ?? _billAmount;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Text('Discount: ${_discountPercent.toInt()}%', style: const TextStyle(color: Colors.white, fontSize: 12)),
+                        Expanded(
+                          child: Slider(
+                            value: _discountPercent,
+                            min: 0,
+                            max: 75,
+                            activeColor: Colors.amber,
+                            onChanged: (val) {
+                              setState(() {
+                                _discountPercent = val;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white70,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'Final: \$${discountedTotal.toStringAsFixed(2)}  (\$${perPerson.toStringAsFixed(2)}/p)',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ] else if (_activeToolInBubble == 'clipboard') ...[
+              Container(
+                height: 160,
+                decoration: BoxDecoration(
+                  color: Colors.black87,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: _clipboardHistory.isEmpty
+                    ? const Center(child: Text('No Clips', style: TextStyle(color: Colors.white70)))
+                    : ListView.builder(
+                        itemCount: _clipboardHistory.length,
+                        shrinkWrap: true,
+                        itemBuilder: (context, idx) {
+                          final item = _clipboardHistory[idx];
+                          return ListTile(
+                            dense: true,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                            title: Text(
+                              item.content,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Colors.white, fontSize: 12),
+                            ),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.copy, color: Colors.amber, size: 14),
+                              onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Copied to system clipboard!'), duration: Duration(seconds: 1)),
+                                );
+                              },
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ] else ...[
+              Container(
+                height: 160,
+                decoration: BoxDecoration(
+                  color: Colors.black87,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: _notes.isEmpty
+                    ? const Center(child: Text('No Stickies', style: TextStyle(color: Colors.white70)))
+                    : ListView.builder(
+                        itemCount: _notes.length,
+                        shrinkWrap: true,
+                        itemBuilder: (context, idx) {
+                          final n = _notes[idx];
+                          return ListTile(
+                            dense: true,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                            title: Text(
+                              n.title,
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                            ),
+                            subtitle: Text(
+                              n.text,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Colors.white70, fontSize: 11),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _bubbleTabButton(IconData icon, String mode) {
+    bool isSelected = _activeToolInBubble == mode;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _activeToolInBubble = mode;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white70 : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, color: isSelected ? Colors.amberAccent : Colors.white, size: 20),
+      ),
+    );
+  }
+
+  // TAB 1: DOCK CONTROL & OVERLAY PREVIEW
+  Widget _buildDashboardTab() {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildBannerCard(),
-          const SizedBox(height: 16),
-          Text(
-            'Live Floating Bubble Controls',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
+          // Header Card
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(16),
                 ),
+                child: Icon(
+                  Icons.widgets,
+                  size: 32,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'FlowDock Hub',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                      softWrap: true,
+                    ),
+                    const Text(
+                      'Smart Overlay & Daily Micro-Utility',
+                      style: TextStyle(color: Colors.grey),
+                      softWrap: true,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 20),
+
+          // Engagement Streak Card
           Card(
-            elevation: 1,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16)),
+            elevation: 0,
+            color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  const CircleAvatar(
+                    backgroundColor: Colors.amber,
+                    child: Icon(Icons.stars, color: Colors.white),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Daily Efficiency Streak: $_streakDays Days!',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                          softWrap: true,
+                        ),
+                        Text(
+                          '$_dailyActions micro-actions solved today without leaving context.',
+                          style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                          softWrap: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Permission & Floating Service Toggles Card
+          const Text(
+            'System Overlay Controls',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const SizedBox(height: 10),
+          Card(
+            elevation: 1,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
               child: Column(
                 children: [
                   SwitchListTile(
-                    title: const Text('Display Over Apps Permission'),
-                    subtitle: const Text(
-                        'Allows floating HUD bubble to stay above web browser, shopping apps & chats.'),
+                    title: const Text('Floating Screen Bubble Dock', style: TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: const Text('Draggable floating helper visible on top of screens'),
+                    value: _isFloatingBubbleEnabled,
+                    activeColor: Colors.indigo,
+                    onChanged: (val) {
+                      setState(() {
+                        _isFloatingBubbleEnabled = val;
+                      });
+                    },
+                  ),
+                  const Divider(height: 1),
+                  SwitchListTile(
+                    title: const Text('Display Over Apps Permission', style: TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: const Text('Simulated system overlay authorization'),
                     value: _overlayPermissionGranted,
-                    activeColor: widget.currentHudColor,
+                    activeColor: Colors.teal,
                     onChanged: (val) {
                       setState(() {
                         _overlayPermissionGranted = val;
                       });
-                      _triggerFloatingNotification(val
-                          ? 'Floating HUD Overlay Enabled'
-                          : 'Floating HUD Overlay Disabled');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(val ? 'Overlay permission granted!' : 'Overlay permission revoked!'),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
                     },
                   ),
-                  const Divider(),
+                  const Divider(height: 1),
+                  SwitchListTile(
+                    title: const Text('Smart Notification Bar', style: TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: const Text('Quick actions available directly in notification tray'),
+                    value: _notificationPermissionGranted,
+                    activeColor: Colors.teal,
+                    onChanged: (val) {
+                      setState(() {
+                        _notificationPermissionGranted = val;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Customization Palette Card
+          const Text(
+            'Bubble Customization',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const SizedBox(height: 10),
+          Card(
+            elevation: 1,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Theme Color', style: TextStyle(fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 12,
+                    crossAxisAlignment: WrapCrossAxisAlignment.start,
+                    children: [
+                      _colorChip(Colors.indigo),
+                      _colorChip(Colors.teal),
+                      _colorChip(Colors.deepPurple),
+                      _colorChip(Colors.deepOrange),
+                      _colorChip(Colors.blueGrey),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
                   Row(
                     children: [
-                      const Text('Bubble Opacity'),
+                      const Text('Bubble Opacity:', style: TextStyle(fontWeight: FontWeight.w500)),
                       Expanded(
                         child: Slider(
                           value: _bubbleOpacity,
-                          min: 0.3,
+                          min: 0.4,
                           max: 1.0,
-                          activeColor: widget.currentHudColor,
+                          activeColor: _bubbleColor,
                           onChanged: (val) {
                             setState(() {
                               _bubbleOpacity = val;
@@ -487,673 +737,163 @@ class _MainHUDHomeScreenState extends State<MainHUDHomeScreen> {
                       Text('${(_bubbleOpacity * 100).toInt()}%'),
                     ],
                   ),
-                  Row(
-                    children: [
-                      const Text('Bubble Size'),
-                      Expanded(
-                        child: Slider(
-                          value: _bubbleSize,
-                          min: 44.0,
-                          max: 76.0,
-                          activeColor: widget.currentHudColor,
-                          onChanged: (val) {
-                            setState(() {
-                              _bubbleSize = val;
-                            });
-                          },
-                        ),
-                      ),
-                      Text('${_bubbleSize.toInt()}px'),
-                    ],
-                  ),
                 ],
               ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'HUD Theme Palette Accent',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-          const SizedBox(height: 8),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _buildColorChip('Indigo Night', Colors.indigo),
-                _buildColorChip('Cyber Teal', Colors.teal),
-                _buildColorChip('Sunset Amber', Colors.orange),
-                _buildColorChip('Deep Purple', Colors.purple),
-                _buildColorChip('Emerald Mint', Colors.green),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Quick Pinned Floating Notes',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-          const SizedBox(height: 8),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _snippets.where((s) => s.isPinned).length,
-            itemBuilder: (context, index) {
-              final pinnedList = _snippets.where((s) => s.isPinned).toList();
-              final item = pinnedList[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 8.0),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: item.badgeColor.withOpacity(0.2),
-                    child: Icon(Icons.push_pin,
-                        color: item.badgeColor, size: 20),
-                  ),
-                  title: Text(
-                    item.title,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text(
-                    item.content,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.copy, size: 20),
-                    onPressed: () {
-                      _triggerFloatingNotification(
-                          'Copied "${item.title}" to clipboard');
-                    },
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBannerCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            widget.currentHudColor,
-            widget.currentHudColor.withOpacity(0.7),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.touch_app, color: Colors.white),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Text(
-                  'Interactive Floating Bubble HUD',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'Drag the floating bubble anywhere on your screen! Tap it to open instant micro-notes, live ambient audio controls, and screen snippet captures while using other apps.',
-            style: TextStyle(color: Colors.white70, fontSize: 13),
-            softWrap: true,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildColorChip(String label, Color color) {
-    final isSelected = widget.currentHudColor.value == color.value;
-    return Padding(
-      padding: const EdgeInsets.only(right: 8.0),
-      child: ChoiceChip(
-        label: Text(label),
-        selected: isSelected,
-        selectedColor: color.withOpacity(0.25),
-        avatar: CircleAvatar(backgroundColor: color),
-        onSelected: (selected) {
-          if (selected) {
-            widget.onColorChanged(color);
-          }
-        },
-      ),
-    );
-  }
-
-  // TAB 2: SNIPPETS & CLIPBOARD VAULT
-  Widget _buildSnippetStashTab() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  decoration: const InputDecoration(
-                    hintText: 'Search snippets...',
-                    prefixIcon: Icon(Icons.search),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(12)),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              ElevatedButton.icon(
-                onPressed: () => _openAddSnippetDialog(),
-                icon: const Icon(Icons.add),
-                label: const Text('Add'),
-                style: ElevatedButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: _snippets.isEmpty
-                ? const Center(child: Text('No saved snippets yet.'))
-                : ListView.builder(
-                    itemCount: _snippets.length,
-                    itemBuilder: (context, index) {
-                      final snippet = _snippets[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: Padding(
-                          padding: const EdgeInsets.all(14.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Chip(
-                                    label: Text(
-                                      snippet.category,
-                                      style:
-                                          const TextStyle(color: Colors.white),
-                                    ),
-                                    backgroundColor: snippet.badgeColor,
-                                    visualDensity: VisualDensity.compact,
-                                  ),
-                                  const Spacer(),
-                                  IconButton(
-                                    icon: Icon(
-                                      snippet.isPinned
-                                          ? Icons.push_pin
-                                          : Icons.push_pin_outlined,
-                                      color: snippet.isPinned
-                                          ? widget.currentHudColor
-                                          : Colors.grey,
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        snippet.isPinned = !snippet.isPinned;
-                                      });
-                                      _triggerFloatingNotification(
-                                        snippet.isPinned
-                                            ? 'Pinned to Floating HUD'
-                                            : 'Unpinned from Floating HUD',
-                                      );
-                                    },
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.edit, size: 20),
-                                    onPressed: () => _openAddSnippetDialog(
-                                        existingItem: snippet),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete,
-                                        size: 20, color: Colors.red),
-                                    onPressed: () {
-                                      setState(() {
-                                        _snippets.removeAt(index);
-                                      });
-                                      _triggerFloatingNotification(
-                                          'Snippet deleted');
-                                    },
-                                  ),
-                                ],
-                              ),
-                              Text(
-                                snippet.title,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              SelectableText(
-                                snippet.content,
-                                style: TextStyle(
-                                  color: Theme.of(context)
-                                      .textTheme
-                                      .bodyMedium
-                                      ?.color
-                                      ?.withOpacity(0.85),
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Saved ${snippet.timestamp.hour.toString().padLeft(2, '0')}:${snippet.timestamp.minute.toString().padLeft(2, '0')}',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.copyWith(color: Colors.grey),
-                                  ),
-                                  TextButton.icon(
-                                    onPressed: () {
-                                      _triggerFloatingNotification(
-                                          'Snippet copied to clipboard');
-                                    },
-                                    icon:
-                                        const Icon(Icons.copy, size: 16),
-                                    label: const Text('Copy Text'),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // TAB 3: AMBIENT FOCUS SOUNDSCAPE
-  Widget _buildSoundscapeTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Card(
-            color: widget.currentHudColor.withOpacity(0.1),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  Icon(Icons.music_note,
-                      size: 40, color: widget.currentHudColor),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Background Focus Soundscape',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
-                        Text(
-                          'Keep calm audio playing in background while using floating HUD tools over other apps.',
-                          style: TextStyle(
-                              fontSize: 12,
-                              color: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.color),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Master Volume Control',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-          Row(
-            children: [
-              const Icon(Icons.volume_down),
-              Expanded(
-                child: Slider(
-                  value: _ambientVolume,
-                  onChanged: (val) {
-                    setState(() {
-                      _ambientVolume = val;
-                    });
-                  },
-                  activeColor: widget.currentHudColor,
-                ),
-              ),
-              const Icon(Icons.volume_up),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Soundscape Channels',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-          const SizedBox(height: 10),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _soundTracks.length,
-            itemBuilder: (context, index) {
-              final track = _soundTracks[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 10),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: track.isPlaying
-                        ? widget.currentHudColor
-                        : Colors.grey.withOpacity(0.2),
-                    child: Icon(
-                      track.icon,
-                      color: track.isPlaying
-                          ? Colors.white
-                          : Theme.of(context).iconTheme.color,
-                    ),
-                  ),
-                  title: Text(track.title,
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(track.category),
-                  trailing: IconButton(
-                    icon: Icon(
-                      track.isPlaying
-                          ? Icons.pause_circle_filled
-                          : Icons.play_circle_fill,
-                      size: 36,
-                      color: widget.currentHudColor,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        track.isPlaying = !track.isPlaying;
-                      });
-                      _triggerFloatingNotification(track.isPlaying
-                          ? 'Playing: ${track.title}'
-                          : 'Paused: ${track.title}');
-                    },
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  // TAB 4: SETTINGS & PERMISSIONS
-  Widget _buildSettingsTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'App Permissions & System Integrations',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-          const SizedBox(height: 10),
-          Card(
-            child: Column(
-              children: [
-                SwitchListTile(
-                  title: const Text('Display Over Other Apps'),
-                  subtitle: const Text('Required for floating screen bubble HUD.'),
-                  value: _overlayPermissionGranted,
-                  onChanged: (val) {
-                    setState(() {
-                      _overlayPermissionGranted = val;
-                    });
-                  },
-                ),
-                const Divider(height: 1),
-                SwitchListTile(
-                  title: const Text('Smart Notification Listener'),
-                  subtitle:
-                      const Text('Allows auto-capturing OTPs & clipboard banners.'),
-                  value: _notificationPermissionGranted,
-                  onChanged: (val) {
-                    setState(() {
-                      _notificationPermissionGranted = val;
-                    });
-                  },
-                ),
-              ],
             ),
           ),
           const SizedBox(height: 20),
-          Text(
-            'Lens HUD Utility Features',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-          const SizedBox(height: 10),
-          Card(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.cleaning_services),
-                  title: const Text('Clear Floating Snippet Cache'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    _triggerFloatingNotification('Snippet cache cleared');
-                  },
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.share),
-                  title: const Text('Share Lens HUD App'),
-                  subtitle: const Text('Invite friends to reduce context switching!'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    _triggerFloatingNotification('Sharing link copied');
-                  },
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.info_outline),
-                  title: const Text('About BubbleLens HUD'),
-                  subtitle: const Text('Version 2.4.0 - Smart Screen Utility'),
-                ),
-              ],
+
+          // Simulate Smart Notification Trigger Button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Colors.white,
+              ),
+              icon: const Icon(Icons.notifications_active),
+              label: const Text('Test Smart Sticky Notification Bar', style: TextStyle(fontWeight: FontWeight.bold)),
+              onPressed: () {
+                _showNotificationSimBottomSheet(context);
+              },
             ),
           ),
+          const SizedBox(height: 30),
         ],
       ),
     );
   }
 
-  // FLOATING BUBBLE OVERLAY WIDGET SIMULATOR
-  Widget _buildInteractiveFloatingBubble() {
-    return Positioned(
-      left: _bubblePosition.dx,
-      top: _bubblePosition.dy,
-      child: GestureDetector(
-        onPanUpdate: (details) {
-          setState(() {
-            _bubblePosition += details.delta;
-          });
-        },
+  Widget _colorChip(Color color) {
+    bool isSelected = _bubbleColor == color;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _bubbleColor = color;
+        });
+      },
+      child: CircleAvatar(
+        radius: 18,
+        backgroundColor: color,
+        child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 18) : null,
+      ),
+    );
+  }
+
+  // TAB 2: CLIPBOARD INSPECTOR
+  Widget _buildClipboardTab() {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Expanded HUD Menu Popup
-            if (_isBubbleExpanded)
-              Container(
-                width: 230,
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor.withOpacity(0.95),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.25),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+            const Text(
+              'Smart Clipboard Inspector',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+            ),
+            const Text(
+              'Auto-categorized micro-content captured on the fly.',
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+
+            // Add Manual Clip Input
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _clipInputController,
+                    decoration: const InputDecoration(
+                      hintText: 'Paste or type link, phone, or text...',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     ),
-                  ],
-                  border: Border.all(
-                    color: widget.currentHudColor.withOpacity(0.4),
                   ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Lens Quick HUD',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                          ),
-                        ),
-                        InkWell(
-                          onTap: () {
-                            setState(() {
-                              _isBubbleExpanded = false;
-                            });
-                          },
-                          child: const Icon(Icons.close, size: 16),
-                        ),
-                      ],
-                    ),
-                    const Divider(height: 12),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        ActionChip(
-                          avatar: const Icon(Icons.add, size: 14),
-                          label: const Text('Quick Note',
-                              style: TextStyle(fontSize: 11)),
-                          onPressed: () {
-                            setState(() => _isBubbleExpanded = false);
-                            _openAddSnippetDialog();
-                          },
-                        ),
-                        ActionChip(
-                          avatar: const Icon(Icons.copy, size: 14),
-                          label: const Text('Clip Vault',
-                              style: TextStyle(fontSize: 11)),
-                          onPressed: () {
-                            setState(() {
-                              _isBubbleExpanded = false;
-                              _currentTab = 1;
-                            });
-                          },
-                        ),
-                        ActionChip(
-                          avatar: const Icon(Icons.volume_up, size: 14),
-                          label: const Text('Soundscape',
-                              style: TextStyle(fontSize: 11)),
-                          onPressed: () {
-                            setState(() {
-                              _isBubbleExpanded = false;
-                              _currentTab = 2;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: widget.currentHudColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: const [
-                          Icon(Icons.lightbulb, size: 14, color: Colors.amber),
-                          SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              'Drag bubble anywhere on screen',
-                              style: TextStyle(fontSize: 10),
-                              maxLines: 1,
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  ),
+                  onPressed: () => _addClipboardItem(_clipInputController.text),
+                  child: const Icon(Icons.add),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // List of Clips
+            Expanded(
+              child: _clipboardHistory.isEmpty
+                  ? const Center(child: Text('No saved clips yet.'))
+                  : ListView.builder(
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: _clipboardHistory.length,
+                      itemBuilder: (context, idx) {
+                        final item = _clipboardHistory[idx];
+                        IconData iconData = Icons.text_snippet;
+                        Color badgeColor = Colors.grey;
+
+                        if (item.type == 'link') {
+                          iconData = Icons.link;
+                          badgeColor = Colors.blue;
+                        } else if (item.type == 'phone') {
+                          iconData = Icons.phone;
+                          badgeColor = Colors.green;
+                        } else if (item.type == 'price') {
+                          iconData = Icons.attach_money;
+                          badgeColor = Colors.amber;
+                        }
+
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: badgeColor.withOpacity(0.2),
+                              child: Icon(iconData, color: badgeColor),
+                            ),
+                            title: Text(
+                              item.content,
+                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                            ),
+                            subtitle: Text(
+                              'Captured ${item.timestamp.hour}:${item.timestamp.minute.toString().padLeft(2, '0')}',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: Icon(
+                                    item.isPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                                    color: item.isPinned ? Colors.indigo : Colors.grey,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      item.isPinned = !item.isPinned;
+                                    });
+                                  },
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                  onPressed: () {
+                                    setState(() {
+                                      _clipboardHistory.removeAt(idx);
+                                    });
+                                  },
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
+                        );
+                      },
                     ),
-                  ],
-                ),
-              ),
-
-            // Floating Bubble Sphere Button
-            Opacity(
-              opacity: _bubbleOpacity,
-              child: FloatingActionButton.small(
-                heroTag: 'floating_lens_bubble',
-                backgroundColor: widget.currentHudColor,
-                onPressed: () {
-                  setState(() {
-                    _isBubbleExpanded = !_isBubbleExpanded;
-                  });
-                },
-                child: AnimatedRotation(
-                  turns: _isBubbleExpanded ? 0.25 : 0.0,
-                  duration: const Duration(milliseconds: 200),
-                  child: Icon(
-                    _isBubbleExpanded ? Icons.close : Icons.widgets,
-                    color: Colors.white,
-                    size: _bubbleSize * 0.45,
-                  ),
-                ),
-              ),
             ),
           ],
         ),
@@ -1161,56 +901,440 @@ class _MainHUDHomeScreenState extends State<MainHUDHomeScreen> {
     );
   }
 
-  // FLOATING HEADS-UP NOTIFICATION BANNER
-  Widget _buildFloatingNotificationBanner() {
-    return Positioned(
-      top: 10,
-      left: 16,
-      right: 16,
-      child: Material(
-        elevation: 8,
-        borderRadius: BorderRadius.circular(12),
-        color: Theme.of(context).cardColor,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-                color: widget.currentHudColor.withOpacity(0.5), width: 1.5),
+  // TAB 3: MICRO-TOOLS ENGINE (Calculators & Eye Filter)
+  Widget _buildToolsTab() {
+    double discountedTotal = _billAmount * (1 - (_discountPercent / 100));
+    double perPerson = discountedTotal / (_splitPeople > 0 ? _splitPeople : 1);
+
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Micro-Tools Engine',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
           ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: widget.currentHudColor.withOpacity(0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.notifications_active,
-                    color: widget.currentHudColor, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  _floatingNotificationText ?? '',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w600, fontSize: 13),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.close, size: 18),
-                onPressed: () {
-                  setState(() {
-                    _floatingNotificationText = null;
-                  });
-                },
-              ),
-            ],
+          const Text(
+            'Instant daily helpers without opening heavy standalone apps.',
+            style: TextStyle(color: Colors.grey),
           ),
+          const SizedBox(height: 16),
+
+          // Tool Card 1: Instant Discount & Bill Splitter
+          Card(
+            elevation: 1,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: const [
+                      Icon(Icons.monetization_on, color: Colors.teal),
+                      SizedBox(width: 8),
+                      Text(
+                        'Instant Discount & Bill Splitter',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text('Original Price (\$)'),
+                      ),
+                      SizedBox(
+                        width: 120,
+                        child: TextField(
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          ),
+                          onChanged: (val) {
+                            setState(() {
+                              _billAmount = double.tryParse(val) ?? 0.0;
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Text('Discount: ${_discountPercent.toInt()}%'),
+                      Expanded(
+                        child: Slider(
+                          value: _discountPercent,
+                          min: 0,
+                          max: 90,
+                          activeColor: Colors.teal,
+                          onChanged: (val) {
+                            setState(() {
+                              _discountPercent = val;
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Text('Split Persons: $_splitPeople'),
+                      Expanded(
+                        child: Slider(
+                          value: _splitPeople.toDouble(),
+                          min: 1,
+                          max: 10,
+                          divisions: 9,
+                          activeColor: Colors.teal,
+                          onChanged: (val) {
+                            setState(() {
+                              _splitPeople = val.toInt();
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Final Payable: \$${discountedTotal.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Each Person Pays: \$${perPerson.toStringAsFixed(2)}',
+                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Tool Card 2: Screen Eye Care & Reading Filter Guard
+          Card(
+            elevation: 1,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: const [
+                          Icon(Icons.visibility, color: Colors.amber),
+                          SizedBox(width: 8),
+                          Text(
+                            'Eye Care Screen Dimmer Filter',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                          ),
+                        ],
+                      ),
+                      Switch(
+                        value: _isScreenFilterActive,
+                        activeColor: Colors.amber,
+                        onChanged: (val) {
+                          setState(() {
+                            _isScreenFilterActive = val;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  const Text(
+                    'Applies warm tint tint over screen to reduce night eye strain while browsing.',
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                  if (_isScreenFilterActive) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Text('Warm Intensity:'),
+                        Expanded(
+                          child: Slider(
+                            value: _filterOpacity,
+                            min: 0.1,
+                            max: 0.6,
+                            activeColor: Colors.amber,
+                            onChanged: (val) {
+                              setState(() {
+                                _filterOpacity = val;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 30),
+        ],
+      ),
+    );
+  }
+
+  // TAB 4: FLOATING STICKY NOTES
+  Widget _buildNotesTab() {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Floating Stickies',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                    ),
+                    Text(
+                      'Pin micro notes right on your floating dock.',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ],
+                ),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigo,
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: const Icon(Icons.add),
+                  label: const Text('New Note'),
+                  onPressed: () => _showAddNoteDialog(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: _notes.isEmpty
+                  ? const Center(child: Text('No active sticky notes.'))
+                  : GridView.builder(
+                      physics: const BouncingScrollPhysics(),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 1.0,
+                      ),
+                      itemCount: _notes.length,
+                      itemBuilder: (context, idx) {
+                        final note = _notes[idx];
+                        return Card(
+                          color: note.color.withOpacity(0.15),
+                          shape: RoundedRectangleBorder(
+                            side: BorderSide(color: note.color, width: 1.5),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        note.title,
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete, size: 18, color: Colors.redAccent),
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      onPressed: () {
+                                        setState(() {
+                                          _notes.removeAt(idx);
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ),
+                                const Divider(height: 10),
+                                Expanded(
+                                  child: SingleChildScrollView(
+                                    physics: const BouncingScrollPhysics(),
+                                    child: Text(
+                                      note.text,
+                                      style: const TextStyle(fontSize: 13),
+                                      softWrap: true,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
         ),
       ),
+    );
+  }
+
+  // Dialog to Add Sticky Notes
+  void _showAddNoteDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Create Sticky Note'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _noteTitleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Title',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _noteTextController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Note Content',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: _addStickyNote,
+              child: const Text('Save Note'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Bottom Sheet simulating System Floating Notification Bar
+  void _showNotificationSimBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: const [
+                      Icon(Icons.notifications_active, color: Colors.indigo),
+                      SizedBox(width: 10),
+                      Text(
+                        'FlowDock Live Floating Notification',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: const [
+                            Icon(Icons.widgets, size: 20, color: Colors.indigo),
+                            SizedBox(width: 8),
+                            Text('FlowDock Quick Dock Active', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            ActionChip(
+                              avatar: const Icon(Icons.copy, size: 16),
+                              label: const Text('Clipboard'),
+                              onPressed: () {},
+                            ),
+                            ActionChip(
+                              avatar: const Icon(Icons.calculate, size: 16),
+                              label: const Text('Calc Split'),
+                              onPressed: () {},
+                            ),
+                            ActionChip(
+                              avatar: const Icon(Icons.note_add, size: 16),
+                              label: const Text('Add Sticky'),
+                              onPressed: () {},
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      child: const Text('Dismiss Preview'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
